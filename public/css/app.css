@@ -1,0 +1,27 @@
+body {
+    background-image: url('../bg.avif');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+}
+
+.card {
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.25) !important;
+}
+
+.card-header {
+    border-bottom: none;
+    background-color: #4338ca !important;
+}
+
+.btn-primary {
+    background-color: #4338ca;
+    border-color: #4338ca;
+}
+
+.btn-primary:hover {
+    background-color: #3730a3;
+    border-color: #3730a3;
+}

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico?v=2" type="image/x-icon">
+    <style>
+      /* Add custom styles for the login block */
+      .form-container {
+        max-width: 400px; /* Increase the width */
+        margin: 0 auto; /* Center the block */
+        padding: 20px; /* Add padding for spacing */
+        background-color: #ffffff; /* White background for contrast */
+        border-radius: 8px; /* Rounded corners */
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+      }
+
+      .form h2 {
+        margin-bottom: 20px; /* Add spacing below the title */
+        font-size: 1.5rem; /* Increase font size */
+        text-align: center; /* Center the title */
+      }
+
+      .form-group {
+        margin-bottom: 15px; /* Add spacing between form fields */
+      }
+
+      .form-group label {
+        display: block; /* Ensure labels are above inputs */
+        margin-bottom: 5px; /* Add spacing below labels */
+        font-weight: bold; /* Make labels bold */
+      }
+
+      .form-group input {
+        width: 100%; /* Make inputs full width */
+        padding: 10px; /* Add padding inside inputs */
+        border: 1px solid #ccc; /* Light border */
+        border-radius: 4px; /* Rounded corners */
+        font-size: 1rem; /* Increase font size */
+      }
+
+      .btn {
+        display: block; /* Make buttons full width */
+        width: 100%; /* Full width */
+        padding: 10px; /* Add padding */
+        background-color: #007bff; /* Blue background */
+        color: #ffffff; /* White text */
+        border: none; /* Remove border */
+        border-radius: 4px; /* Rounded corners */
+        font-size: 1rem; /* Increase font size */
+        cursor: pointer; /* Pointer cursor on hover */
+        text-align: center; /* Center text */
+      }
+
+      .btn:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+      }
+
+      .link {
+        display: block; /* Make links full width */
+        text-align: center; /* Center the text */
+        margin-top: 10px; /* Add spacing above links */
+        color: #007bff; /* Blue text */
+        text-decoration: none; /* Remove underline */
+      }
+
+      .link:hover {
+        text-decoration: underline; /* Underline on hover */
+      }
+
+      .register-link {
+        margin-top: 20px; /* Add spacing above the register link */
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="page-title">Login</h1>
+
+    <div class="form-container">
+      <form id="loginForm" class="form" action="Client.html" method="POST">
+        <h2>Login</h2>
+        <div class="form-group">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" name="username" required />
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" name="password" required />
+        </div>
+        <button type="submit" class="btn">Log In</button>
+        <a href="#" id="forgotPasswordLink" class="link">Forgot Password?</a>
+
+        <div class="register-link text-center mt-4">
+          <p>Don't have an account?</p>
+          <a href="Register.html" class="btn">Register New Account</a>
+        </div>
+      </form>
+    </div>
+
+    <script src="../src/js/login.js"></script>
+  </body>
+</html>
