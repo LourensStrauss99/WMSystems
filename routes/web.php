@@ -9,6 +9,7 @@ use App\Http\Controllers\JobcardController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\MasterSettings;
+use App\Http\Controllers\MasterSettingsController;
 use Illuminate\Support\Facades\Auth;
 
 // Authentication Routes
@@ -79,3 +80,4 @@ Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admi
 Route::get('/master-settings', [MasterSettings::class, 'index'])
     ->middleware(['auth'])
     ->name('master.settings');
+Route::put('/master-settings/update', [MasterSettingsController::class, 'update'])->name('master.settings.update');
