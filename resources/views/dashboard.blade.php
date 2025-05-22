@@ -35,20 +35,15 @@
         </a>
 
         <!-- Admin Button -->
-        <a
-            href="/admin login"
-            class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.591 1.009c1.64-.946 3.684.608 2.737 2.248a1.724 1.724 0 001.009 2.591c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.009 2.591c.946 1.64-.608 3.684-2.248 2.737a1.724 1.724 0 00-2.591 1.009c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.591-1.009c-1.64.946-3.684-.608-2.737-2.248a1.724 1.724 0 00-1.009-2.591c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.009-2.591c-.946-1.64.608-3.684 2.248-2.737a1.724 1.724 0 002.591-1.009z"
-                />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-            </svg>
-            Admin
+        
         </a>
+        <a href="{{ route('master.settings') }}">Master Settings</a>
+
+        @if(session('admin_error'))
+            <div class="alert alert-danger text-red-600 font-bold mb-4">
+                {{ session('admin_error') }}
+            </div>
+        @endif
     </div>
 </body>
 </html>

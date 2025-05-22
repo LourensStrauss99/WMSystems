@@ -15,6 +15,13 @@
         <a href="/client" class="text-white hover:underline">Home</a>
       </div>
     </nav>
+    @if ($errors->any())
+    <div class="bg-red-100 text-red-700 p-2 mb-4 rounded">
+        @foreach ($errors->all() as $error)
+            <div>{{ $error }}</div>
+        @endforeach
+    </div>
+@endif
 
     <!-- Main Content -->
     <div class="container mx-auto mt-8 p-4">
@@ -60,11 +67,20 @@
       <div id="responseMessage" class="mt-4 text-center text-lg font-semibold"></div>
 
       <h2 class="text-2xl font-semibold mb-4 mt-8">Add Employee</h2>
-<form method="POST" action="/admin/employees" class="bg-white p-6 rounded-lg shadow-md mb-8">
-    @csrf
+        <form method="POST" action="{{ route('admin.employees.store') }}" class="bg-white p-6 rounded-lg shadow-md mb-8">
+            @csrf
+            
     <div class="mb-4">
         <label class="block text-gray-700 font-bold mb-2">Name</label>
         <input type="text" name="name" class="w-full px-4 py-2 border rounded-lg" required>
+    </div>
+    <div class="mb-4">
+        <label class="block text-gray-700 font-bold mb-2">Surname</label>
+        <input type="text" name="surname" class="w-full px-4 py-2 border rounded-lg" required>
+    </div>
+    <div class="mb-4">
+        <label class="block text-gray-700 font-bold mb-2">Telephone</label>
+        <input type="text" name="telephone" class="w-full px-4 py-2 border rounded-lg" required>
     </div>
     <div class="mb-4">
         <label class="block text-gray-700 font-bold mb-2">Email</label>
@@ -95,6 +111,6 @@
 </form>
 
     <!-- JavaScript -->
-    <script src="../src/js/admin-panel.js"></script>
+    <!--<script src="../src/js/admin-panel.js"></script> -->
   </body>
 </html>

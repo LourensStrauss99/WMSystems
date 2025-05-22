@@ -7,6 +7,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\JobcardController;
 use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminPanelController;
+use App\Http\Controllers\MasterSettings;
 use Illuminate\Support\Facades\Auth;
 
 // Authentication Routes
@@ -38,7 +40,7 @@ Route::get('/admin/inventory/create', function () {
 Route::post('/admin/inventory', [InventoryController::class, 'store'])->name('admin.inventory.store');
 
 // Admin panel
-Route::get('/admin/panel', [InventoryController::class, 'adminPanel'])->name('admin.panel');
+
 
 // User management
 Route::post('/admin/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
@@ -53,9 +55,9 @@ Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 Route::view('/quotes', 'quotes')->name('quotes');
-Route::view('/admin-panel', 'admin-panel')->name('admin-panel');
-Route::view('/admin/login', 'admin login')->name('admin.login');
-Route::view('/admin/register', 'admin.register')->name('admin.register');
+//Route::view('/admin-panel', 'admin-panel')->name('admin-panel');
+//Route::view('/admin/login', 'admin login')->name('admin.login');
+//Route::view('/admin/register', 'admin.register')->name('admin.register');
 
 // Jobcard resource (RESTful)
 Route::resource('jobcard', JobcardController::class);
@@ -68,6 +70,12 @@ Route::get('/Inventory.html', function () {
     return redirect('/inventory');
 });
 
-Auth::routes();
+// Admin Authentication Routes
+Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
+Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
+Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Master Settings
+Route::get('/master-settings', [MasterSettings::class, 'index'])
+    ->middleware(['auth'])
+    ->name('master.settings');
