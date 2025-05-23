@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\MasterSettings;
 use App\Http\Controllers\MasterSettingsController;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Livewire\JobcardForm;
 
 // Authentication Routes
 Auth::routes();
@@ -49,7 +50,6 @@ Route::post('/admin/employees', [EmployeeController::class, 'store'])->name('adm
 
 // Static pages (views)
 Route::view('/client', 'client')->name('client');
-Route::view('/jobcard', 'jobcard')->name('jobcard');
 Route::view('/invoice', 'invoice')->name('invoice');
 Route::view('/settings', 'settings')->name('settings');
 Route::view('/reports', 'reports')->name('reports');
@@ -62,6 +62,9 @@ Route::view('/quotes', 'quotes')->name('quotes');
 
 // Jobcard resource (RESTful)
 Route::resource('jobcard', JobcardController::class);
+//Route::view('/jobcard', 'jobcard')->name('jobcard.index');
+Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
+Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
 
 // Home after login (default Laravel redirect)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

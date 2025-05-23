@@ -9,7 +9,7 @@
 </head>
 <body>
     <header class="header">
-        <div class="logo">Jobcard</div>
+        <div class="logo">Client</div>
         <nav class="tabs">
             <a href="/client" class="tab-button active">1 - Client</a>
             <a href="/jobcard" class="tab-button">2 - Jobcard</a>

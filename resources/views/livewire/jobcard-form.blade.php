@@ -20,14 +20,19 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label">Test</label>
+                            <input type="text" wire:model="test" required class="form-control" />
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label">Customer</label>
                             <select wire:model="customer" required class="form-control">
                                 <option value="">Select a client</option>
-                                @foreach($customers as $customer)
+                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}">
                                         {{ $customer->name }}
                                     </option>
-                                @endforeach
+                                @endforeach 
                             </select>
                         </div>
 
@@ -50,7 +55,7 @@
                                     <option value="">Select an item</option>
                                     @foreach($inventory as $item)
                                         <option value="{{ $item->id }}">{{ $item->name }}</option>
-                                    @endforeach
+                                    @endforeach 
                                 </select>
                                 <input type="number" 
                                        wire:model.live="quantity" 
