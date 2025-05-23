@@ -126,9 +126,12 @@
                             </select>
                         </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                Update Job Card
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ route('jobcard.index') }}" class="btn btn-secondary">
+                                ← Back to Search
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                Save Jobcard
                             </button>
                         </div>
                     </form>
