@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Jobcard;
 use App\Models\CompanyDetail;
-use Mail;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\InvoiceMailable;
 
 class InvoiceController extends Controller
 {
@@ -32,14 +33,14 @@ class InvoiceController extends Controller
         return view('invoice_view', compact('jobcard', 'company'));
     }
 
-    public function email($jobcardId)  
+    public function email($jobcardId)
     {
-        $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
-        $company = CompanyDetail::first();
+        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
+        $company = \App\Models\CompanyDetail::first();
 
-        // Send email logic here (use Laravel Mailable)
-        Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
+        // Send email using a Mailable (see step 4)
+        \Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
 
-        return back()->with('success', 'Invoice emailed to client!');
+        return back()->with('success', 'Invoice emailed successfully!');
     }
 }

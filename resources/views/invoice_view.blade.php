@@ -1,6 +1,6 @@
 {{-- filepath: resources/views/invoice_view.blade.php --}}
 @extends('layouts.app')
-@extends('layouts.nav')
+
 
 @section('content')
 <div class="container bg-white p-5 rounded shadow">
@@ -18,6 +18,8 @@
         <div class="col-md-6">
             <h5>Invoice To:</h5>
             <div>{{ $jobcard->client->name }}</div>
+            <div>{{ $jobcard->client->address }}</div>         {{-- Client address --}}
+            <div>{{ $jobcard->client->email }}</div>           {{-- Client email --}}
             <div>{{ $jobcard->client->telephone }}</div>
         </div>
         <div class="col-md-6 text-right">
@@ -28,7 +30,7 @@
 
     {{-- Inventory Table --}}
     <h5>Inventory Used</h5>
-    <table class="table table-bordered">
+    <table class="table table-bordered"> 
         <thead>
             <tr>
                 <th>Item</th>
@@ -101,5 +103,56 @@
     <div class="mt-2">
         <em>{{ $company->invoice_footer }}</em>
     </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <form method="POST" action="{{ route('invoice.email', $jobcard->id) }}">
+            @csrf
+            <button type="submit" class="btn btn-primary">Email Invoice</button>
+        </form>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">Print Invoice</button>
+    </div>
+    <a href="{{ route('invoice.index') }}" class="btn btn-secondary no-print mb-3">Back to Invoices</a>
 </div>
 @endsection
+
+<style>
+@media print {
+    body {
+        background: #fff !important;
+    }
+    .container {
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 210mm !important;
+        min-height: 297mm !important;
+        max-width: 210mm !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+    nav, .navbar, .btn, .alert, .footer {
+        display: none !important;
+    }
+    .page-break {
+        page-break-before: always;
+    }
+    table {
+        page-break-inside: auto;
+    }
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    html, body {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 0;
+    }
+}
+@page {
+    size: A4;
+    margin: 16mm 12mm 16mm 12mm;
+}
+</style>
