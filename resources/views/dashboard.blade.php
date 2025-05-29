@@ -35,15 +35,38 @@
         </a>
 
         <!-- Admin Button -->
-        
+        <a href="/master-settings"
+           class="inline-flex items-center bg-gray-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-gray-700 mb-4 ml-2"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11.25 2.25c.38-1.01 1.87-1.01 2.25 0a1.5 1.5 0 002.1.83c.94-.54 2.01.53 1.47 1.47a1.5 1.5 0 00.83 2.1c1.01.38 1.01 1.87 0 2.25a1.5 1.5 0 00-.83 2.1c.54.94-.53 2.01-1.47 1.47a1.5 1.5 0 00-2.1.83c-.38 1.01-1.87 1.01-2.25 0a1.5 1.5 0 00-2.1-.83c-.94.54-2.01-.53-1.47-1.47a1.5 1.5 0 00-.83-2.1c-1.01-.38-1.01-1.87 0-2.25a1.5 1.5 0 00.83-2.1c-.54-.94.53-2.01 1.47-1.47a1.5 1.5 0 002.1-.83z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Master Settings
         </a>
-        <a href="{{ route('master.settings') }}">Master Settings</a>
 
         @if(session('admin_error'))
             <div class="alert alert-danger text-red-600 font-bold mb-4">
                 {{ session('admin_error') }}
             </div>
         @endif
+
+        <!-- Logout Button -->
+        <form method="POST" action="{{ route('logout') }}" class="inline">
+            @csrf
+            <button type="submit"
+                class="inline-flex items-center bg-red-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-red-700 mb-4 ml-2"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1m0-9V5m0 0a2 2 0 00-2-2h-4a2 2 0 00-2 2v14a2 2 0 002 2h4a2 2 0 002-2v-1"
+                    />
+                </svg>
+                Log Out
+            </button>
+        </form>
     </div>
 </body>
 </html>

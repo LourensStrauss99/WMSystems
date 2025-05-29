@@ -8,8 +8,12 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\JobcardController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminPanelController;
-use App\Http\Controllers\MasterSettings;
+use App\Http\Controllers\InvoiceController;
+
 use App\Http\Controllers\MasterSettingsController;
+use App\Http\Controllers\ProgressController;
+use App\Http\Controllers\PhoneController;
+
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
 
@@ -80,7 +84,15 @@ Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.
 Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 // Master Settings
-Route::get('/master-settings', [MasterSettings::class, 'index'])
+Route::get('/master-settings', [MasterSettingsController::class, 'index'])
     ->middleware(['auth'])
     ->name('master.settings');
 Route::put('/master-settings/update', [MasterSettingsController::class, 'update'])->name('master.settings.update');
+Route::get('/progress', [App\Http\Controllers\JobcardController::class, 'progress'])->name('progress');
+Route::get('/progress/jobcard/{id}', [JobcardController::class, 'showProgress'])->name('progress.jobcard.show');
+Route::put('/progress/jobcard/{id}', [App\Http\Controllers\JobcardController::class, 'updateProgress'])->name('progress.jobcard.update');
+Route::get('/invoice/{jobcard}', [App\Http\Controllers\MasterSettingsController::class, 'showInvoice'])->name('invoice');
+Route::get('/invoice', [App\Http\Controllers\InvoiceController::class, 'index'])->name('invoice');
+Route::get('/invoices/{jobcard}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('invoices.show');
+
+

@@ -6,7 +6,6 @@
   font-family: Arial, sans-serif;
 }
 
-
 body {
   background: url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80")
     no-repeat center center/cover;
@@ -86,7 +85,7 @@ body {
 /* Client Container */
 .client-container {
   width: 65%;
-  background-color: #f5f5f5; /* Light grey background */
+  background-color: #f5f5f5;
   padding: 20px;
   display: flex;
   gap: 20px;
@@ -121,9 +120,9 @@ body {
 .form-group input,
 .form-group select {
   width: 100%;
-  max-width: 300px; /* Limit input width for better alignment */
+  max-width: 300px;
   padding: 8px;
-  border: 1px solid #D3D3D3;
+  border: 1px solid #d3d3d3;
   border-radius: 3px;
   font-size: 14px;
 }
@@ -145,7 +144,7 @@ body {
 .special-request textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #D3D3D3;
+  border: 1px solid #d3d3d3;
   border-radius: 3px;
   font-size: 14px;
   resize: vertical;
@@ -238,18 +237,19 @@ body {
 .card-content select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #D3D3D3;
+  border: 1px solid #d3d3d3;
   border-radius: 3px;
   font-size: 14px;
 }
 
-/** Table Styles */
+/* Table Styles */
 table {
   width: 100%;
   border: 1px solid #ccc;
   margin: 20px 0;
 }
-th, td {
+th,
+td {
   padding: 10px;
   text-align: left;
   border-bottom: 1px solid #ccc;
@@ -258,7 +258,6 @@ th {
   background-color: #f2f2f2;
   font-weight: bold;
 }
-
 
 /* Search Bar Styling */
 .search-bar {
@@ -284,7 +283,7 @@ th {
 
 /* Table Wrapper for Scrollable Table with Max 20 Rows */
 .table-wrapper {
-  max-height: 1000px; /* Approx 20 rows at ~30px per row */
+  max-height: 1000px;
   overflow-y: auto;
 }
 
@@ -292,6 +291,7 @@ th {
   width: 100%;
 }
 
+/* Jobcard View Styling */
 #jobcard-view .client-container {
   background-color: #f5f5f5;
 }
@@ -305,8 +305,8 @@ th {
 /* Memo Container */
 .memo-container {
   flex: 1 0 80%;
-  background: #FFFFFF;
-  border: 1px solid #D3D3D3;
+  background: #ffffff;
+  border: 1px solid #d3d3d3;
   padding: 20px;
 }
 
@@ -322,7 +322,7 @@ th {
 .memo-container textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #D3D3D3;
+  border: 1px solid #d3d3d3;
   border-radius: 3px;
   font-size: 14px;
   resize: vertical;
@@ -372,7 +372,6 @@ th {
   color: white;
   cursor: pointer;
 }
-
 
 .button:hover {
   background: #357abd;
@@ -494,7 +493,7 @@ th {
 
 /* Form Container */
 .form-container {
-  display: block !important; /* Force block layout */
+  display: block !important;
   max-width: 400px;
   margin: 0 auto;
   padding: 20px;
@@ -505,7 +504,7 @@ th {
 
 /* Form Styles */
 .form {
-  display: block !important; /* Prevent flex/grid from Tailwind or elsewhere */
+  display: block !important;
   background-color: #fff;
   border-radius: 5px;
   padding: 20px;
@@ -575,4 +574,21 @@ th {
   box-sizing: border-box;
   text-align: left;
   max-width: 100%;
+}
+
+/* Jobcard Table Specific Styles */
+#jobcardTable tr.tr-status-assigned {
+  background-color: #d3d3d3 !important; /* Light grey */
+}
+
+#jobcardTable tr.tr-status-in-progress {
+  background-color: #ffcccc !important; /* Light red */
+}
+
+#jobcardTable tr.tr-status-completed {
+  background-color: #ccffcc !important; /* Light green */
+}
+
+#jobcardTable tr.tr-highlight {
+  background-color: #bd2424 !important; /* Highlight color */
 }

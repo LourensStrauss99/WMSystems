@@ -86,7 +86,15 @@
                                         <th>Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="inventory_list"></tbody>
+                                <tbody id="inventory_list">
+                                    @foreach($jobcard->inventory as $item)
+                                        <tr>
+                                            <td>{{ $item->name }}</td>
+                                            <td>{{ $item->pivot->quantity }}</td>
+                                            <td></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
                             </table>
                         </div>
 

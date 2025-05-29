@@ -136,7 +136,7 @@
     <!-- Company Details -->
     <div class="mb-4">
         <label class="block text-gray-700 font-bold mb-2">Company Name</label>
-        <input type="text" name="company_name" class="w-full px-4 py-2 border rounded-lg" required>
+        <input type="text" name="company_name" value="{{ old('company_name', $companyDetails->company_name ?? '') }}" class="w-full px-4 py-2 border rounded-lg" required>
     </div>
     <div class="mb-4">
         <label class="block text-gray-700 font-bold mb-2">Company Registration Number</label>

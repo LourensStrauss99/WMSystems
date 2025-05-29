@@ -24,7 +24,9 @@ class Jobcard extends Model
 
     public function inventory()
     {
-        return $this->belongsToMany(Inventory::class);
+        return $this->belongsToMany(Inventory::class)
+            ->withPivot('quantity')
+            ->withTimestamps();
     }
 }
 

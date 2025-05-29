@@ -1,33 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Inventory</title>
-    <link rel="stylesheet" href="/style.css">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body>
-    <header class="header">
-        <div class="logo">Client</div>
-        <nav class="tabs">
-            <a href="/client" class="tab-button">1 - Client</a>
-            <a href="/jobcard" class="tab-button">2 - Jobcard</a>
-            <a href="/progress" class="tab-button">3 - Progress</a>
-            <a href="/invoice" class="tab-button">4 - Invoices</a>
-            <a href="/artisanprogress" class="tab-button">5 - Artisan progress</a>
-            <a href="/inventory" class="tab-button active">6 - Inventory</a>
-            <a href="/reports" class="tab-button">7 - Reports</a>
-            <a href="/quotes" class="tab-button">8 - Quotes</a>
-            <a href="/settings" class="tab-button">9 - Settings</a>
-        </nav>
-    </header>
+@extends('layouts.app')
+@extends('layouts.nav')
+@section('content')
 
-    <h1>Inventory List</h1>
-    <form method="GET" action="/inventory">
+<div class="bg-white p-6 rounded shadow">
+    <h1 class="text-xl font-bold mb-4">Inventory List</h1>
+    <form method="GET" action="/inventory" class="mb-4">
         <input type="text" name="search" placeholder="Search by name..." value="{{ request('search') }}">
         <button type="submit">Search</button>
     </form>
-    <table border="1">
+    <table class="w-full border" border="1">
         <tr>
             <th>Name</th>
             <th>Short Description</th>
@@ -39,7 +20,8 @@
             <th>Min Level</th>
         </tr>
         @foreach($items as $item)
-        <tr>
+        <tr onclick="highlightRow(this)">
+          
             <td>{{ $item->name }}</td>
             <td>{{ $item->short_description }}</td>
             <td>{{ $item->buying_price }}</td>
@@ -51,5 +33,18 @@
         </tr>
         @endforeach
     </table>
-</body>
-</html>
+</div>
+
+
+
+<script>
+function highlightRow(row) {
+    // Remove highlight from all rows
+    document.querySelectorAll('tr.tr-highlight').forEach(function(tr) {
+        tr.classList.remove('tr-highlight');
+    });
+    // Add highlight to the clicked row
+    row.classList.add('tr-highlight');
+}
+</script>
+@endsection

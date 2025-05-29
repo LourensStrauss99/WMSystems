@@ -6,7 +6,7 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
-    <style>
+   <!-- <style>
       /* Modal for job card view */
       .modal {
         display: none;
@@ -124,145 +124,208 @@
           display: none;
         }
       }
-    </style>
+    </style>  -->
   </head>
   <body>
-    <div class="container">
-      <!-- Header -->
-      <header class="header">
-        <div class="logo">Progress</div>
-        <!-- Tabs -->
-        <nav class="tabs">
-          <a
-          <a href="/client" class="tab-button">1 - Client</a>
-          <a href="/jobcard" class="tab-button">2 - Jobcard</a>
-          <a href="/progress" class="tab-button active">3 - Progress</a>
-          <a href="/invoice" class="tab-button">4 - Invoices</a>
-          <a href="/artisanprogress" class="tab-button">5 - Artisan progress</a>
-          <a href="/inventory" class="tab-button">6 - Inventory</a>
-          <a href="/reports" class="tab-button">7 - Reports</a>
-          <a href="/quotes" class="tab-button">8 - Quotes</a>
-          <a href="/settings" class="tab-button">9 - Settings</a>
-        </nav>
-      </header>
+<div class="container">  
+  <!-- Header -->
+  
 
-      <!-- Main Content -->
-      <div class="left-section">
-        <div class="form-group">
-          <div class="main-content">
-            <!-- Jobcards Table View -->
-            <div id="jobcards-table-view">
-              <!-- Search Bar -->
-              <div class="search-bar">
-                <span class="search-icon">🔍</span>
-                <input
-                  type="text"
-                  id="search-jobcards"
-                  placeholder="Search by /client or artisan name..."
-                  onkeyup="filterJobcards()"
-                />
-              </div>
-              <!-- Date Range Search -->
-              <div class="date-search">
-                <label for="start-date">Start Date:</label>
-                <input type="date" id="start-date" onchange="loadJobcards()" />
-                <label for="end-date">End Date:</label>
-                <input type="date" id="end-date" onchange="loadJobcards()" />
-              </div>
+  {{-- filepath: resources/views/progress.blade.php --}}
+@extends('layouts.app')
+@extends('layouts.nav')
 
-              <!-- Assigned Jobcards Table -->
-              <div class="container-large">
-                <div class="assigned-jobcards">
-                  <h3><i><u><b>Assigned Jobcards</b></u></i></h3>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Jobcard Number</th>
-                        <th>Client Name</th>
-                        <th>Job Date</th>
-                      </tr>
-                    </thead>
-                    <tbody id="assigned-jobcards-table-body">
-                      <!-- Jobcards populated by JS -->
-                    </tbody>
-                  </table>
+@section('content')
+<div class="container mt-4">
+    <h2 class="mb-4">Jobcards Overview</h2>
+    <div class="row">
+        <!-- Assigned Column -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <strong>Assigned</strong>
                 </div>
-              </div>
+                <div class="card-body">
+                    @if($assignedJobcards->count())
+                        <!-- Assigned Column -->
+                        <ul class="list-group">
+                            @foreach($assignedJobcards as $jobcard)
+                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                    <div>
+                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                        {{ $jobcard->client->name ?? '' }}<br>
+                                        <small>{{ $jobcard->job_date }}</small>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-muted">No assigned jobcards.</div>
+                    @endif
+                </div>
             </div>
-          </div>
         </div>
-      </div>
+        <!-- In Progress Column -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: #f75461; color: #721c24;">
+    <strong>In Progress</strong>
+</div>
+                <div class="card-body">
+                    @if($inProgressJobcards->count())
+                        <!-- In Progress Column -->
+                        <ul class="list-group">
+                            @foreach($inProgressJobcards as $jobcard)
+                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                    <div>
+                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                        {{ $jobcard->client->name ?? '' }}<br>
+                                        <small>{{ $jobcard->job_date }}</small>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-muted">No jobcards in progress.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <!-- Completed Column -->
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: green; color: white;">
+                    <strong>Completed</strong>
+                </div>
+                <div class="card-body">
+                    @if($completedJobcards->count())
+                        <!-- Completed Column -->
+                        <ul class="list-group">
+                            @foreach($completedJobcards as $jobcard)
+                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                    <div>
+                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                        {{ $jobcard->client->name ?? '' }}<br>
+                                        <small>{{ $jobcard->job_date }}</small>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="text-muted">No completed jobcards.</div>
+                    @endif
+                </div>
+            </div>
+        </div>
     </div>
+    <a href="{{ route('progress') }}" class="btn btn-secondary mb-3">Back to Progress</a>
+</div>
+@endsection
 
-    <!-- Modal for Jobcard View -->
-    <div id="jobcard-modal" class="modal">
-      <div class="modal-content">
-        <span class="close no-print" onclick="closeJobcard()">×</span>
-        <h2>Jobcard Details</h2>
-        <div class="form-group">
-          <label>Jobcard Number</label>
-          <input type="text" id="view-jobcard-number" readonly />
-        </div>
-        <div class="form-group">
-          <label>Job Date</label>
-          <input type="date" id="view-job-date" readonly />
-        </div>
-        <div class="form-group">
-          <label>Client Name</label>
-          <input type="text" id="view-/client-name" readonly />
-        </div>
-        <div class="form-group">
-          <label>Telephone</label>
-          <input type="text" id="view-/client-telephone" readonly />
-        </div>
-        <div class="form-group">
-          <label>Address</label>
-          <input type="text" id="view-/client-address" readonly />
-        </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="text" id="view-/client-email" readonly />
-        </div>
-        <div class="form-group">
-          <label>Category</label>
-          <input type="text" id="view-category" readonly />
-        </div>
-        <div class="form-group">
-          <label>Assigned Artisan</label>
-          <input type="text" id="view-artisan" readonly />
-        </div>
-        <div class="form-group">
-          <label>Work Request</label>
-          <textarea id="view-work-request" readonly></textarea>
-        </div>
-        <div class="form-group">
-          <label>Work Done</label>
-          <textarea id="view-work-done" readonly></textarea>
-        </div>
-        <div class="form-group">
-          <label>Hours</label>
-          <input type="text" id="view-hours" readonly />
-        </div>
-        <div class="form-group">
-          <label>Special Request</label>
-          <textarea id="view-special-request" readonly></textarea>
-        </div>
-        <div class="form-group">
-          <label>Spares Used</label>
-          <table id="view-spares-table">
-            <thead>
-              <tr>
-                <th>Spare Name</th>
-                <th>Part Number</th>
-                <th>Quantity</th>
-              </tr>
-            </thead>
-            <tbody id="view-spares-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+  <script>
+let currentJobcardId = null;
+let sparesData = [];
 
-    <script src="../src/js/progress.js"></script>
+function viewJobcard(id) {
+    fetch('/progress/jobcard/' + id)
+        .then(response => response.json())
+        .then data => {
+            currentJobcardId = id;
+            document.getElementById('modal-jobcard-id').value = id;
+            document.getElementById('view-jobcard-number').value = data.jobcard_number || '';
+            document.getElementById('view-job-date').value = data.job_date || '';
+            document.getElementById('view-client-name').value = data.client?.name || '';
+            document.getElementById('view-client-telephone').value = data.client?.telephone || '';
+            document.getElementById('view-client-address').value = data.client?.address || '';
+            document.getElementById('view-client-email').value = data.client?.email || '';
+            document.getElementById('view-category').value = data.category || '';
+            document.getElementById('view-artisan').value = (data.employees && data.employees.length) ? data.employees.map(e => e.name).join(', ') : '';
+            document.getElementById('view-work-request').value = data.work_request || '';
+            document.getElementById('edit-work-done').value = data.work_done || '';
+            document.getElementById('edit-hours').value = data.time_spent || '';
+            document.getElementById('view-special-request').value = data.special_request || '';
+            document.getElementById('progress-note').value = data.progress_note || '';
+
+            // Clear and populate spares table
+            const sparesTableBody = document.getElementById('edit-spares-table-body');
+            sparesTableBody.innerHTML = '';
+            data.spares.forEach(spare => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${spare.name}</td>
+                    <td>${spare.part_number}</td>
+                    <td>
+                        <input type="number" name="spares[${spare.id}]" class="form-control" min="0" value="${spare.pivot.quantity}">
+                    </td>
+                `;
+                sparesTableBody.appendChild(row);
+            });
+
+            // Show modal
+            document.getElementById('jobcard-modal').style.display = 'block';
+        })
+        .catch(error => console.error('Error fetching jobcard data:', error));
+}
+
+function closeJobcard() {
+    document.getElementById('jobcard-modal').style.display = 'none';
+    currentJobcardId = null;
+}
+
+function markCompleted() {
+    if (currentJobcardId) {
+        fetch('/progress/jobcard/' + currentJobcardId + '/complete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify({ completed: true })
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Jobcard marked as completed.');
+                location.reload();
+            } else {
+                alert('Error marking jobcard as completed.');
+            }
+        })
+        .catch(error => console.error('Error marking jobcard as completed:', error));
+    }
+}
+
+function submitForInvoice() {
+    if (currentJobcardId) {
+        fetch('/progress/jobcard/' + currentJobcardId + '/submit-invoice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+            },
+            body: JSON.stringify({ submitted: true })
+        })
+        .then(response => {
+            if (response.ok) {
+                alert('Jobcard submitted for invoice.');
+                location.reload();
+            } else {
+                alert('Error submitting jobcard for invoice.');
+            }
+        })
+        .catch(error => console.error('Error submitting jobcard for invoice:', error));
+    }
+}
+
+// Close modal when clicking outside of it
+window.onclick = function(event) {
+    const modal = document.getElementById('jobcard-modal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+  </script>
   </body>
 </html>

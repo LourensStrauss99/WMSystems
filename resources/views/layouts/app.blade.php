@@ -15,28 +15,16 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="{{ asset('/style.css') }}" rel="stylesheet">
     @livewireStyles
+    <style>
+        .tr-highlight {
+            background-color: #e0e7ff !important; /* Light blue, change as needed */
+        }
+    </style>
 </head>
 <body>
     <div id="app">
         <!-- Navbar Start -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
-            <div class="container">
-                <a class="navbar-brand" href="/">Workflow Management</a>
-                <div class="collapse navbar-collapse">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item"><a class="nav-link" href="/client">Client</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/jobcard">Jobcard</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/progress">Progress</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/invoice">Invoices</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/artisanprogress">Artisan Progress</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/inventory">Inventory</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/reports">Reports</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/quotes">Quotes</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
+      
         <!-- Navbar End -->
 
         <main class="py-4">
@@ -49,5 +37,15 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     @livewireScripts
     @stack('scripts')
+    <script>
+function highlightRow(row) {
+    // Remove highlight from all rows
+    document.querySelectorAll('tr.tr-highlight').forEach(function(tr) {
+        tr.classList.remove('tr-highlight');
+    });
+    // Add highlight to the clicked row
+    row.classList.add('tr-highlight');
+}
+</script>
 </body>
 </html>

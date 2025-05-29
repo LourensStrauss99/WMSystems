@@ -4,9 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Setting;
+use App\Models\CompanyDetail;
+use App\Models\Jobcard;
 
 class MasterSettingsController extends Controller
 {
+    public function index()
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        return view('master-settings', compact('companyDetails'));
+    }
+
     public function update(Request $request)
     {
         $data = $request->validate([
@@ -32,11 +40,26 @@ class MasterSettingsController extends Controller
             'invoice_footer' => 'nullable|string',
         ]);
 
-        // For single row settings table (id=1)
-        $settings = Setting::first() ?? new Setting();
-        $settings->fill($data);
-        $settings->save();
+        // Only one row, so update or create
+        CompanyDetail::updateOrCreate(['id' => 1], $data);
 
-        return redirect()->back()->with('success', 'Settings updated!');
+        return back()->with('success', 'Company details updated!');
+    }
+
+    public function showInvoice($jobcardId)
+    {
+        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
+        $company = \App\Models\CompanyDetail::first();
+        return view('invoice', compact('jobcard', 'company'));
+    }
+    public function email($jobcardId)
+    {
+        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
+        $company = \App\Models\CompanyDetail::first();
+
+        // Send email logic here (use Laravel Mailable)
+        \Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
+
+        return back()->with('success', 'Invoice emailed to client!');
     }
 }
