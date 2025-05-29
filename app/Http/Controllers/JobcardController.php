@@ -30,7 +30,7 @@ class JobcardController extends Controller
 
     public function show(Jobcard $jobcard)
     {
-        $employees = \App\Models\Employee::all();
+        $employees = \App\Models\Employee::all();  
         $statuses = ['in progress', 'assigned', 'completed'];
         $inventory = \App\Models\Inventory::all();
 

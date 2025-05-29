@@ -8,12 +8,19 @@ use Mail;
 
 class InvoiceController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $jobcards = \App\Models\Jobcard::with('client')
+        $query = \App\Models\Jobcard::with('client')
             ->where('status', 'completed')
-            ->orderByDesc('job_date')
-            ->get();
+            ->orderByDesc('job_date');
+
+        if ($request->filled('client')) {
+            $query->whereHas('client', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->client . '%');
+            });
+        }
+
+        $jobcards = $query->get();
 
         return view('invoice', compact('jobcards'));
     }
@@ -25,7 +32,7 @@ class InvoiceController extends Controller
         return view('invoice_view', compact('jobcard', 'company'));
     }
 
-    public function email($jobcardId)
+    public function email($jobcardId)  
     {
         $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
         $company = CompanyDetail::first();

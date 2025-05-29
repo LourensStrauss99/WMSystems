@@ -91,8 +91,8 @@ Route::put('/master-settings/update', [MasterSettingsController::class, 'update'
 Route::get('/progress', [App\Http\Controllers\JobcardController::class, 'progress'])->name('progress');
 Route::get('/progress/jobcard/{id}', [JobcardController::class, 'showProgress'])->name('progress.jobcard.show');
 Route::put('/progress/jobcard/{id}', [App\Http\Controllers\JobcardController::class, 'updateProgress'])->name('progress.jobcard.update');
-Route::get('/invoice/{jobcard}', [App\Http\Controllers\MasterSettingsController::class, 'showInvoice'])->name('invoice');
-Route::get('/invoice', [App\Http\Controllers\InvoiceController::class, 'index'])->name('invoice');
+Route::get('/invoice/{jobcard}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('invoice.show');
+Route::get('/invoice', [App\Http\Controllers\InvoiceController::class, 'index'])->name('invoice.index');
 Route::get('/invoices/{jobcard}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('invoices.show');
 
 
