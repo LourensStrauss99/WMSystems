@@ -145,24 +145,19 @@
                 <div class="card-header bg-secondary text-white">
                     <strong>Assigned</strong>
                 </div>
-                <div class="card-body">
-                    @if($assignedJobcards->count())
-                        <!-- Assigned Column -->
-                        <ul class="list-group">
-                            @foreach($assignedJobcards as $jobcard)
-                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
-                                    <div>
-                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
-                                        {{ $jobcard->client->name ?? '' }}<br>
-                                        <small>{{ $jobcard->job_date }}</small>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @else
-                        <div class="text-muted">No assigned jobcards.</div>
-                    @endif
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="assigned-list">
+                    <ul class="list-group" id="assigned-jobcards-list">
+                        @foreach($assignedJobcards as $jobcard)
+                            <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                <div>
+                                    <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                    {{ $jobcard->client->name ?? '' }}<br>
+                                    <small>{{ $jobcard->job_date }}</small>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
         </div>
@@ -170,26 +165,21 @@
         <div class="col-md-4">
             <div class="card shadow mb-4">
                 <div class="card-header" style="background-color: #f75461; color: #721c24;">
-    <strong>In Progress</strong>
-</div>
-                <div class="card-body">
-                    @if($inProgressJobcards->count())
-                        <!-- In Progress Column -->
-                        <ul class="list-group">
-                            @foreach($inProgressJobcards as $jobcard)
-                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
-                                    <div>
-                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
-                                        {{ $jobcard->client->name ?? '' }}<br>
-                                        <small>{{ $jobcard->job_date }}</small>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @else
-                        <div class="text-muted">No jobcards in progress.</div>
-                    @endif
+                    <strong>In Progress</strong>
+                </div>
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="inprogress-list">
+                    <ul class="list-group" id="inprogress-jobcards-list">
+                        @foreach($inProgressJobcards as $jobcard)
+                            <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                <div>
+                                    <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                    {{ $jobcard->client->name ?? '' }}<br>
+                                    <small>{{ $jobcard->job_date }}</small>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
         </div>
@@ -199,24 +189,19 @@
                 <div class="card-header" style="background-color: green; color: white;">
                     <strong>Completed</strong>
                 </div>
-                <div class="card-body">
-                    @if($completedJobcards->count())
-                        <!-- Completed Column -->
-                        <ul class="list-group">
-                            @foreach($completedJobcards as $jobcard)
-                                <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                    ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
-                                    <div>
-                                        <strong>#{{ $jobcard->jobcard_number }}</strong><br>
-                                        {{ $jobcard->client->name ?? '' }}<br>
-                                        <small>{{ $jobcard->job_date }}</small>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @else
-                        <div class="text-muted">No completed jobcards.</div>
-                    @endif
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="completed-list">
+                    <ul class="list-group" id="completed-jobcards-list">
+                        @foreach($completedJobcards as $jobcard)
+                            <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
+                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                <div>
+                                    <strong>#{{ $jobcard->jobcard_number }}</strong><br>
+                                    {{ $jobcard->client->name ?? '' }}<br>
+                                    <small>{{ $jobcard->job_date }}</small>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
         </div>
@@ -326,6 +311,32 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 }
+
+function setupInfiniteScroll(listId, url, pageParam) {
+    let page = 1;
+    let loading = false;
+    const list = document.getElementById(listId);
+
+    list.addEventListener('scroll', function() {
+        if (loading) return;
+        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 10) {
+            loading = true;
+            page++;
+            fetch(url + '?' + pageParam + '=' + page, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.text())
+                .then(html => {
+                    if (html.trim() !== '') {
+                        list.querySelector('ul').insertAdjacentHTML('beforeend', html);
+                        loading = false;
+                    }
+                });
+        }
+    });
+}
+
+setupInfiniteScroll('assigned-list', '/progress/assigned', 'assigned_page');
+setupInfiniteScroll('inprogress-list', '/progress/inprogress', 'inprogress_page');
+setupInfiniteScroll('completed-list', '/progress/completed', 'completed_page');
   </script>
   </body>
 </html>

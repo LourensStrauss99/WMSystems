@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('content')
@@ -56,7 +55,7 @@
                 </div>
                 <div class="card-footer text-center py-3">
                     <div class="small">
-                        @if (Route::has('register'))
+                        @if (isset($superuserExists) && !$superuserExists)
                             <a href="{{ route('register') }}">Need an account? Sign up!</a>
                         @endif
                     </div>
@@ -65,4 +64,5 @@
         </div>
     </div>
 </div>
+
 @endsection

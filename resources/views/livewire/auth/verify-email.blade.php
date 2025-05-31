@@ -55,3 +55,11 @@ new #[Layout('components.layouts.auth')] class extends Component {
         </flux:link>
     </div>
 </div>
+
+<?php
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+class User extends Authenticatable implements MustVerifyEmail
+{
+    // ...
+}

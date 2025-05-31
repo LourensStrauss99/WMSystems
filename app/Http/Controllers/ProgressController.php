@@ -7,11 +7,11 @@ use App\Models\Jobcard;
 
 class ProgressController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $assignedJobcards = \App\Models\Jobcard::where('status', 'assigned')->get();
-        $inProgressJobcards = \App\Models\Jobcard::where('status', 'in progress')->get();
-        $completedJobcards = \App\Models\Jobcard::where('status', 'completed')->get();
+        $assignedJobcards = \App\Models\Jobcard::where('status', 'assigned')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'assigned_page');
+        $inProgressJobcards = \App\Models\Jobcard::where('status', 'in progress')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'inprogress_page');
+        $completedJobcards = \App\Models\Jobcard::where('status', 'completed')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'completed_page');
 
         return view('progress', compact('assignedJobcards', 'inProgressJobcards', 'completedJobcards'));
     }

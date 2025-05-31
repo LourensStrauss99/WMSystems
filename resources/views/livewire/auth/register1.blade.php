@@ -27,11 +27,15 @@ new #[Layout('components.layouts.auth')] class extends Component {
 
         $validated['password'] = Hash::make($validated['password']);
 
-        event(new Registered(($user = User::create($validated))));
+        $user = User::create($validated);
+        event(new Registered($user));
 
-        Auth::login($user);
+        // Do NOT log in the user
+        // Auth::login($user);
 
-        $this->redirectIntended(route('dashboard', absolute: false), navigate: true);
+        // Redirect to login with a status message
+        $this->redirect(route('login', absolute: false), navigate: true);
+        session()->flash('status', 'Registration successful! Please check your email to verify your account before logging in.');
     }
 }; ?>
 

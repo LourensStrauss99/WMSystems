@@ -13,12 +13,14 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
+use App\Http\Controllers\QuotesController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 // Authentication Routes
-Auth::routes();
+Auth::routes(['verify' => true]);
 
 // Home Route
 Route::get('/', function () {
@@ -60,6 +62,11 @@ Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 Route::view('/quotes', 'quotes')->name('quotes');
+Route::get('/quotes', [QuotesController::class, 'index'])->name('quotes.index');
+Route::post('/quotes/save', [QuotesController::class, 'save'])->name('quotes.save');
+Route::get('/quotes/{id}', [QuotesController::class, 'show'])->name('quotes.show');
+Route::get('/quotes/{id}/download', [QuotesController::class, 'download'])->name('quotes.download');
+Route::post('/quotes/{id}/email', [QuotesController::class, 'email'])->name('quotes.email');
 //Route::view('/admin-panel', 'admin-panel')->name('admin-panel');
 //Route::view('/admin/login', 'admin login')->name('admin.login');
 //Route::view('/admin/register', 'admin.register')->name('admin.register');
@@ -71,7 +78,9 @@ Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->na
 Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
 
 // Home after login (default Laravel redirect)
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('home');
 
 // Redirect old .html route if needed
 Route::get('/Inventory.html', function () {
@@ -95,5 +104,8 @@ Route::get('/invoice/{jobcard}', [App\Http\Controllers\InvoiceController::class,
 Route::get('/invoice', [App\Http\Controllers\InvoiceController::class, 'index'])->name('invoice.index');
 Route::get('/invoices/{jobcard}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('invoices.show');
 Route::post('/invoice/{jobcard}/email', [App\Http\Controllers\InvoiceController::class, 'email'])->name('invoice.email');
+Route::get('/progress/assigned', [ProgressController::class, 'assignedAjax']);
+Route::get('/progress/inprogress', [ProgressController::class, 'inprogressAjax']);
+Route::get('/progress/completed', [ProgressController::class, 'completedAjax']);
 
 
