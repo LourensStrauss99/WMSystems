@@ -15,11 +15,6 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="{{ asset('/style.css') }}" rel="stylesheet">
     @livewireStyles
-    <style>
-        .tr-highlight {
-            background-color: #e0e7ff !important; /* Light blue, change as needed */
-        }
-    </style>
 </head>
 <body>
     <div id="app">
@@ -36,16 +31,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     @livewireScripts
-    @stack('scripts')
-    <script>
-function highlightRow(row) {
-    // Remove highlight from all rows
-    document.querySelectorAll('tr.tr-highlight').forEach(function(tr) {
-        tr.classList.remove('tr-highlight');
-    });
-    // Add highlight to the clicked row
-    row.classList.add('tr-highlight');
-}
-</script>
 </body>
 </html>

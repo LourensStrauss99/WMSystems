@@ -11,9 +11,7 @@ class InvoiceController extends Controller
 {
     public function index(Request $request)
     {
-        $query = \App\Models\Jobcard::with('client')
-            ->where('status', 'completed')
-            ->orderByDesc('job_date');
+        $query = Jobcard::with('client')->where('status', 'invoiced');
 
         if ($request->filled('client')) {
             $query->whereHas('client', function ($q) use ($request) {
@@ -21,7 +19,14 @@ class InvoiceController extends Controller
             });
         }
 
-        $jobcards = $query->get();
+        if ($request->filled('from')) {
+            $query->whereDate('updated_at', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('updated_at', '<=', $request->to);
+        }
+
+        $jobcards = $query->paginate(10);
 
         return view('invoice', compact('jobcards'));
     }

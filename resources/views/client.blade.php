@@ -8,19 +8,7 @@
     @livewireStyles
 </head>
 <body>
-    <header class="header">
-        <div class="logo">Client</div>
-        <nav class="tabs">
-            <a href="/client" class="tab-button">1 - Client</a>
-            <a href="/jobcard" class="tab-button">2 - Jobcard</a>
-            <a href="/invoice" class="tab-button">3 - Invoices</a>
-            <a href="/inventory" class="tab-button">4 - Inventory</a>
-            <a href="/reports" class="tab-button">5 - Reports</a>
-            <a href="/progress" class="tab-button">6 - Progress</a>
-            <a href="/quotes" class="tab-button">7 - Quotes</a>
-            <a href="/settings" class="tab-button">8 - Settings</a>
-        </nav>
-    </header>
+    @include('layouts.nav')
    
     <div class="flex justify-center items-center min-h-screen bg-gray-100" style="background: url('/your-bg.jpg') no-repeat center center fixed; background-size: cover;">
         <div class="bg-white p-8 rounded shadow" style="max-width: 900px; width: 100%;">
@@ -32,3 +20,4 @@
     @livewireScripts
 </body>
 </html>
+

@@ -33,6 +33,7 @@ class JobcardForm extends Component
     public $selected_inventory = null;
     public $quantity = 1;
     public $selectedItems = [];
+    public $inventorySearch = '';
 
     public function mount()
     {
@@ -147,9 +148,16 @@ class JobcardForm extends Component
 
     public function render()
     {
+        $inventory = \App\Models\Inventory::query()
+            ->when($this->inventorySearch, function($query) {
+                $query->where('name', 'like', '%'.$this->inventorySearch.'%')
+                      ->orWhere('short_description', 'like', '%'.$this->inventorySearch.'%');
+            })
+            ->get();
+
         return view('livewire.jobcard-form', [
             'clients' => $this->clients,
-            'inventory' => \App\Models\Inventory::all()
+            'inventory' => $inventory
         ]);
     }
 }

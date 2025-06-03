@@ -100,7 +100,7 @@ class JobcardController extends Controller
     {
         $assignedJobcards = Jobcard::where('status', 'assigned')->get();
         $inProgressJobcards = Jobcard::where('status', 'in progress')->get();
-        $completedJobcards = Jobcard::where('status', 'completed')->get();
+        $completedJobcards = Jobcard::where('status', 'completed')->get(); // Only 'completed'
         return view('progress', compact('assignedJobcards', 'inProgressJobcards', 'completedJobcards'));
     }
 
@@ -126,11 +126,33 @@ class JobcardController extends Controller
         // Update time spent and work done
         $jobcard->time_spent = $request->time_spent;
         $jobcard->work_done = $request->work_done;
-        $jobcard->save();
 
-        // Optionally handle progress note, completed, etc.
+        // Handle status changes
+        if ($request->input('action') === 'invoice' && $jobcard->status === 'completed') {
+            $jobcard->status = 'invoiced';
+        } elseif ($request->input('action') === 'completed') {
+            $jobcard->status = 'completed';
+        } elseif ($request->input('action') === 'save') {
+            // keep current status
+        }
+
+        $jobcard->save();
 
         return redirect()->route('progress.jobcard.show', $jobcard->id)
             ->with('success', 'Jobcard progress updated!');
+    }
+
+    public function invoice(Request $request, $id)
+    {
+        $jobcard = Jobcard::findOrFail($id);
+
+        if ($request->input('action') === 'invoice' && $jobcard->status === 'completed') {
+            $jobcard->status = 'invoiced'; // or whatever status you use
+            $jobcard->save();
+            // Optionally: create invoice here
+            return redirect()->route('progress')->with('success', 'Jobcard submitted for invoice!');
+        }
+
+        return redirect()->back()->with('error', 'Invalid action or jobcard status.');
     }
 }

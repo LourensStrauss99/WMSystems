@@ -11,4 +11,14 @@ class Client extends Model
 
     // Add fillable or guarded properties as needed
     protected $guarded = [];
+
+    public function jobcards()
+    {
+        return $this->hasMany(Jobcard::class, 'client_id');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Jobcard::class, 'client_id')->where('status', 'invoiced');
+    }
 }

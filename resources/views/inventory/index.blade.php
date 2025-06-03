@@ -2,10 +2,10 @@
 @extends('layouts.nav')
 @section('content')
 
-<div class="bg-white p-6 rounded shadow">
-    <h1 class="text-xl font-bold mb-4">Inventory List</h1>
-    <form method="GET" action="/inventory" class="mb-4">
-        <input type="text" name="search" placeholder="Search by name..." value="{{ request('search') }}">
+<div class="bg-white p-6 rounded shadow" style="width:80%; margin:auto;">
+    <h1 class="text-xl font-bold mb-4 text-center">Inventory</h1>
+    <form method="GET" action="/inventory" class="mb-4 flex justify-center items-center">
+        <input type="text" name="search" placeholder="Search by name..." value="{{ request('search') }}" class="mr-2">
         <button type="submit">Search</button>
     </form>
     <table class="w-full border" border="1">
@@ -21,7 +21,6 @@
         </tr>
         @foreach($items as $item)
         <tr onclick="highlightRow(this)">
-          
             <td>{{ $item->name }}</td>
             <td>{{ $item->short_description }}</td>
             <td>{{ $item->buying_price }}</td>
@@ -34,8 +33,6 @@
         @endforeach
     </table>
 </div>
-
-
 
 <script>
 function highlightRow(row) {

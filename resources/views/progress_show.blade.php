@@ -76,7 +76,11 @@
                         <div class="d-flex justify-content-end gap-2">
                             <button type="submit" name="action" value="save" class="btn btn-primary">Save Progress</button>
                             <button type="submit" name="action" value="completed" class="btn btn-success">Completed</button>
-                            <button type="button" class="btn btn-warning" disabled>Submit for Invoice</button>
+                            @if($jobcard->status === 'completed')
+                                <button type="submit" name="action" value="invoice" class="btn btn-warning">Submit for Invoice</button>
+                            @else
+                                <button type="button" class="btn btn-warning" disabled>Submit for Invoice</button>
+                            @endif
                         </div>
                     </form>
                 </div>

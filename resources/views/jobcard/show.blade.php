@@ -65,11 +65,14 @@
                         <!-- Inventory section -->
                         <div class="mb-3">
                             <label class="form-label">Inventory Used</label>
+                            <div class="mb-2">
+                                <input type="text" id="inventory_search" class="form-control" placeholder="Search inventory...">
+                            </div>
                             <div class="input-group mb-3">
                                 <select id="inventory_select" class="form-control">
                                     <option value="">Select Inventory</option>
                                     @foreach($inventory as $item)
-                                        <option value="{{ $item->id }}">{{ $item->name }}</option>
+                                        <option value="{{ $item->id }}" data-short="{{ $item->short_description }}">{{ $item->name }}</option>
                                     @endforeach
                                 </select>
                                 <input type="number" id="inventory_quantity" 
@@ -220,6 +223,21 @@
 
         // Initial render
         renderInventoryList();
+
+        $('#inventory_search').on('input', function() {
+            const search = $(this).val().toLowerCase();
+            $('#inventory_select option').each(function() {
+                if (!$(this).val()) return; // skip placeholder
+                const name = $(this).text().toLowerCase();
+                const short = ($(this).data('short') || '').toLowerCase();
+                if (name.includes(search) || short.includes(search)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+            $('#inventory_select').val('');
+        });
     });
 </script>
 @endpush

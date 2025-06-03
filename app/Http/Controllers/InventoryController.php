@@ -13,7 +13,8 @@ class InventoryController extends Controller
         $query = \App\Models\Inventory::query();
 
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('short_description', 'like', '%' . $request->search . '%');
         }
 
         $items = $query->get();

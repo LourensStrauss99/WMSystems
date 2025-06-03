@@ -50,6 +50,9 @@
 
                         <div class="mb-3">
                             <label class="form-label">Add Inventory Items</label>
+                            <div class="mb-2">
+                                <input type="text" wire:model.debounce.300ms="inventorySearch" class="form-control" placeholder="Search inventory...">
+                            </div>
                             <div class="input-group mb-3">
                                 <select wire:model.live="selected_inventory" class="form-control @error('selected_inventory') is-invalid @enderror">
                                     <option value="">Select an item</option>
@@ -97,4 +100,4 @@
             </div>
         </div>
     </div>
-</div>  
+</div>

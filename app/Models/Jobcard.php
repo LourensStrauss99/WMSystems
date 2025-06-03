@@ -28,5 +28,10 @@ class Jobcard extends Model
             ->withPivot('quantity')
             ->withTimestamps();
     }
+    
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }
 

@@ -7,14 +7,17 @@
 }
 
 body {
-  background: url("https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80")
-    no-repeat center center/cover;
-  background-color: #f0f0f0;
+  /* Pastel grey base */
+  background-color: #f3f4f6 !important;
   color: #000;
   padding: 10px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Remove or comment out the checkered pattern lines below */
+  /* background-image: ... */
+  /* background-size: ... */
+  /* background-position: ... */
 }
 
 /* Sticky Header Bar */

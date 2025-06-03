@@ -9,7 +9,7 @@ use App\Http\Controllers\JobcardController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminPanelController;
 use App\Http\Controllers\InvoiceController;
-
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
@@ -108,4 +108,10 @@ Route::get('/progress/assigned', [ProgressController::class, 'assignedAjax']);
 Route::get('/progress/inprogress', [ProgressController::class, 'inprogressAjax']);
 Route::get('/progress/completed', [ProgressController::class, 'completedAjax']);
 
+
+
+Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+Route::get('/client/create', [CustomerController::class, 'create'])->name('client.create');
+Route::post('/client/create', [CustomerController::class, 'store'])->name('client.store');
+Route::get('/client/{id}', [CustomerController::class, 'show'])->name('client.show');
 

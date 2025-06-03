@@ -58,10 +58,10 @@
                     <label for="email">Email</label>
                     <input type="email" class="form-control" id="email" wire:model="clientFields.email">
                 </div>
-                {{-- Show Save Client button if no client is selected and all fields are filled --}}
+                {{-- Show Save Client button if no client is selected and all fields are filled 
                 @if(!$clientId && $clientFields['name'] && $clientFields['surname'] && $clientFields['telephone'] && $clientFields['address'] && $clientFields['email'])
                     <button type="button" class="btn btn-primary" wire:click="saveNewClient">Save Client</button>
-                @endif
+                @endif--}}
             </div>
             <div class="w-full md:w-1/2 flex flex-col gap-4">
                 <div>

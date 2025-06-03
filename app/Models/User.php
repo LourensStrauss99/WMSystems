@@ -43,4 +43,14 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function initials()
+    {
+        $names = explode(' ', $this->name ?? '');
+        $initials = '';
+        foreach ($names as $n) {
+            $initials .= strtoupper(substr($n, 0, 1));
+        }
+        return $initials ?: strtoupper(substr($this->email, 0, 1));
+    }
 }
