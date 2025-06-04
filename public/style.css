@@ -536,18 +536,21 @@ th {
 }
 
 /* Button Styles */
-.btn {
+.btn, .button {
   width: 100%;
   padding: 10px;
-  background-color: #4caf50;
-  color: #fff;
-  border: none;
+  background-color: #bfdbfe;   /* Light blue */
+  color: #222;                 /* Black text */
+  border: 1px solid #60a5fa;   /* Blue border */
   border-radius: 4px;
   cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s, color 0.3s;
 }
 
-.btn:hover {
-  background-color: #45a049;
+.btn:hover, .button:hover {
+  background-color: #60a5fa;   /* Slightly darker blue on hover */
+  color: #000;                 /* Keep text black */
 }
 
 /* Link Styles */

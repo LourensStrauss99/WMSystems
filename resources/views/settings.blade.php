@@ -41,8 +41,13 @@ class PhoneController extends Controller
                         <div id="message" class="mt-3"></div>
                         <div id="timer" class="mb-2 text-muted"></div>
                     </form>
-                </div>
-            </div>
+                </div> <!-- end of card-body -->
+            </div> <!-- end of card -->
+
+            <a href="{{ route('settings.profile') }}"
+               class="btn bg-blue-200 text-black font-semibold shadow hover:bg-blue-300 transition px-4 py-2 rounded mb-4 w-full text-center d-block">
+                Go to Profile
+            </a>
 
             {{-- Profile/Password/Appearance Settings --}}
             <div class="mb-6">
@@ -52,9 +57,9 @@ class PhoneController extends Controller
             </div>
 
             {{-- Appearance Settings --}}
-            <div>
+            <!-- <div>
                 @livewire('settings.appearance')
-            </div>
+            </div> -->
         </div>
     </div>
 

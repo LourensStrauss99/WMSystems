@@ -74,6 +74,8 @@
                 </div>
             </div>
         </div>
-        <button type="submit" class="btn btn-success mt-3">Submit</button>
+        <button type="submit" class="btn px-4 py-2 mt-3" style="background-color: #bfdbfe; color: #222; border: 1px solid #60a5fa;">
+            Submit
+        </button>
     </form>
 </div>

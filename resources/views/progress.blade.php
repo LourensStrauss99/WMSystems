@@ -149,7 +149,7 @@
                     <ul class="list-group" id="assigned-jobcards-list">
                         @foreach($assignedJobcards as $jobcard)
                             <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                onclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
                                 <div>
                                     <strong>#{{ $jobcard->jobcard_number }}</strong><br>
                                     {{ $jobcard->client->name ?? '' }}<br>
@@ -171,7 +171,7 @@
                     <ul class="list-group" id="inprogress-jobcards-list">
                         @foreach($inProgressJobcards as $jobcard)
                             <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                onclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
                                 <div>
                                     <strong>#{{ $jobcard->jobcard_number }}</strong><br>
                                     {{ $jobcard->client->name ?? '' }}<br>
@@ -193,7 +193,7 @@
                     <ul class="list-group" id="completed-jobcards-list">
                         @foreach($completedJobcards as $jobcard)
                             <li class="list-group-item d-flex justify-content-between align-items-center jobcard-row"
-                                ondblclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
+                                onclick="window.location='{{ route('progress.jobcard.show', $jobcard->id) }}'">
                                 <div>
                                     <strong>#{{ $jobcard->jobcard_number }}</strong><br>
                                     {{ $jobcard->client->name ?? '' }}<br>
