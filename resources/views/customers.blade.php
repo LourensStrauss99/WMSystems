@@ -9,7 +9,7 @@
             <div class="flex items-center gap-2">
                 @if(request('search'))
                     <a href="{{ route('customers.index') }}"
-                       class="flex items-center px-3 py-2 rounded border border-gray-300 bg-white text-black font-semibold shadow hover:bg-gray-100 transition"
+                       class="flex items-center px-3 py-2 rounded border border-graysearch and view updated-300 bg-white text-black font-semibold shadow hover:bg-gray-100 transition"
                        title="Back to Customers">
                         <i class="bi bi-arrow-left" style="font-size: 1.3rem; color: #222;"></i>
                     </a>
