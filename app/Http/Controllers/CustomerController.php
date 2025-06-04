@@ -8,9 +8,29 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        // You can add search and perPage logic here later
-        $customers = Client::orderBy('id', 'desc')->paginate(10);
-        return view('customers', compact('customers'));
+        $search = $request->input('search');
+        $perPage = $request->input('perPage', 10); // default to 10
+
+        // Only allow 10, 25, or 50
+        if (!in_array($perPage, [10, 25, 50])) {
+            $perPage = 10;
+        }
+
+        $customers = \App\Models\Client::query()
+            ->when($search, function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('surname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->appends(['search' => $search, 'perPage' => $perPage]); // keep params in pagination
+
+        return view('customers', [
+            'customers' => $customers,
+            'search' => $search,
+            'perPage' => $perPage,
+        ]);
     }
     
     public function show($id)
