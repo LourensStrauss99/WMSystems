@@ -114,4 +114,6 @@ Route::get('/customers', [CustomerController::class, 'index'])->name('customers.
 Route::get('/client/create', [CustomerController::class, 'create'])->name('client.create');
 Route::post('/client/create', [CustomerController::class, 'store'])->name('client.store');
 Route::get('/client/{id}', [CustomerController::class, 'show'])->name('client.show');
+Route::get('/customers/create', [CustomerController::class, 'create'])->name('client.create');
+Route::post('/customers', [CustomerController::class, 'store'])->name('client.store');
 

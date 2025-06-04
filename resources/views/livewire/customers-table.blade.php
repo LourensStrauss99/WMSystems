@@ -1,5 +1,14 @@
 {{-- filepath: resources/views/livewire/customers-table.blade.php --}}
 <div>
+    <div class="relative mb-6">
+        <h2 class="text-3xl font-semibold text-black text-center">Customers</h2>
+        <a href="{{ route('client.create') }}"
+           class="inline-flex items-center justify-center rounded-full"
+           style="position:absolute; right:0; top:0.5; width:3.5rem; height:3.5rem; background-color:#649ff7; color:white;"
+           title="Add Customer">
+            <i class="bi bi-person-plus" style="font-size:2rem;"></i>
+        </a>
+    </div>
     <div class="flex justify-between items-center mb-2">
         <div>
             Show 
@@ -24,7 +33,7 @@
                     <th class="px-4 py-2 border-b">Telephone</th>
                     <th class="px-4 py-2 border-b">Address</th>
                     <th class="px-4 py-2 border-b">Email</th>
-                    <th class="px-4 py-2 border-b"></th>
+                    <th class="px-4 py-2 border-b text-center">View</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,9 +45,12 @@
                     <td class="px-4 py-2 border-b">{{ $customer->telephone }}</td>
                     <td class="px-4 py-2 border-b">{{ $customer->address }}</td>
                     <td class="px-4 py-2 border-b">{{ $customer->email }}</td>
-                    <td class="px-4 py-2 border-b">
-                        <a href="{{ route('client.show', $customer->id) }}" class="bg-blue-400 text-white px-2 py-1 rounded">
-                            View
+                    <td class="px-4 py-2 border-b text-center">
+                        <a href="{{ route('client.show', $customer->id) }}"
+                           class="d-inline-flex align-items-center justify-content-center rounded-circle"
+                           style="width:2rem; height:2rem; background-color:#649ff7; color:white;"
+                           title="View">
+                            <i class="bi bi-eye"></i>
                         </a>
                     </td>
                 </tr>

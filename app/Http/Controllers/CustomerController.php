@@ -39,6 +39,7 @@ class CustomerController extends Controller
     
     public function store(Request $request)
     {
+        // Validate and save the customer
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'required|string|max:255',
@@ -46,14 +47,7 @@ class CustomerController extends Controller
             'address' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
         ]);
-
-        $customer = new \App\Models\Client();
-        $customer->name = $validated['name'];
-        $customer->surname = $validated['surname'];
-        $customer->telephone = $validated['telephone'] ?? null;
-        $customer->address = $validated['address'] ?? null;
-        $customer->email = $validated['email'] ?? null;
-        $customer->save();
+        Client::create($validated);
 
         return redirect()->route('customers.index')->with('success', 'Customer added!');
     }
