@@ -6,11 +6,14 @@ use App\Models\Jobcard;
 use App\Models\Employee;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class JobcardController extends Controller
 {
     public function index(Request $request)
     {
+        Log::info('Test log entry from JobcardController');
+
         $query = Jobcard::with('client');
         
         if ($request->filled('client')) {
@@ -30,11 +33,8 @@ class JobcardController extends Controller
 
     public function show(Jobcard $jobcard)
     {
-        $employees = \App\Models\Employee::all();  
-        $statuses = ['in progress', 'assigned', 'completed'];
-        $inventory = \App\Models\Inventory::all();
-
-        return view('jobcard.show', compact('jobcard', 'employees', 'statuses', 'inventory'));
+        \Log::info('JobcardController@show called', ['jobcard_id' => $jobcard->id]);
+        return view('jobcard.show', compact('jobcard'));
     }
 
     public function update(Request $request, Jobcard $jobcard)

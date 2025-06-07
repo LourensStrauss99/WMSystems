@@ -1,7 +1,5 @@
-
-
 @extends('layouts.app')
  
 @section('content')
-    <livewire:jobcard-editor :jobcard="$jobcard" />
+    <livewire:jobcard-form />
 @endsection
