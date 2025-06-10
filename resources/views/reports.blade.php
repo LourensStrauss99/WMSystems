@@ -1,37 +1,62 @@
 @extends('layouts.app')
 @extends('layouts.nav')
-@section(section: 'content')
 
-
-<!DOCTYPE html>
-<html lang="en">
- <!-- In login.html -->
-<head>
-    <meta charset="UTF-8">
-    
-    <link rel="stylesheet" href="style.css">
-
-
-    <title>Reports</title>
-  
-      <!-- Main Content -->
-   
-
-        <div class="footer">
-         
-          </button>
-          <button class="button" id="print" onclick="printInvoice()">Print</button>
-          <button class="button" id="email" onclick="emailInvoice()">Email</button>
-         
-          </button>
-          <button class="button" id="refresh" onclick="refreshForm()">
-            Refresh
-          </button>
-         
+@section('content')
+<div class="container mt-4">
+    <h2 class="mb-4">Reports</h2>
+    <div class="row">
+        <!-- Hours Booked -->
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: #e3f2fd; color: #000;">
+                    <strong>Hours booked</strong>
+                </div>
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="hours-booked-list">
+                    <ul class="list-group" id="hours-booked-jobcards-list">
+                        {{-- Content here --}}
+                    </ul>
+                </div>
+            </div>
         </div>
-
-    <!-- Include the script.js file 
-    <script src="script.js"></script>-->
-  </body>
-</html>
+        <!-- Jobcards Invoiced -->
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: #e3f2fd; color: #000;">
+                    <strong>Jobcards invoiced</strong>
+                </div>
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="jobcards-invoiced-list">
+                    <ul class="list-group" id="jobcards-invoiced-jobcards-list">
+                        {{-- Content here --}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- Inventory Invoiced -->
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: #e3f2fd; color: #000;">
+                    <strong>Inventory invoiced</strong>
+                </div>
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="inventory-invoiced-list">
+                    <ul class="list-group" id="inventory-invoiced-jobcards-list">
+                        {{-- Content here --}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- Outstanding Jobcards -->
+        <div class="col-md-3">
+            <div class="card shadow mb-4">
+                <div class="card-header" style="background-color: #e3f2fd; color: #000;">
+                    <strong>Outstanding jobcards</strong>
+                </div>
+                <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="outstanding-jobcards-list">
+                    <ul class="list-group" id="outstanding-jobcards-jobcards-list">
+                        {{-- Content here --}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

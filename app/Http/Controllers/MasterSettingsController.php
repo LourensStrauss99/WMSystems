@@ -38,12 +38,21 @@ class MasterSettingsController extends Controller
             'company_website' => 'nullable|string',
             'invoice_terms' => 'nullable|string',
             'invoice_footer' => 'nullable|string',
+            'company_logo' => 'nullable|image|max:2048',
         ]);
 
-        // Only one row, so update or create
-        CompanyDetail::updateOrCreate(['id' => 1], $data);
+        $company = CompanyDetail::firstOrNew(['id' => 1]);
 
-        return back()->with('success', 'Company details updated!');
+        // Handle logo upload
+        if ($request->hasFile('company_logo')) {
+            $path = $request->file('company_logo')->store('company_logos', 'public');
+            $data['company_logo'] = $path;
+        }
+
+        $company->fill($data);
+        $company->save();
+
+        return redirect()->route('company.details')->with('success', 'Company details updated!');
     }
 
     public function showInvoice($jobcardId)

@@ -1,0 +1,3 @@
+@if(!empty($company->company_logo))
+    <img src="{{ asset('storage/' . $company->company_logo) }}" alt="Company Logo" class="h-16 mb-4">
+@endif

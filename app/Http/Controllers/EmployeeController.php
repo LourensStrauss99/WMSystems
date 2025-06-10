@@ -10,19 +10,22 @@ class EmployeeController extends Controller
 {
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required',
-            'surname' => 'required',
-            'email' => 'required|email|unique:employees', // unique in employees table
-            'password' => 'required|min:6',
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'surname' => 'required|string|max:255',
+            'telephone' => [
+                'required',
+                'regex:/^\+?[0-9]{7,20}$/'
+            ],
+            'email' => 'required|email|unique:employees,email', // or users table if applicable
+            'password' => 'required|string|min:8',
             'role' => 'required|in:admin,artisan,staff',
-            'admin_level' => 'nullable|integer|min:0|max:3',
-            'telephone' => 'required',
+            'admin_level' => 'required|integer|min:0|max:3',
         ]);
 
-        $data['password'] = Hash::make($data['password']);
+        $validated['password'] = Hash::make($validated['password']);
 
-        $employee = Employee::create($data); // <-- Save to employees table
+        $employee = Employee::create($validated); // <-- Save to employees table
 
         
         return redirect()->back()->with('success', 'Employee added!');

@@ -5,10 +5,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component {
+    use WithFileUploads;
+
     public string $name = '';
     public string $email = '';
+    public $photo;
+    public ?string $telephone = null;
+    public ?string $address = null;
 
     /**
      * Mount the component.
@@ -17,6 +23,8 @@ new class extends Component {
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->telephone = Auth::user()->telephone ?? '';
+        $this->address = Auth::user()->address ?? '';
     }
 
     /**
@@ -37,9 +45,21 @@ new class extends Component {
                 'max:255',
                 Rule::unique(User::class)->ignore($user->id)
             ],
+
+            'telephone' => ['nullable', 'string', 'max:20'],
+
+            'address' => ['nullable', 'string', 'max:255'],
+
+            'photo' => 'nullable|image|max:2048',
         ]);
 
         $user->fill($validated);
+
+        // Handle photo upload
+        if ($this->photo) {
+            $path = $this->photo->store('profile_photos', 'public');
+            $user->photo = $path;
+        }
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

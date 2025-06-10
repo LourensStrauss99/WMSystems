@@ -25,11 +25,9 @@ class MigrateJobcardsToInvoicesSeeder extends Seeder
     }
 }
 
-use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use App\Models\Invoice;
 use App\Models\Client;
 
 class InvoiceTestSeeder extends Seeder

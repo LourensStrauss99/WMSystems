@@ -18,8 +18,7 @@ class AdminMiddleware
     {
         $user = Auth::user();
 
-        if (!$user || (!$user->is_superuser && $user->admin_level != 3)) {
-            // Redirect back with error message
+        if (!$user || (!$user->is_superuser && !in_array($user->admin_level, [3,4]))) {
             return redirect()->route('dashboard')->with('admin_error', 'Unauthorized entry prohibited.');
         }
 

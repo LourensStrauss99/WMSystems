@@ -14,6 +14,7 @@ use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
+// use App\Http\Controllers\ProfileController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
@@ -117,4 +118,21 @@ Route::post('/client/create', [CustomerController::class, 'store'])->name('clien
 Route::get('/client/{id}', [CustomerController::class, 'show'])->name('client.show');
 Route::get('/customers/create', [CustomerController::class, 'create'])->name('client.create');
 Route::post('/customers', [CustomerController::class, 'store'])->name('client.store');
+
+// TEMPORARY: No middleware for testing
+// Only superuser (level 4) user can access company details
+//Route::middleware(['auth', 'admin'])->group(function () {
+  //  Route::get('/company-details', function () {
+   //     return view('company-details');
+   // })->name('company.details');
+  //  Route::put('/company-details', [MasterSettingsController::class, 'updateCompanyDetails'])->name('company.details.update');
+//});
+Route::get('/company-details', function () {
+    return view('company-details');
+})->name('company.details');
+Route::put('/company-details', [MasterSettingsController::class, 'updateCompanyDetails'])->name('company.details.update');
+Route::get('/profile', function () {
+    return view('profile');
+})->middleware('auth')->name('profile');
+// Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth')->name('profile.update');
 

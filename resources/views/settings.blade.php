@@ -48,7 +48,10 @@ class PhoneController extends Controller
                class="btn bg-blue-200 text-black font-semibold shadow hover:bg-blue-300 transition px-4 py-2 rounded mb-4 w-full text-center d-block">
                 Go to Profile
             </a>
-
+            <a href="{{ route('master.settings') }}"
+   class="btn bg-blue-200 text-black font-semibold shadow hover:bg-blue-300 transition px-4 py-2 rounded mb-4 w-full text-center d-block">
+    Go to Dashboard
+</a>
             {{-- Profile/Password/Appearance Settings --}}
             <div class="mb-6">
                 {{-- Uncomment these if you have the components --}}
