@@ -12,8 +12,16 @@
                     <strong>Hours booked</strong>
                 </div>
                 <div class="card-body" style="max-height: 350px; overflow-y: auto;" id="hours-booked-list">
+                    <div class="mb-2 font-bold">
+                        Total Hours: {{ $hoursBooked }}
+                    </div>
                     <ul class="list-group" id="hours-booked-jobcards-list">
-                        {{-- Content here --}}
+                        @foreach($jobcards as $jobcard)
+                            <li class="list-group-item">
+                                #{{ $jobcard->jobcard_number }}<br>
+                                Hours: {{ round($jobcard->time_spent / 60, 2) }}
+                            </li>
+                        @endforeach
                     </ul>
                 </div>
             </div>

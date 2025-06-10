@@ -14,6 +14,7 @@ use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
+use App\Http\Controllers\ReportController;
 // use App\Http\Controllers\ProfileController;
 
 use Illuminate\Support\Facades\Auth;
@@ -59,7 +60,7 @@ Route::post('/admin/employees', [EmployeeController::class, 'store'])->name('adm
 Route::view('/client', 'client')->name('client');
 Route::view('/invoice', 'invoice')->name('invoice');
 Route::view('/settings', 'settings')->name('settings');
-Route::view('/reports', 'reports')->name('reports');
+//Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 Route::view('/quotes', 'quotes')->name('quotes');
@@ -135,4 +136,5 @@ Route::get('/profile', function () {
     return view('profile');
 })->middleware('auth')->name('profile');
 // Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth')->name('profile.update');
+Route::get('/reports', [ReportController::class, 'index'])->name('reports');
 
