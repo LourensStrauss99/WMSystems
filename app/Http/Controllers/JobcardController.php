@@ -33,7 +33,7 @@ class JobcardController extends Controller
 
     public function show(Jobcard $jobcard)
     {
-        \Log::info('JobcardController@show called', ['jobcard_id' => $jobcard->id]);
+        Log::info('JobcardController@show called', ['jobcard_id' => $jobcard->id]);
         return view('jobcard.show', compact('jobcard'));
     }
 

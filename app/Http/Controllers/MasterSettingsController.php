@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Setting;
 use App\Models\CompanyDetail;
 use App\Models\Jobcard;
+use Illuminate\Support\Facades\Mail;
 
 class MasterSettingsController extends Controller
 {
@@ -67,7 +68,7 @@ class MasterSettingsController extends Controller
         $company = \App\Models\CompanyDetail::first();
 
         // Send email logic here (use Laravel Mailable)
-        \Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
+        Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
 
         return back()->with('success', 'Invoice emailed to client!');
     }
