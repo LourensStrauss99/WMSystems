@@ -4,7 +4,7 @@
 <div id="print-area" class="container bg-white p-5 rounded shadow" style="max-width: 900px; margin: auto; font-family: 'Arial', sans-serif;">
     <div class="row mb-4">
         <div class="col-md-3">
-            <img src="{{ asset('silogo.jpg') }}" alt="Company Logo" style="max-width: 150px;">
+            <img src="{{ asset('acme_logo.png') }}" alt="Company Logo" style="max-width: 150px;">
         </div>
         <div class="col-md-9 text-right">
             <h2>{{ $company->company_name }}</h2>
