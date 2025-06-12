@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Jobcard;
 use App\Models\Employee;
 use App\Models\Inventory;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class JobcardController extends Controller
 {
@@ -155,4 +158,42 @@ class JobcardController extends Controller
 
         return redirect()->back()->with('error', 'Invalid action or jobcard status.');
     }
+
+    public function submitForInvoice($id)
+    {
+        DB::transaction(function () use ($id) {
+            $jobcard = Jobcard::with('inventory')->findOrFail($id);
+
+            // Calculate totals
+            $amount = $jobcard->calculateGrandTotal();
+
+            // Generate invoice number
+            $invoiceNumber = Invoice::generateInvoiceNumber();
+
+            // Set invoice and payment dates
+            $invoiceDate = now()->toDateString();
+            $paymentDate = Carbon::parse($invoiceDate)->addDays(30)->toDateString();
+
+            // Create invoice
+            $invoice = Invoice::create([
+                'client_id'      => $jobcard->client_id,
+                'jobcard_id'     => $jobcard->id,
+                'invoice_number' => $invoiceNumber,
+                'amount'         => $amount,
+                'invoice_date'   => $invoiceDate,
+                'payment_date'   => $paymentDate,
+                'status'         => 'invoiced',
+            ]);
+
+            // Mark jobcard as invoiced
+            $jobcard->status = 'invoiced';
+            $jobcard->invoice_id = $invoice->id; // if you have this field
+            $jobcard->save();
+        });
+        
+
+
+        return redirect()->route('jobcard.show', $id)->with('success', 'Jobcard submitted for invoice!');
+    }
+    
 }

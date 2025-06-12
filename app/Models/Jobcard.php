@@ -33,5 +33,13 @@ class Jobcard extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+    
+    public function calculateGrandTotal()
+    {
+        // Example: sum of inventory items * their selling_price
+        return $this->inventory->sum(function ($item) {
+            return $item->pivot->quantity * $item->selling_price;
+        });
+    }
 }
 

@@ -79,6 +79,7 @@ Route::resource('jobcard', JobcardController::class);
 Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
 Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
 Route::get('/jobcard/{jobcard}', [\App\Http\Controllers\JobcardController::class, 'show'])->name('jobcard.show');
+Route::post('/jobcard/{id}/submit-invoice', [JobcardController::class, 'submitForInvoice'])->name('jobcard.submitInvoice');
 
 // Home after login (default Laravel redirect)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
