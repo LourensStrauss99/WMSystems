@@ -127,6 +127,10 @@
             </div>
         </div>
         <button type="submit" class="btn btn-primary">Save Jobcard</button>
+        <a href="{{ route('jobcard.index') }}" class="btn btn-secondary mt-2">Back to Jobcards</a>
+
+
+
     </form>
     @if(session()->has('success'))
         <div class="alert alert-success mt-2">{{ session('success') }}</div>
