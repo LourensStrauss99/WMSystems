@@ -37,10 +37,28 @@ class ProgressController extends Controller
         if ($request->action === 'invoice') {
             // Prevent duplicate invoices
             if (!$jobcard->invoice_number) {
+                // Calculate inventory total
+                $inventoryTotal = 0;
+                foreach ($jobcard->inventory as $item) {
+                    $inventoryTotal += ($item->pivot->quantity * $item->selling_price);
+                }
+
+                // Calculate labour total
+                $labourHours = $jobcard->employees->sum(function($employee) {
+                    return $employee->pivot->hours_worked ?? 0;
+                });
+                $company = \App\Models\CompanyDetail::first();
+                $labourTotal = $labourHours * ($company->labour_rate ?? 0);
+
+                // Calculate subtotal, VAT, and grand total
+                $subtotal = $inventoryTotal + $labourTotal;
+                $vat = $subtotal * (($company->vat_percent ?? 0) / 100);
+                $grandTotal = $subtotal + $vat;
+
                 \App\Models\Invoice::create([
                     'jobcard_id'     => $jobcard->id,
                     'client_id'      => $jobcard->client_id,
-                    'amount'         => $jobcard->amount ?? 0,
+                    'amount'         => $grandTotal,
                     'status'         => 'unpaid',
                     'invoice_number' => $jobcard->jobcard_number,
                     'invoice_date'   => now()->toDateString(),

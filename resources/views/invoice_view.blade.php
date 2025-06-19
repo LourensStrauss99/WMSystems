@@ -26,7 +26,17 @@
                 <div>Date: {{ $jobcard->job_date }}</div>
             </div>
         </div>
+<!-- ...client and invoice header... -->
 
+{{-- Work Done Section --}}
+@if(!empty($jobcard->work_done))
+    <h5>Work Done</h5>
+    <div style="margin-bottom: 1.5em;">
+        {{ $jobcard->work_done }}
+    </div>
+@endif
+
+<!-- ...invoice details table... -->
         <h5>Invoice Details</h5>
         <table>
             <thead>
@@ -99,6 +109,8 @@
         <div style="margin-top: 8px;">
             <em>{{ $company->invoice_footer }}</em>
         </div>
+
+        
 
         <div class="no-print" style="margin-top: 24px;">
             <form method="POST" action="{{ route('invoice.email', $jobcard->id) }}" style="display:inline;">

@@ -1,5 +1,5 @@
 {{-- filepath: resources/views/customer-show.blade.php --}}
-@extends('layouts.app')
+@extends('layouts.auth')
 
 @section('content')
 <div class="container mt-4">

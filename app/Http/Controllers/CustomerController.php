@@ -16,7 +16,7 @@ class CustomerController extends Controller
             $perPage = 10;
         }
 
-        $customers = \App\Models\Client::query()
+        $customers = Client::query()
             ->when($search, function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('surname', 'like', "%{$search}%")
