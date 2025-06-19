@@ -32,7 +32,25 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
-        $jobcard = Jobcard::findOrFail($id);
+        $jobcard = \App\Models\Jobcard::with(['employees', 'inventory'])->findOrFail($id);
+
+        if ($request->action === 'invoice') {
+            // Prevent duplicate invoices
+            if (!$jobcard->invoice_number) {
+                \App\Models\Invoice::create([
+                    'jobcard_id'     => $jobcard->id,
+                    'client_id'      => $jobcard->client_id,
+                    'amount'         => $jobcard->amount ?? 0,
+                    'status'         => 'unpaid',
+                    'invoice_number' => $jobcard->jobcard_number,
+                    'invoice_date'   => now()->toDateString(),
+                ]);
+                $jobcard->status = 'invoiced';
+                $jobcard->invoice_number = $jobcard->jobcard_number;
+                $jobcard->save();
+            }
+            return redirect()->route('progress')->with('success', 'Invoice created and jobcard removed from progress!');
+        }
 
         // Update employee hours
         if ($request->has('employee_hours')) {
@@ -40,7 +58,7 @@ class ProgressController extends Controller
             foreach ($request->employee_hours as $employeeId => $hours) {
                 $syncData[$employeeId] = ['hours_worked' => $hours];
             }
-            $jobcard->employees()->sync($syncData);
+            $jobcard->employees()->sync($syncData); 
         }
 
         // Save fields

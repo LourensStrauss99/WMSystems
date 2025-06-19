@@ -42,16 +42,13 @@
                     <input type="hidden" name="action" value="completed">
                     <button type="submit" class="btn btn-success">Completed</button>
                 </form>
-                @if($jobcard->status === 'completed')
-                    <form method="POST" action="{{ route('progress.jobcard.update', $jobcard->id) }}">
-                        @csrf
-                        @method('PUT')
-                        <input type="hidden" name="action" value="invoice">
-                        <button type="submit" class="btn btn-warning">Submit for Invoice</button>
-                    </form>
-                @else
-                    <button type="button" class="btn btn-warning" disabled>Submit for Invoice</button>
-                @endif
+                <form method="POST" action="{{ route('progress.jobcard.update', $jobcard->id) }}">
+                    @csrf
+                    @method('PUT')
+                    <button type="submit" name="action" value="invoice" class="btn btn-primary">
+                        Submit for Invoice
+                    </button>
+                </form>
             </div>
         </div>
     </div>

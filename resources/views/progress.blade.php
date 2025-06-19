@@ -217,7 +217,7 @@ let sparesData = [];
 function viewJobcard(id) {
     fetch('/progress/jobcard/' + id)
         .then(response => response.json())
-        .then data => {
+        .then(data => {
             currentJobcardId = id;
             document.getElementById('modal-jobcard-id').value = id;
             document.getElementById('view-jobcard-number').value = data.jobcard_number || '';
@@ -233,26 +233,7 @@ function viewJobcard(id) {
             document.getElementById('edit-hours').value = data.time_spent || '';
             document.getElementById('view-special-request').value = data.special_request || '';
             document.getElementById('progress-note').value = data.progress_note || '';
-
-            // Clear and populate spares table
-            const sparesTableBody = document.getElementById('edit-spares-table-body');
-            sparesTableBody.innerHTML = '';
-            data.spares.forEach(spare => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${spare.name}</td>
-                    <td>${spare.part_number}</td>
-                    <td>
-                        <input type="number" name="spares[${spare.id}]" class="form-control" min="0" value="${spare.pivot.quantity}">
-                    </td>
-                `;
-                sparesTableBody.appendChild(row);
-            });
-
-            // Show modal
-            document.getElementById('jobcard-modal').style.display = 'block';
-        })
-        .catch(error => console.error('Error fetching jobcard data:', error));
+        });
 }
 
 function closeJobcard() {
