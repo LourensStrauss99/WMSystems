@@ -19,7 +19,7 @@ class Jobcard extends Model
 
     public function employees()
     {
-        return $this->belongsToMany(Employee::class);
+        return $this->belongsToMany(Employee::class)->withPivot('hours_worked');
     }
 
     public function inventory()
@@ -37,9 +37,7 @@ class Jobcard extends Model
     public function calculateGrandTotal()
     {
         // Example: sum of inventory items * their selling_price
-        return $this->inventory->sum(function ($item) {
-            return $item->pivot->quantity * $item->selling_price;
-        });
+        return $this->inventory->get()->sum(fn($item) => $item->pivot->quantity * $item->selling_price);
     }
 }
 

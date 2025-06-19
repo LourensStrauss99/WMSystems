@@ -78,7 +78,7 @@ Route::resource('jobcard', JobcardController::class);
 //Route::view('/jobcard', 'jobcard')->name('jobcard.index');
 Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
 Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
-Route::get('/jobcard/{jobcard}', [\App\Http\Controllers\JobcardController::class, 'show'])->name('jobcard.show');
+Route::get('/jobcard/{jobcard}', [JobcardController::class, 'show'])->name('jobcard.show');
 Route::post('/jobcard/{id}/submit-invoice', [JobcardController::class, 'submitForInvoice'])->name('jobcard.submitInvoice');
 
 // Home after login (default Laravel redirect)
@@ -101,8 +101,8 @@ Route::get('/master-settings', [MasterSettingsController::class, 'index'])
     ->middleware(['auth'])
     ->name('master.settings');
 Route::put('/master-settings/update', [MasterSettingsController::class, 'update'])->name('master.settings.update');
-Route::get('/progress', [App\Http\Controllers\JobcardController::class, 'progress'])->name('progress');
-Route::get('/progress/jobcard/{id}', [JobcardController::class, 'showProgress'])->name('progress.jobcard.show');
+Route::get('/progress', [JobcardController::class, 'progress'])->name('progress');
+
 Route::put('/progress/jobcard/{id}', [App\Http\Controllers\JobcardController::class, 'updateProgress'])->name('progress.jobcard.update');
 Route::get('/invoice/{jobcard}', [App\Http\Controllers\InvoiceController::class, 'show'])->name('invoice.show');
 Route::get('/invoice', [App\Http\Controllers\InvoiceController::class, 'index'])->name('invoice.index');
@@ -138,4 +138,6 @@ Route::get('/profile', function () {
 })->middleware('auth')->name('profile');
 // Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth')->name('profile.update');
 Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+Route::get('/progress', [ProgressController::class, 'index'])->name('progress');
+Route::get('/progress/jobcard/{id}', [ProgressController::class, 'show'])->name('progress.jobcard.show');
 

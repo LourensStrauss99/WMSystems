@@ -1,5 +1,5 @@
 @extends('layouts.app')  
-@extends('layouts.nav')
+
 @section('content')
 <link href="{{ asset('/style.css') }}" rel="stylesheet">
 <div class="container">

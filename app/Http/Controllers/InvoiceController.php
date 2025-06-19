@@ -33,18 +33,18 @@ class InvoiceController extends Controller
 
     public function show($jobcardId)
     {
-        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
-        $company = \App\Models\CompanyDetail::first();
+        $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
+        $company = CompanyDetail::first();
         return view('invoice_view', compact('jobcard', 'company'));
     }
 
     public function email($jobcardId)
     {
-        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
-        $company = \App\Models\CompanyDetail::first();
+        $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
+        $company = CompanyDetail::first();
 
         // Send email using a Mailable (see step 4)
-        \Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
+        Mail::to($jobcard->client->email)->send(new InvoiceMailable($jobcard, $company));
 
         return back()->with('success', 'Invoice emailed successfully!');
     }

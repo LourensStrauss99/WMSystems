@@ -2,7 +2,7 @@
 @extends('layouts.app')
 
 @section('content')
-    @include('layouts.nav')
+    
     <div class="container mx-auto py-8">
         <div class="flex justify-between items-center mb-4">
             <div></div>

@@ -1,14 +1,53 @@
-<header class="header">
+<aside class="sidebar">
     <div class="logo">Workflow-Management-Control</div>
-    <nav class="tabs">
-        <a href="/customers" class="tab-button {{ request()->is('customers*') ? 'active' : '' }}">Customers</a>
-        <a href="/client" class="tab-button {{ request()->is('client*') ? 'active' : '' }}"> Orders</a>
-        <a href="/jobcard" class="tab-button {{ request()->is('jobcard*') ? 'active' : '' }}"> Jobcard</a>
-        <a href="/progress" class="tab-button {{ request()->is('progress*') ? 'active' : '' }}">Progress</a>
-        <a href="/reports" class="tab-button {{ request()->is('reports*') ? 'active' : '' }}">Reports</a>
-        <a href="/quotes" class="tab-button {{ request()->is('quotes*') ? 'active' : '' }}"> Quotes</a>
-        <a href="/invoice" class="tab-button {{ request()->is('invoice*') ? 'active' : '' }}"> Invoices</a>
-        <a href="/inventory" class="tab-button {{ request()->is('inventory*') ? 'active' : '' }}"> Inventory</a>
-        <a href="/settings" class="tab-button {{ request()->is('settings*') ? 'active' : '' }}"> Settings</a>
+    <nav class="sidebar-tabs">
+        <a href="/customers" class="sidebar-tab {{ request()->is('customers*') ? 'active' : '' }}">Customers</a>
+        <a href="/client" class="sidebar-tab {{ request()->is('client*') ? 'active' : '' }}">Orders</a>
+        <a href="/jobcard" class="sidebar-tab {{ request()->is('jobcard*') ? 'active' : '' }}">Jobcard</a>
+        <a href="/progress" class="sidebar-tab {{ request()->is('progress*') ? 'active' : '' }}">Progress</a>
+        <a href="/reports" class="sidebar-tab {{ request()->is('reports*') ? 'active' : '' }}">Reports</a>
+        <a href="/quotes" class="sidebar-tab {{ request()->is('quotes*') ? 'active' : '' }}">Quotes</a>
+        <a href="/invoice" class="sidebar-tab {{ request()->is('invoice*') ? 'active' : '' }}">Invoices</a>
+        <a href="/inventory" class="sidebar-tab {{ request()->is('inventory*') ? 'active' : '' }}">Inventory</a>
+        <a href="/settings" class="sidebar-tab {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
     </nav>
-</header>
+</aside>
+
+<style>
+.sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: #1e293b;
+    color: #fff;
+    position: fixed;
+    left: 0;
+    top: 0;
+    padding: 2rem 1rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+.logo {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+.sidebar-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.sidebar-tab {
+    color: #cbd5e1;
+    text-decoration: none;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    transition: background 0.2s, color 0.2s;
+}
+.sidebar-tab.active,
+.sidebar-tab:hover {
+    background: #3b82f6;
+    color: #fff;
+}
+</style>

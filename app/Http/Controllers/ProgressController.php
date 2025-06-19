@@ -9,25 +9,22 @@ class ProgressController extends Controller
 {
     public function index(Request $request)
     {
-        $assignedJobcards = \App\Models\Jobcard::where('status', 'assigned')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'assigned_page');
-        $inProgressJobcards = \App\Models\Jobcard::where('status', 'in progress')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'inprogress_page');
-        $completedJobcards = \App\Models\Jobcard::where('status', 'completed')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'completed_page');
+        $assignedJobcards = Jobcard::where('status', 'assigned')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'assigned_page');
+        $inProgressJobcards = Jobcard::where('status', 'in progress')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'inprogress_page');
+        $completedJobcards = Jobcard::where('status', 'completed')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'completed_page');
 
         return view('progress', compact('assignedJobcards', 'inProgressJobcards', 'completedJobcards'));
     }
 
     public function show($id)
     {
-        $jobcard = Jobcard::with(['client', 'employees', 'spares'])->findOrFail($id);
-       //dd($jobcard); // This will dump the jobcard and stop execution
-        $employees = \App\Models\Employee::all();
-        $inventory = \App\Models\Inventory::all();
-        return view('jobcard.show', compact('jobcard', 'employees', 'inventory'));
+        $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
+        return view('progress_show', compact('jobcard'));
     }
     public function ajaxShow($id)
     {
         try {
-            $jobcard = \App\Models\Jobcard::with(['client', 'employees', 'spares'])->findOrFail($id);
+            $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
             return response()->json($jobcard);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -35,7 +32,16 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
-        $jobcard = \App\Models\Jobcard::findOrFail($id);
+        $jobcard = Jobcard::findOrFail($id);
+
+        // Update employee hours
+        if ($request->has('employee_hours')) {
+            $syncData = [];
+            foreach ($request->employee_hours as $employeeId => $hours) {
+                $syncData[$employeeId] = ['hours_worked' => $hours];
+            }
+            $jobcard->employees()->sync($syncData);
+        }
 
         // Save fields
         $jobcard->progress_note = $request->input('progress_note');
@@ -56,6 +62,7 @@ class ProgressController extends Controller
 
         $jobcard->save();
 
-        return redirect()->route('progress.jobcard.show', $jobcard->id)->with('success', 'Jobcard updated!');
+        return redirect()->route('progress.jobcard.show', $jobcard->id)
+            ->with('success', 'Jobcard progress updated!');
     }
 }

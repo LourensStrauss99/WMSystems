@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@extends('layouts.nav')
+
 @section('content')
 <div class="container mt-4">
     <h2 class="mb-4">Submitted Invoices</h2>

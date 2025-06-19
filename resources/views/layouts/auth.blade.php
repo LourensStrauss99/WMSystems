@@ -19,7 +19,7 @@
 </head>
 <body>
     <div id="app">
-        @include('layouts.nav')
+        
         <main class="py-4" style="margin-left:220px;">
             @yield('content')
         </main>
