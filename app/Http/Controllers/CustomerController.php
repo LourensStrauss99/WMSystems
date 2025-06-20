@@ -1,7 +1,8 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\Client; // or Customer if your model is named Customer
+use App\Models\Client;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -13,7 +14,7 @@ class CustomerController extends Controller
 
         // Only allow 10, 25, or 50
         if (!in_array($perPage, [10, 25, 50])) {
-            $perPage = 10;
+            $perPage = 10; 
         }
 
         $customers = Client::query()
@@ -35,21 +36,29 @@ class CustomerController extends Controller
     
     public function show($id)
     {
-        $customer = \App\Models\Client::with([
-            'jobcards' => function($q) {
-                $q->orderBy('created_at', 'desc');
-            }
-        ])->findOrFail($id);
-
-        // All jobcards for work history
-        $workHistory = $customer->jobcards;
-
-        // All invoices for this customer (from invoices table)
-        $invoiceHistory = \App\Models\Invoice::where('client_id', $customer->id)
-            ->orderBy('invoice_date', 'desc')
-            ->get();
-
-        return view('customer-show', compact('customer', 'workHistory', 'invoiceHistory'));
+        $customer = Client::findOrFail($id);
+        
+        // Get work history
+        $workHistory = collect(); // Replace with actual jobcard data later
+        
+        // Get invoice history
+        $invoiceHistory = collect(); // Replace with actual invoice data later
+        
+        // Get payment history
+        $paymentHistory = Payment::where('client_id', $id)
+                            ->orderBy('payment_date', 'desc')
+                            ->get();
+    
+        // Calculate payment summary
+        $paymentSummary = [
+            'total_payments' => $paymentHistory->sum('amount'),
+            'cash_payments' => $paymentHistory->where('payment_method', 'cash')->sum('amount'),
+            'card_payments' => $paymentHistory->where('payment_method', 'card')->sum('amount'),
+            'eft_payments' => $paymentHistory->where('payment_method', 'eft')->sum('amount'),
+            'recent_payment' => $paymentHistory->first()
+        ];
+        
+        return view('customer-show', compact('customer', 'workHistory', 'invoiceHistory', 'paymentHistory', 'paymentSummary'));
     }
     
     public function create()
@@ -71,42 +80,70 @@ class CustomerController extends Controller
 
         return redirect()->route('customers.index')->with('success', 'Customer added!');
     }
+
+    /**
+     * Show the form for editing the specified customer.
+     */
+    public function edit($id)
+    {
+        $customer = Client::findOrFail($id);
+        return view('customers.edit', compact('customer'));
+    }
+
+    /**
+     * Update the specified customer in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        $customer = Client::findOrFail($id);
+        
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'surname' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'telephone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'notes' => 'nullable|string',
+            'payment_reference' => 'nullable|string|max:8'
+        ]);
+
+        $customer->update($validatedData);
+
+        return redirect()->route('client.show', $id)
+                        ->with('success', 'Customer updated successfully!');
+    }
+
+    /**
+     * Update customer notes via AJAX
+     */
+    public function updateNotes(Request $request, $id)
+    {
+        $customer = Client::findOrFail($id);
+        
+        $request->validate([
+            'notes' => 'nullable|string'
+        ]);
+
+        $customer->update(['notes' => $request->notes]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Regenerate payment reference for customer
+     */
+    public function regenerateReference($id)
+    {
+        $customer = Client::findOrFail($id);
+        $newReference = $customer->regeneratePaymentReference();
+        
+        return response()->json([
+            'success' => true,
+            'reference' => $newReference
+        ]);
+    }
 }
 
 
 
 
-// Route::get('/admin/users', [AdminController::class, 'index'])->name('admin.users.index');
-// Route::get('/admin/employees', [EmployeeController::class, 'index'])->name('admin.employees.index');
-// 
-// // Jobcard management
-// Route::get('/jobcards', [JobcardController::class, 'index'])->name('jobcards.index');
-// Route::get('/jobcards/create', [JobcardController::class, 'create'])->name('jobcards.create');
-// Route::post('/jobcards', [JobcardController::class, 'store'])->name('jobcards.store');
-// 
-// // Admin authentication
-// Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login');
-// Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
-// 
-// // Admin panel
-// Route::get('/admin/panel', [AdminPanelController::class, 'index'])->name('admin.panel.index');
-// 
-// // Invoice management
-// Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-// Route::get('/invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
-// Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-// 
-// // Customer management
-// Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
-// 
-// // Master settings
-// Route::get('/settings/master', [MasterSettingsController::class, 'index'])->name('settings.master.index');
-// 
-// // Progress tracking
-// Route::get('/progress', [ProgressController::class, 'index'])->name('progress.index');
-// 
-// // Phone management
-// Route::get('/phones', [PhoneController::class, 'index'])->name('phones.index');
-// 
-// // Quotes management
-// Route::get('/quotes', [QuotesController::class, 'index'])->name('quotes.index');

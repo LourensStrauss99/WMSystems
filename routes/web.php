@@ -1,6 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Livewire\Volt\Volt;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\AdminController;
@@ -16,6 +19,7 @@ use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
 use App\Http\Controllers\ReportController;
 // use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PaymentController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
@@ -120,6 +124,11 @@ Route::post('/client/create', [CustomerController::class, 'store'])->name('clien
 Route::get('/client/{id}', [CustomerController::class, 'show'])->name('client.show');
 Route::get('/customers/create', [CustomerController::class, 'create'])->name('client.create');
 Route::post('/customers', [CustomerController::class, 'store'])->name('client.store');
+Route::get('/client/{id}/edit', [CustomerController::class, 'edit'])->name('client.edit');
+Route::put('/client/{id}', [CustomerController::class, 'update'])->name('client.update');
+Route::post('/client/{id}/notes', [CustomerController::class, 'updateNotes'])->name('client.notes');
+Route::post('/client/{id}/regenerate-reference', [CustomerController::class, 'regenerateReference'])->name('client.regenerate-reference');
+Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
 
 // TEMPORARY: No middleware for testing
 // Only superuser (level 4) user can access company details
@@ -140,4 +149,45 @@ Route::get('/profile', function () {
 Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
 Route::get('/progress', [ProgressController::class, 'index'])->name('progress');
 Route::get('/progress/jobcard/{id}', [ProgressController::class, 'show'])->name('progress.jobcard.show');
+
+// Add this temporary route at the end:
+
+use App\Models\Client;
+
+Route::get('/fix-susan-reference', function() {
+    // First, let's add the column if it doesn't exist
+    try {
+        if (!Schema::hasColumn('clients', 'payment_reference')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->string('payment_reference', 8)->nullable()->unique();
+            });
+        }
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+    
+    // Generate reference for Susan
+    $reference = 'STR' . str_pad(random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    
+    DB::table('clients')->where('id', 5)->update([
+        'payment_reference' => $reference
+    ]);
+    
+    return "Susan's payment reference updated to: " . $reference;
+});
+
+// Add these payment routes:
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/client/{client}/payments/create', [PaymentController::class, 'create'])->name('payments.create');
+    Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt'])->name('payments.receipt');
+    Route::post('/payments/lookup-invoice', [PaymentController::class, 'getInvoiceDetails'])->name('payments.lookup');
+    
+    // Customer management routes
+    Route::get('/client/{client}/edit', [CustomerController::class, 'edit'])->name('clients.edit');
+    Route::put('/client/{client}', [CustomerController::class, 'update'])->name('clients.update');
+    Route::post('/client/{client}/notes', [CustomerController::class, 'updateNotes'])->name('clients.notes');
+    Route::post('/client/{client}/regenerate-reference', [CustomerController::class, 'regenerateReference'])->name('clients.regenerate-reference');
+});
 
