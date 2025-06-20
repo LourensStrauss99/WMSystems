@@ -137,7 +137,7 @@ Route::get('/profile', function () {
     return view('profile');
 })->middleware('auth')->name('profile');
 // Route::put('/profile', [ProfileController::class, 'update'])->middleware('auth')->name('profile.update');
-Route::get('/reports', [ReportController::class, 'index'])->name('reports');
+Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
 Route::get('/progress', [ProgressController::class, 'index'])->name('progress');
 Route::get('/progress/jobcard/{id}', [ProgressController::class, 'show'])->name('progress.jobcard.show');
 
