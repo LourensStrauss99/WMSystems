@@ -15,10 +15,61 @@ class JobcardController extends Controller
 {
     public function index(Request $request)
     {
-        $jobcards = Jobcard::with(['client', 'employees', 'inventory'])
-            ->orderByDesc('job_date')
-            ->paginate(10);
-
+        $query = Jobcard::with('client');
+        
+        // Search by client name
+        if ($request->filled('client')) {
+            $query->whereHas('client', function($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->client . '%')
+                  ->orWhere('surname', 'like', '%' . $request->client . '%');
+            });
+        }
+        
+        // Search by jobcard number
+        if ($request->filled('jobcard_number')) {
+            $query->where('jobcard_number', 'like', '%' . $request->jobcard_number . '%');
+        }
+        
+        // Search by date range
+        if ($request->filled('date_from')) {
+            $query->where('job_date', '>=', $request->date_from);
+        }
+        
+        if ($request->filled('date_to')) {
+            $query->where('job_date', '<=', $request->date_to);
+        }
+        
+        // Search by specific date
+        if ($request->filled('date')) {
+            $query->whereDate('job_date', $request->date);
+        }
+        
+        // Search by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        
+        // Search by category
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+        
+        // Order by most recent first
+        $query->orderBy('job_date', 'desc')->orderBy('created_at', 'desc');
+        
+        // Handle AJAX requests for infinite scroll
+        if ($request->ajax()) {
+            $jobcards = $query->paginate(20);
+            return response()->json([
+                'data' => $jobcards->items(),
+                'next_page_url' => $jobcards->nextPageUrl(),
+                'has_more_pages' => $jobcards->hasMorePages()
+            ]);
+        }
+        
+        // Regular page load
+        $jobcards = $query->paginate(20);
+        
         return view('jobcard.index', compact('jobcards'));
     }
 
