@@ -440,7 +440,7 @@
                 </div>
 
                 <!-- Enhanced Payment Summary -->
-                @if(count($invoiceHistory) > 0 || count($paymentHistory ?? []) > 0)
+                @if(($invoiceHistory && $invoiceHistory->count() > 0) || ($paymentHistory && $paymentHistory->count() > 0))
                     <div class="enhanced-payment-summary">
                         <div class="summary-grid">
                             <div class="summary-section invoices">
@@ -450,16 +450,24 @@
                                     <span class="amount">R{{ number_format(collect($invoiceHistory)->sum('amount'), 2) }}</span>
                                 </div>
                                 <div class="summary-row">
+                                    <span>Total Paid:</span>
+                                    <span class="amount positive">R{{ number_format(collect($invoiceHistory)->sum('paid_amount'), 2) }}</span>
+                                </div>
+                                <div class="summary-row">
                                     <span>Outstanding:</span>
-                                    <span class="amount outstanding">R{{ number_format(collect($invoiceHistory)->where('status', 'unpaid')->sum('amount'), 2) }}</span>
+                                    <span class="amount outstanding">R{{ number_format(collect($invoiceHistory)->sum('outstanding_amount'), 2) }}</span>
+                                </div>
+                                <div class="summary-row aging">
+                                    <span>Overdue (30+ days):</span>
+                                    <span class="amount overdue">R{{ number_format(collect($invoiceHistory)->where('age_category', '!=', 'current')->where('age_category', '!=', 'paid')->sum('outstanding_amount'), 2) }}</span>
                                 </div>
                             </div>
                             
                             <div class="summary-section payments">
-                                <h6>💳 Payments</h6>
+                                <h6>💳 Payment Activity</h6>
                                 <div class="summary-row">
-                                    <span>Total Received:</span>
-                                    <span class="amount positive">R{{ number_format(($paymentSummary['total_payments'] ?? 0), 2) }}</span>
+                                    <span>This Month:</span>
+                                    <span class="amount positive">R{{ number_format(collect($paymentHistory ?? [])->where('payment_date', '>=', now()->startOfMonth())->sum('amount'), 2) }}</span>
                                 </div>
                                 <div class="summary-row">
                                     <span>Last Payment:</span>
@@ -472,29 +480,97 @@
                                         @endif
                                     </span>
                                 </div>
+                                <div class="summary-row">
+                                    <span>Payment Methods:</span>
+                                    <div class="payment-methods-summary">
+                                        @php $methods = collect($paymentHistory ?? [])->groupBy('payment_method'); @endphp
+                                        @foreach($methods as $method => $payments)
+                                            <small class="method-summary">{{ ucfirst($method) }}: R{{ number_format($payments->sum('amount'), 2) }}</small>
+                                        @endforeach
+                                    </div>
+                                </div>
                             </div>
                             
                             <div class="summary-section balance">
-                                <h6>⚖️ Balance</h6>
+                                <h6>⚖️ Account Status</h6>
                                 @php
                                     $totalInvoiced = collect($invoiceHistory)->sum('amount');
-                                    $totalPaid = $paymentSummary['total_payments'] ?? 0;
-                                    $balance = $totalInvoiced - $totalPaid;
+                                    $totalPaid = collect($invoiceHistory)->sum('paid_amount');
+                                    $totalOutstanding = collect($invoiceHistory)->sum('outstanding_amount');
+                                    $overdueAmount = collect($invoiceHistory)->where('age_category', '!=', 'current')->where('age_category', '!=', 'paid')->sum('outstanding_amount');
                                 @endphp
+                                
                                 <div class="summary-row total">
-                                    <span>Account Balance:</span>
-                                    <span class="amount {{ $balance > 0 ? 'outstanding' : 'positive' }}">
-                                        R{{ number_format($balance, 2) }}
+                                    <span>Current Balance:</span>
+                                    <span class="amount {{ $totalOutstanding > 0 ? 'outstanding' : 'positive' }}">
+                                        R{{ number_format($totalOutstanding, 2) }}
                                     </span>
                                 </div>
-                                @if($balance > 0)
+                                
+                                @if($overdueAmount > 0)
+                                    <div class="summary-row overdue-alert">
+                                        <span>⚠️ Overdue:</span>
+                                        <span class="amount overdue">R{{ number_format($overdueAmount, 2) }}</span>
+                                    </div>
+                                @endif
+                                
+                                <div class="account-health">
+                                    @php
+                                        $healthScore = $totalInvoiced > 0 ? (($totalPaid / $totalInvoiced) * 100) : 100;
+                                        $healthColor = $healthScore >= 80 ? 'good' : ($healthScore >= 60 ? 'fair' : 'poor');
+                                    @endphp
+                                    <div class="health-indicator {{ $healthColor }}">
+                                        <span class="health-bar" style="width: {{ $healthScore }}%"></span>
+                                    </div>
+                                    <small>Payment Health: {{ number_format($healthScore, 1) }}%</small>
+                                </div>
+                                
+                                @if($totalOutstanding > 0)
                                     <div class="balance-actions">
                                         <button class="balance-btn" onclick="makePayment()">💳 Take Payment</button>
-                                        <button class="balance-btn" onclick="sendReminder()">📧 Send Reminder</button>
+                                        @if($overdueAmount > 0)
+                                            <button class="balance-btn urgent" onclick="sendReminder()">⚠️ Send Reminder</button>
+                                        @else
+                                            <button class="balance-btn" onclick="sendStatement()">📧 Send Statement</button>
+                                        @endif
                                     </div>
                                 @endif
                             </div>
                         </div>
+                        
+                        <!-- Aging Analysis -->
+                        @if(isset($agingSummary) && is_array($agingSummary) && array_sum($agingSummary) > 0)
+                            <div class="aging-analysis">
+                                <h6>📊 Aging Analysis</h6>
+                                <div class="aging-bars">
+                                    @php
+                                        $agingData = [
+                                            'current' => ['label' => 'Current', 'amount' => $agingSummary['current'], 'class' => 'current'],
+                                            '30_days' => ['label' => '1-30 Days', 'amount' => $agingSummary['30_days'], 'class' => 'days-30'],
+                                            '60_days' => ['label' => '31-60 Days', 'amount' => $agingSummary['60_days'], 'class' => 'days-60'],
+                                            '90_days' => ['label' => '61-90 Days', 'amount' => $agingSummary['90_days'], 'class' => 'days-90'],
+                                            '120_days' => ['label' => '90+ Days', 'amount' => $agingSummary['120_days'], 'class' => 'days-120']
+                                        ];
+                                        $maxAmount = collect($agingSummary)->max();
+                                    @endphp
+                                    
+                                    @foreach($agingData as $period => $data)
+                                        @if($data['amount'] > 0)
+                                            <div class="aging-bar-item">
+                                                <div class="aging-label">
+                                                    <span class="period-name">{{ $data['label'] }}</span>
+                                                    <span class="period-amount">R{{ number_format($data['amount'], 2) }}</span>
+                                                </div>
+                                                <div class="aging-bar-track">
+                                                    <div class="aging-bar-fill {{ $data['class'] }}" 
+                                                         style="width: {{ $maxAmount > 0 ? ($data['amount'] / $maxAmount) * 100 : 0 }}%"></div>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -911,7 +987,6 @@ function sendReminder() {
     border-radius: 4px;
     font-size: 0.8em;
     cursor: pointer;
-    align-self: flex-start;
 }
 
 /* Account Summary */
@@ -1744,7 +1819,6 @@ function sendReminder() {
     border-radius: 4px;
     font-size: 0.7em;
     cursor: pointer;
-    flex: 1;
 }
 
 .balance-btn:hover {
@@ -1778,26 +1852,168 @@ function sendReminder() {
     background: #6c757d;
 }
 
-/* Responsive Updates */
+/* Enhanced Summary Styles */
+.payment-methods-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.method-summary {
+    font-size: 0.7em;
+    color: #6c757d;
+}
+
+.summary-row.overdue-alert {
+    background: #fff5f5;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-left: 3px solid #dc3545;
+    margin: 4px 0;
+}
+
+.amount.overdue {
+    color: #dc3545;
+    font-weight: 700;
+}
+
+/* Account Health Indicator */
+.account-health {
+    margin-top: 10px;
+}
+
+.health-indicator {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.health-bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.health-indicator.good .health-bar {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.health-indicator.fair .health-bar {
+    background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.health-indicator.poor .health-bar {
+    background: linear-gradient(90deg, #dc3545, #e74c3c);
+}
+
+.balance-btn.urgent {
+    background: #dc3545;
+    animation: pulse-urgent 2s infinite;
+}
+
+@keyframes pulse-urgent {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Aging Analysis */
+.aging-analysis {
+    margin-top: 20px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+}
+
+.aging-analysis h6 {
+    margin: 0 0 15px 0;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #495057;
+}
+
+.aging-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.aging-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.aging-label {
+    min-width: 120px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+}
+
+.period-name {
+    color: #495057;
+}
+
+.period-amount {
+    font-weight: 600;
+    color: #28a745;
+}
+
+.aging-bar-track {
+    flex: 1;
+    height: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.aging-bar-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+    border-radius: 10px;
+}
+
+.aging-bar-fill.current {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.aging-bar-fill.days-30 {
+    background: linear-gradient(90deg, #ffc107, #ffca2c);
+}
+
+.aging-bar-fill.days-60 {
+    background: linear-gradient(90deg, #fd7e14, #ff8c42);
+}
+
+.aging-bar-fill.days-90 {
+    background: linear-gradient(90deg, #dc3545, #e55353);
+}
+
+.aging-bar-fill.days-120 {
+    background: linear-gradient(90deg, #6f42c1, #8e44ad);
+}
+
+/* Status badges for partial payments */
+.status-badge.partial {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+/* Responsive updates */
 @media (max-width: 768px) {
-    .summary-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .view-tabs {
+    .aging-bar-item {
         flex-direction: column;
-        gap: 2px;
-    }
-    
-    .entry-details {
-        flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 4px;
     }
     
-    .balance-actions {
-        flex-direction: column;
+    .aging-label {
+        min-width: auto;
     }
 }
 </style>

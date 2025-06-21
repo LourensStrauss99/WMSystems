@@ -32,7 +32,7 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
-        $jobcard = \App\Models\Jobcard::with(['employees', 'inventory'])->findOrFail($id);
+        $jobcard = Jobcard::with(['employees', 'inventory'])->findOrFail($id);
 
         if ($request->action === 'invoice') {
             // Prevent duplicate invoices
@@ -44,9 +44,7 @@ class ProgressController extends Controller
                 }
 
                 // Calculate labour total
-                $labourHours = $jobcard->employees->sum(function($employee) {
-                    return $employee->pivot->hours_worked ?? 0;
-                });
+                $labourHours = $jobcard->employees->pluck('pivot.hours_worked')->sum();
                 $company = \App\Models\CompanyDetail::first();
                 $labourTotal = $labourHours * ($company->labour_rate ?? 0);
 

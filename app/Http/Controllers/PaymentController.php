@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Jobcard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -18,16 +19,55 @@ class PaymentController extends Controller
     {
         $client = Client::findOrFail($clientId);
         
-        // Get unpaid invoices and completed jobcards for this client
-        $unpaidInvoices = Invoice::where('client_id', $clientId)
-                                ->where('status', 'unpaid')
-                                ->get();
+        // Get unpaid and partially paid invoices for this client
+        $outstandingInvoices = collect(); // Start with empty collection for now
+        $unpaidInvoices = collect(); // Add this line to fix the immediate error
         
-        $completedJobcards = Jobcard::where('client_id', $clientId)
-                                   ->where('status', 'completed')
-                                   ->get();
+        // Safely try to get invoices if Invoice model exists
+        try {
+            if (class_exists(Invoice::class)) {
+                $outstandingInvoices = Invoice::where('client_id', $clientId)
+                                            ->whereIn('status', ['unpaid', 'partial'])
+                                            ->get()
+                                            ->map(function($invoice) {
+                                                // Calculate totals safely
+                                                $totalPaid = 0;
+                                                if (method_exists($invoice, 'getTotalPaid')) {
+                                                    try {
+                                                        $totalPaid = $invoice->getTotalPaid();
+                                                    } catch (\Exception $e) {
+                                                        $totalPaid = $invoice->paid_amount ?? 0;
+                                                    }
+                                                }
+                                                
+                                                $invoice->total_paid = $totalPaid;
+                                                $invoice->balance_due = ($invoice->amount ?? 0) - $totalPaid;
+                                                return $invoice;
+                                            });
+                
+                // Also set unpaidInvoices to the same data to fix the template error
+                $unpaidInvoices = $outstandingInvoices;
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not load invoices for payment: " . $e->getMessage());
+            $outstandingInvoices = collect();
+            $unpaidInvoices = collect();
+        }
         
-        return view('payments.create', compact('client', 'unpaidInvoices', 'completedJobcards'));
+        // Get completed jobcards safely
+        $completedJobcards = collect();
+        try {
+            if (class_exists(Jobcard::class)) {
+                $completedJobcards = Jobcard::where('client_id', $clientId)
+                                           ->where('status', 'completed')
+                                           ->get() ?? collect();
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not load jobcards for payment: " . $e->getMessage());
+            $completedJobcards = collect();
+        }
+        
+        return view('payments.create', compact('client', 'outstandingInvoices', 'unpaidInvoices', 'completedJobcards'));
     }
 
     /**
@@ -62,35 +102,31 @@ class PaymentController extends Controller
                 'receipt_number' => Payment::generateReceiptNumber()
             ]);
 
-            // Update invoice status if paying for specific invoice
-            if ($request->invoice_jobcard_number) {
-                $invoice = Invoice::where('invoice_number', $request->invoice_jobcard_number)->first();
-                if ($invoice && $invoice->status === 'unpaid') {
-                    $invoice->update([
-                        'status' => 'paid',
-                        'payment_date' => $request->payment_date
-                    ]);
-                }
-
-                // Update jobcard status if paying for jobcard
-                $jobcard = Jobcard::where('jobcard_number', $request->invoice_jobcard_number)->first();
-                if ($jobcard && $jobcard->status === 'completed') {
-                    $jobcard->update(['status' => 'invoiced']);
-                }
-            }
+            // The invoice payment status will be automatically updated via the Payment model's booted method
         });
 
-        return redirect()->route('payments.receipt', Payment::latest()->first()->id)
+        $latestPayment = Payment::latest()->first();
+        return redirect()->route('payments.receipt', $latestPayment->id)
                         ->with('success', 'Payment processed successfully!');
     }
 
     /**
-     * Show payment receipt
+     * Show payment receipt with remittance advice
      */
     public function receipt($paymentId)
     {
-        $payment = Payment::with('client')->findOrFail($paymentId);
-        return view('payments.receipt', compact('payment'));
+        $payment = Payment::with(['client', 'invoice'])->findOrFail($paymentId);
+        
+        // Get payment history for this invoice if applicable
+        $relatedPayments = collect();
+        if ($payment->invoice_jobcard_number) {
+            $relatedPayments = Payment::where('invoice_jobcard_number', $payment->invoice_jobcard_number)
+                                    ->where('id', '!=', $payment->id)
+                                    ->orderBy('payment_date', 'desc')
+                                    ->get();
+        }
+        
+        return view('payments.receipt', compact('payment', 'relatedPayments'));
     }
 
     /**
@@ -107,12 +143,19 @@ class PaymentController extends Controller
                          ->first();
         
         if ($invoice) {
+            $invoice->updatePaymentStatus(); // Ensure status is current
+            
             return response()->json([
                 'found' => true,
                 'type' => 'invoice',
                 'amount' => $invoice->amount,
+                'outstanding_amount' => $invoice->getOutstandingAmount(),
+                'paid_amount' => $invoice->getTotalPaid(),
                 'status' => $invoice->status,
-                'date' => $invoice->invoice_date
+                'date' => $invoice->invoice_date,
+                'due_date' => $invoice->due_date,
+                'age_days' => $invoice->getPaymentAge(),
+                'age_category' => $invoice->getAgeCategory()
             ]);
         }
         
@@ -126,11 +169,40 @@ class PaymentController extends Controller
                 'found' => true,
                 'type' => 'jobcard',
                 'amount' => $jobcard->amount ?? 0,
+                'outstanding_amount' => $jobcard->amount ?? 0,
+                'paid_amount' => 0,
                 'status' => $jobcard->status,
                 'date' => $jobcard->job_date
             ]);
         }
         
         return response()->json(['found' => false]);
+    }
+
+    /**
+     * Generate aging report for client
+     */
+    public function agingReport($clientId)
+    {
+        $client = Client::findOrFail($clientId);
+        
+        $invoices = Invoice::where('client_id', $clientId)
+                          ->with('payments')
+                          ->orderBy('invoice_date', 'desc')
+                          ->get()
+                          ->map(function($invoice) {
+                              $invoice->updatePaymentStatus();
+                              return $invoice;
+                          });
+        
+        $aging = [
+            'current' => $invoices->where('age_category', 'current')->sum('outstanding_amount'),
+            '30_days' => $invoices->where('age_category', '30_days')->sum('outstanding_amount'),
+            '60_days' => $invoices->where('age_category', '60_days')->sum('outstanding_amount'),
+            '90_days' => $invoices->where('age_category', '90_days')->sum('outstanding_amount'),
+            '120_days' => $invoices->where('age_category', '120_days')->sum('outstanding_amount'),
+        ];
+        
+        return view('payments.aging-report', compact('client', 'invoices', 'aging'));
     }
 }

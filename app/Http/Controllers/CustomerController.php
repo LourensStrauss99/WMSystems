@@ -1,18 +1,21 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Payment;
+use App\Models\Jobcard;  // Make sure this model exists
+use App\Models\Invoice;  // Make sure this model exists
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $perPage = $request->input('perPage', 10); // default to 10
+        $perPage = $request->input('perPage', 10);
 
-        // Only allow 10, 25, or 50
         if (!in_array($perPage, [10, 25, 50])) {
             $perPage = 10; 
         }
@@ -25,7 +28,7 @@ class CustomerController extends Controller
             })
             ->orderByDesc('id')
             ->paginate($perPage)
-            ->appends(['search' => $search, 'perPage' => $perPage]); // keep params in pagination
+            ->appends(['search' => $search, 'perPage' => $perPage]);
 
         return view('customers', [
             'customers' => $customers,
@@ -38,27 +41,130 @@ class CustomerController extends Controller
     {
         $customer = Client::findOrFail($id);
         
-        // Get work history
-        $workHistory = collect(); // Replace with actual jobcard data later
+        // Initialize all collections as empty to prevent null errors
+        $workHistory = collect();
+        $invoiceHistory = collect();
+        $paymentHistory = collect();
         
-        // Get invoice history
-        $invoiceHistory = collect(); // Replace with actual invoice data later
-        
-        // Get payment history
-        $paymentHistory = Payment::where('client_id', $id)
-                            ->orderBy('payment_date', 'desc')
-                            ->get();
-    
-        // Calculate payment summary
+        // Get work history - with null safety
+        try {
+            if (class_exists(Jobcard::class)) {
+                $workHistory = Jobcard::where('client_id', $id)
+                              ->orderBy('created_at', 'desc')
+                              ->take(10)
+                              ->get() ?? collect();
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not load work history: " . $e->getMessage());
+            $workHistory = collect();
+        }
+
+        // Get invoice history with payment tracking - with null safety
+        try {
+            if (class_exists(Invoice::class)) {
+                $invoiceHistory = Invoice::where('client_id', $id)
+                                ->orderBy('invoice_date', 'desc')
+                                ->get();
+                
+                if (!$invoiceHistory) {
+                    $invoiceHistory = collect();
+                } else {
+                    $invoiceHistory = $invoiceHistory?->map(function($invoice) {
+                        // Only update payment status if method exists
+                        if (method_exists($invoice, 'updatePaymentStatus')) {
+                            try {
+                                $invoice->updatePaymentStatus();
+                            } catch (\Exception $e) {
+                                Log::warning("Could not update payment status for invoice {$invoice->id}: " . $e->getMessage());
+                            }
+                        }
+                        return $invoice;
+                    });
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not load invoice history: " . $e->getMessage());
+            $invoiceHistory = collect();
+        }
+
+        // Get payment history - with null safety
+        try {
+            if (class_exists(Payment::class)) {
+                $paymentHistory = Payment::where('client_id', $id)
+                                ->orderBy('payment_date', 'desc')
+                                ->get() ?? collect();
+            }
+        } catch (\Exception $e) {
+            Log::warning("Could not load payment history: " . $e->getMessage());
+            $paymentHistory = collect();
+        }
+
+        // Calculate enhanced payment summary with null safety
         $paymentSummary = [
-            'total_payments' => $paymentHistory->sum('amount'),
-            'cash_payments' => $paymentHistory->where('payment_method', 'cash')->sum('amount'),
-            'card_payments' => $paymentHistory->where('payment_method', 'card')->sum('amount'),
-            'eft_payments' => $paymentHistory->where('payment_method', 'eft')->sum('amount'),
-            'recent_payment' => $paymentHistory->first()
+            'total_payments' => $paymentHistory ? $paymentHistory->sum('amount') : 0,
+            'cash_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'cash')->sum('amount') : 0,
+            'card_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'card')->sum('amount') : 0,
+            'eft_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'eft')->sum('amount') : 0,
+            'recent_payment' => $paymentHistory && $paymentHistory->count() > 0 ? $paymentHistory->first() : null,
+            'this_month_payments' => $paymentHistory ? $paymentHistory->where('payment_date', '>=', now()->startOfMonth())->sum('amount') : 0
         ];
         
-        return view('customer-show', compact('customer', 'workHistory', 'invoiceHistory', 'paymentHistory', 'paymentSummary'));
+        // Calculate aging summary with null safety
+        $agingSummary = [
+            'current' => 0,
+            '30_days' => 0,
+            '60_days' => 0,
+            '90_days' => 0,
+            '120_days' => 0,
+        ];
+        
+        // Only calculate aging if we have invoices
+        if ($invoiceHistory && $invoiceHistory->count() > 0) {
+            $agingSummary = [
+                'current' => $invoiceHistory->sum(function($invoice) {
+                    try {
+                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === 'current' 
+                            ? ($invoice->outstanding_amount ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        return 0;
+                    }
+                }),
+                '30_days' => $invoiceHistory->sum(function($invoice) {
+                    try {
+                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '30_days' 
+                            ? ($invoice->outstanding_amount ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        return 0;
+                    }
+                }),
+                '60_days' => $invoiceHistory->sum(function($invoice) {
+                    try {
+                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '60_days' 
+                            ? ($invoice->outstanding_amount ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        return 0;
+                    }
+                }),
+                '90_days' => $invoiceHistory->sum(function($invoice) {
+                    try {
+                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '90_days' 
+                            ? ($invoice->outstanding_amount ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        return 0;
+                    }
+                }),
+                '120_days' => $invoiceHistory->sum(function($invoice) {
+                    try {
+                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '120_days' 
+                            ? ($invoice->outstanding_amount ?? 0) : 0;
+                    } catch (\Exception $e) {
+                        return 0;
+                    }
+                }),
+            ];
+        }
+        
+        return view('customer-show', compact('customer', 'workHistory', 'invoiceHistory', 'paymentHistory', 'paymentSummary', 'agingSummary'));
     }
     
     public function create()
