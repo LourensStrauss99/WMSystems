@@ -6,14 +6,19 @@ use Illuminate\Http\Request;
 use App\Models\Setting;
 use App\Models\CompanyDetail;
 use App\Models\Jobcard;
+use App\Models\Inventory;
 use Illuminate\Support\Facades\Mail;
 
 class MasterSettingsController extends Controller
 {
     public function index()
     {
-        $companyDetails = \App\Models\CompanyDetail::first();
-        return view('master-settings', compact('companyDetails'));
+        $companyDetails = CompanyDetail::first();
+
+        // Get all inventory items for the replenishment dropdown
+        $items = Inventory::orderBy('name')->get();
+        
+        return view('master-settings', compact('companyDetails', 'items'));
     }
 
     public function update(Request $request)

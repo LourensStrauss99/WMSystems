@@ -61,7 +61,7 @@
                             <input type="hidden" name="employees" id="employees_data">
                         </div>
 
-                        <!-- Inventory Section -->
+                        <!-- Inventory Section with Live Stock Checking -->
                         <div class="mb-3">
                             <label class="form-label">Inventory Used</label>
                             <div class="mb-2 position-relative">
@@ -72,22 +72,31 @@
                                 <select id="inventory_select" class="form-control">
                                     <option value="">Select Inventory</option>
                                     @foreach($inventory as $item)
-                                        <option value="{{ $item->id }}" data-short="{{ $item->short_description }}">{{ $item->name }}</option>
+                                        @php $stockStatus = $item->getStockStatus(); @endphp
+                                        <option value="{{ $item->id }}" 
+                                                data-short="{{ $item->short_description }}"
+                                                data-stock="{{ $item->stock_level }}"
+                                                data-min="{{ $item->min_level }}"
+                                                data-code="{{ $item->short_code }}"
+                                                data-status="{{ $stockStatus['status'] }}">
+                                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
+                                        </option>
                                     @endforeach
                                 </select>
-                                <select id="inventory_quantity" class="form-control">
-                                    @for($i = 1; $i <= 10; $i++)
-                                        <option value="{{ $i }}">{{ $i }}</option>
-                                    @endfor
-                                </select>
+                                <input type="number" id="inventory_quantity" class="form-control" min="1" max="100" value="1" placeholder="Qty">
                                 <button type="button" id="add_inventory" class="btn btn-primary">Add</button>
                             </div>
+
+                            <!-- Stock Alert Display -->
+                            <div id="stock_alert" class="alert" style="display: none;"></div>
 
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Item</th>
                                         <th>Quantity</th>
+                                        <th>Stock After</th>
+                                        <th>Status</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -162,7 +171,9 @@ $(document).ready(function() {
     const inventoryOptions = @json($inventory->map(fn($item) => [
         'id' => $item->id,
         'name' => $item->name,
-        'short' => $item->short_description
+        'short' => $item->short_description,
+        'short_code' => $item->short_code,
+        'stock_level' => $item->stock_level
     ])->values());
 
     // --- Employees ---
@@ -200,10 +211,31 @@ $(document).ready(function() {
         const tbody = $('#inventory_list');
         tbody.empty();
         inventoryList.forEach(item => {
+            // Get current stock info
+            const option = $(`#inventory_select option[value="${item.id}"]`);
+            const currentStock = parseInt(option.data('stock')) || 0;
+            const minLevel = parseInt(option.data('min')) || 0;
+            const shortCode = option.data('code') || '';
+            const stockAfter = currentStock - item.quantity;
+            
+            let statusBadge = '';
+            if (stockAfter < 0) {
+                statusBadge = '<span class="badge bg-danger">❌ Out of Stock</span>';
+            } else if (stockAfter <= minLevel) {
+                statusBadge = '<span class="badge bg-warning">⚠️ Below Min</span>';
+            } else {
+                statusBadge = '<span class="badge bg-success">✅ Available</span>';
+            }
+            
             tbody.append(`
                 <tr data-id="${item.id}">
-                    <td>${item.name}</td>
+                    <td>
+                        <strong>[${shortCode}]</strong><br>
+                        ${item.name}
+                    </td>
                     <td>${item.quantity}</td>
+                    <td>${stockAfter >= 0 ? stockAfter : 'N/A'}</td>
+                    <td>${statusBadge}</td>
                     <td>
                         <button type="button" class="btn btn-warning btn-sm edit-inventory">Edit</button>
                         <button type="button" class="btn btn-danger btn-sm remove-inventory">Remove</button>
@@ -259,12 +291,14 @@ $(document).ready(function() {
         }
         const filtered = inventoryOptions.filter(item =>
             item.name.toLowerCase().includes(search) ||
-            (item.short || '').toLowerCase().includes(search)
+            (item.short || '').toLowerCase().includes(search) ||
+            (item.short_code || '').toLowerCase().includes(search)
         );
         filtered.forEach(item => {
             suggestions.append(`
                 <li class="list-group-item list-group-item-action" data-id="${item.id}">
-                    ${item.name}
+                    <strong>[${item.short_code}]</strong> ${item.name} 
+                    <small class="text-muted">(Stock: ${item.stock_level})</small>
                 </li>
             `);
         });
@@ -284,9 +318,242 @@ $(document).ready(function() {
         }
     });
 
+    // Update the inventory JavaScript section
+    $('#inventory_select, #inventory_quantity').on('change', function() {
+        const itemId = $('#inventory_select').val();
+        const quantity = parseInt($('#inventory_quantity').val()) || 1;
+        
+        if (itemId) {
+            checkStock(itemId, quantity);
+        } else {
+            $('#stock_alert').hide();
+        }
+    });
+
+    function checkStock(itemId, quantity) {
+        fetch('/inventory/check-stock', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const alertDiv = $('#stock_alert');
+            
+            if (data.available) {
+                alertDiv.removeClass('alert-danger alert-warning')
+                       .addClass('alert-success')
+                       .html(`
+                           <strong>${data.message}</strong><br>
+                           Current Stock: ${data.current_stock} | After Use: ${data.remaining_after}
+                           ${data.warning ? '<br><span class="text-warning">' + data.warning + '</span>' : ''}
+                       `)
+                       .show();
+                $('#add_inventory').prop('disabled', false);
+            } else {
+                alertDiv.removeClass('alert-success alert-warning')
+                       .addClass('alert-danger')
+                       .html(`
+                           <strong>${data.message}</strong><br>
+                           <small>Please reduce quantity or choose a different item.</small>
+                       `)
+                       .show();
+                $('#add_inventory').prop('disabled', true);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking stock:', error);
+        });
+    }
+
+    // Real-time stock checking when adding inventory
+    $('#add_inventory').on('click', function(e) {
+        e.preventDefault();
+        
+        const itemId = $('#inventory_select').val();
+        const quantity = parseInt($('#inventory_quantity').val()) || 1;
+        
+        if (!itemId) {
+            alert('Please select an inventory item');
+            return;
+        }
+        
+        // Check stock availability first
+        checkStockAvailability(itemId, quantity, function(stockData) {
+            if (stockData.available) {
+                // Stock is available, proceed with adding
+                addInventoryToList();
+            } else {
+                // Stock not available, show error
+                showStockError(stockData);
+            }
+        });
+    });
+
+    function checkStockAvailability(itemId, quantity, callback) {
+        fetch('/inventory/check-stock', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: quantity
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            callback(data);
+        })
+        .catch(error => {
+            console.error('Error checking stock:', error);
+            alert('Error checking stock availability. Please try again.');
+        });
+    }
+
+    // Update the showStockError function to include short code
+    function showStockError(stockData) {
+        // Get the short code from the selected option
+        const selectedOption = $('#inventory_select option:selected');
+        const shortCode = selectedOption.data('code') || 'N/A';
+        
+        const alertHtml = `
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>❌ Insufficient Stock!</strong><br>
+                <strong>Code:</strong> [${shortCode}]<br>
+                <strong>Item:</strong> ${stockData.item_name}<br>
+                <strong>Available:</strong> ${stockData.current_stock}<br>
+                <strong>Requested:</strong> ${stockData.requested_quantity}<br>
+                <strong>Message:</strong> ${stockData.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Show the alert above the inventory section
+        $('#inventory_select').closest('.mb-3').prepend(alertHtml);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(function() {
+            $('.alert-danger').fadeOut();
+        }, 5000);
+    }
+
+    function showStockWarning(stockData) {
+        if (stockData.warning) {
+            const alertHtml = `
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong>⚠️ Stock Warning!</strong><br>
+                    ${stockData.warning}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            $('#inventory_select').closest('.mb-3').prepend(alertHtml);
+            
+            setTimeout(function() {
+                $('.alert-warning').fadeOut();
+            }, 5000);
+        }
+    }
+
+    // Update the addInventoryToList function to display short code in the table
+    function addInventoryToList() {
+        const selectElement = document.getElementById('inventory_select');
+        const itemId = selectElement.value;
+        const quantity = parseInt(document.getElementById('inventory_quantity').value) || 1;
+        
+        if (!itemId) {
+            alert('Please select an inventory item');
+            return;
+        }
+        
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const shortCode = selectedOption.getAttribute('data-code');
+        const itemName = selectedOption.text.split(' (Stock:')[0]; // Clean up the display name
+        
+        // Check if item is already in the list
+        const existingItem = inventoryList.find(item => item.id == itemId);
+        if (existingItem) {
+            existingItem.quantity += quantity;
+        } else {
+            inventoryList.push({
+                id: parseInt(itemId),
+                name: itemName,
+                short_code: shortCode,
+                quantity: quantity
+            });
+        }
+        
+        renderInventoryList();
+        
+        // Reset form
+        selectElement.value = '';
+        document.getElementById('inventory_quantity').value = 1;
+        
+        // Remove any existing alerts
+        $('.alert').remove();
+    }
+
+    // Also add live stock checking when quantity changes
+    $('#inventory_quantity').on('input', function() {
+        const itemId = $('#inventory_select').val();
+        const quantity = parseInt($(this).val()) || 1;
+        
+        if (itemId && quantity > 0) {
+            checkStockAvailability(itemId, quantity, function(stockData) {
+                // Remove previous alerts
+                $('.alert').remove();
+                
+                if (!stockData.available) {
+                    $('#add_inventory').prop('disabled', true);
+                    showStockError(stockData);
+                } else {
+                    $('#add_inventory').prop('disabled', false);
+                    if (stockData.warning) {
+                        showStockWarning(stockData);
+                    }
+                }
+            });
+        }
+    });
+
+    // Check stock when item is selected
+    $('#inventory_select').on('change', function() {
+        const itemId = $(this).val();
+        const quantity = parseInt($('#inventory_quantity').val()) || 1;
+        
+        // Remove previous alerts
+        $('.alert').remove();
+        
+        if (itemId) {
+            checkStockAvailability(itemId, quantity, function(stockData) {
+                if (!stockData.available) {
+                    $('#add_inventory').prop('disabled', true);
+                    showStockError(stockData);
+                } else {
+                    $('#add_inventory').prop('disabled', false);
+                    if (stockData.warning) {
+                        showStockWarning(stockData);
+                    }
+                }
+            });
+        } else {
+            $('#add_inventory').prop('disabled', false);
+        }
+    });
+
     // Initial render
     renderEmployeeList();
     renderInventoryList();
 });
 </script>
 @endpush
+
+<meta name="csrf-token" content="{{ csrf_token() }}">

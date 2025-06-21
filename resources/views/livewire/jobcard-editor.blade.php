@@ -96,21 +96,23 @@
         <!-- Inventory Section -->
         <div class="mb-3">
             <label class="form-label">Add Inventory Item</label>
-            <div class="row g-2">
-                <div class="col-md-5">
-                    <select id="inventory_select" class="form-control">
-                        <option value="">Select Item</option>
-                        @foreach($inventory as $item)
-                            <option value="{{ $item->id }}">{{ $item->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="number" id="inventory_qty_input" class="form-control" min="1" placeholder="Quantity">
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-success" onclick="addInventory()">Add</button>
-                </div>
+            <div class="input-group mb-3">
+                <select id="inventory_select" class="form-control">
+                    <option value="">Select Inventory</option>
+                    @foreach($inventory as $item)
+                        @php $stockStatus = $item->getStockStatus(); @endphp
+                        <option value="{{ $item->id }}" 
+                                data-short="{{ $item->short_description }}"
+                                data-stock="{{ $item->stock_level }}"
+                                data-min="{{ $item->min_level }}"
+                                data-code="{{ $item->short_code }}"
+                                data-status="{{ $stockStatus['status'] }}">
+                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
+                        </option>
+                    @endforeach
+                </select>
+                <input type="number" id="inventory_quantity" class="form-control" min="1" max="100" value="1" placeholder="Qty">
+                <button type="button" id="add_inventory" class="btn btn-primary">Add</button>
             </div>
             <ul id="inventory_list" class="mt-2">
                 @foreach($jobcard->inventory as $item)
@@ -127,6 +129,8 @@
         <button type="submit" class="btn btn-primary">Save Jobcard</button>
     </form>
 </div>
+
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <script>
 function addEmployee() {
@@ -153,16 +157,43 @@ function removeEmployee(btn) {
     btn.parentElement.remove();
 }
 
-function addInventory() {
+// Real-time stock checking when adding inventory
+document.getElementById('add_inventory').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    const itemId = document.getElementById('inventory_select').value;
+    const quantity = parseInt(document.getElementById('inventory_quantity').value) || 1;
+    
+    if (!itemId) {
+        alert('Please select an inventory item');
+        return;
+    }
+    
+    // Check stock availability first
+    checkStockAvailability(itemId, quantity, function(stockData) {
+        if (stockData.available) {
+            // Stock is available, proceed with adding
+            addInventoryToJobcard();
+        } else {
+            // Stock not available, show error
+            showStockError(stockData);
+        }
+    });
+});
+
+function addInventoryToJobcard() {
     let select = document.getElementById('inventory_select');
-    let qty = document.getElementById('inventory_qty_input').value;
+    let qty = document.getElementById('inventory_quantity').value;
     let id = select.value;
     let name = select.options[select.selectedIndex].text;
 
     if (!id || !qty || qty < 1) return;
 
     // Prevent duplicate
-    if (document.querySelector('#inventory_list li[data-id="'+id+'"]')) return;
+    if (document.querySelector('#inventory_list li[data-id="'+id+'"]')) {
+        alert('This item is already added to the jobcard');
+        return;
+    }
 
     let li = document.createElement('li');
     li.setAttribute('data-id', id);
@@ -171,11 +202,142 @@ function addInventory() {
         <input type="hidden" name="inventory_qty[${id}]" value="${qty}">
         <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeInventory(this)">Remove</button>`;
     document.getElementById('inventory_list').appendChild(li);
+    
+    // Reset form
+    select.value = '';
+    document.getElementById('inventory_quantity').value = 1;
+    
+    // Remove any existing alerts
+    removeAlerts();
 }
 
 function removeInventory(btn) {
     btn.parentElement.remove();
 }
+
+function checkStockAvailability(itemId, quantity, callback) {
+    fetch('/inventory/check-stock', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({
+            item_id: itemId,
+            quantity: quantity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        callback(data);
+    })
+    .catch(error => {
+        console.error('Error checking stock:', error);
+        alert('Error checking stock availability. Please try again.');
+    });
+}
+
+function showStockError(stockData) {
+    // Get the short code from the selected option
+    const selectedOption = document.querySelector('#inventory_select option:checked');
+    const shortCode = selectedOption ? selectedOption.getAttribute('data-code') : 'N/A';
+    
+    const alertHtml = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>❌ Insufficient Stock!</strong><br>
+            <strong>Code:</strong> [${shortCode}]<br>
+            <strong>Item:</strong> ${stockData.item_name}<br>
+            <strong>Available:</strong> ${stockData.current_stock}<br>
+            <strong>Requested:</strong> ${stockData.requested_quantity}<br>
+            <strong>Message:</strong> ${stockData.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="removeAlerts()"></button>
+        </div>
+    `;
+    
+    // Show the alert above the inventory section
+    const inventorySection = document.getElementById('inventory_select').closest('.mb-3');
+    inventorySection.insertAdjacentHTML('afterbegin', alertHtml);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(function() {
+        removeAlerts();
+    }, 5000);
+}
+
+function showStockWarning(stockData) {
+    if (stockData.warning) {
+        const alertHtml = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>⚠️ Stock Warning!</strong><br>
+                ${stockData.warning}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="removeAlerts()"></button>
+            </div>
+        `;
+        
+        const inventorySection = document.getElementById('inventory_select').closest('.mb-3');
+        inventorySection.insertAdjacentHTML('afterbegin', alertHtml);
+        
+        setTimeout(function() {
+            removeAlerts();
+        }, 5000);
+    }
+}
+
+function removeAlerts() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        alert.style.display = 'none';
+        alert.remove();
+    });
+}
+
+// Check stock when quantity changes
+document.getElementById('inventory_quantity').addEventListener('input', function() {
+    const itemId = document.getElementById('inventory_select').value;
+    const quantity = parseInt(this.value) || 1;
+    
+    if (itemId && quantity > 0) {
+        checkStockAvailability(itemId, quantity, function(stockData) {
+            // Remove previous alerts
+            removeAlerts();
+            
+            if (!stockData.available) {
+                document.getElementById('add_inventory').disabled = true;
+                showStockError(stockData);
+            } else {
+                document.getElementById('add_inventory').disabled = false;
+                if (stockData.warning) {
+                    showStockWarning(stockData);
+                }
+            }
+        });
+    }
+});
+
+// Check stock when item is selected
+document.getElementById('inventory_select').addEventListener('change', function() {
+    const itemId = this.value;
+    const quantity = parseInt(document.getElementById('inventory_quantity').value) || 1;
+    
+    // Remove previous alerts
+    removeAlerts();
+    
+    if (itemId) {
+        checkStockAvailability(itemId, quantity, function(stockData) {
+            if (!stockData.available) {
+                document.getElementById('add_inventory').disabled = true;
+                showStockError(stockData);
+            } else {
+                document.getElementById('add_inventory').disabled = false;
+                if (stockData.warning) {
+                    showStockWarning(stockData);
+                }
+            }
+        });
+    } else {
+        document.getElementById('add_inventory').disabled = false;
+    }
+});
 </script>
 @endsection
 

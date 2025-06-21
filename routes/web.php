@@ -52,9 +52,13 @@ Route::get('/admin/inventory/create', function () {
     return view('inventory.create');
 })->name('inventory.create');
 Route::post('/admin/inventory', [InventoryController::class, 'store'])->name('admin.inventory.store');
+Route::post('/inventory/check-stock', [InventoryController::class, 'checkStock'])->name('inventory.check-stock');
+Route::get('/inventory/stock-alerts', [InventoryController::class, 'getLowStockAlerts']);
+Route::get('/inventory/{id}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
+Route::put('/inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');
 
 // Admin panel
-
+Route::get('/admin-panel', [InventoryController::class, 'adminPanel'])->name('admin.panel');
 
 // User management
 Route::post('/admin/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
