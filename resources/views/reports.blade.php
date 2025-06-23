@@ -189,35 +189,82 @@
 Chart.defaults.font.family = 'Arial, sans-serif';
 Chart.defaults.font.size = 11;
 
-// Jobcard Status Chart (Doughnut)
+// Jobcard Status Chart (Bar Chart)
 const jobcardCtx = document.getElementById('jobcardStatusChart').getContext('2d');
 new Chart(jobcardCtx, {
-    type: 'doughnut',
+    type: 'bar',
     data: {
         labels: ['Assigned', 'In Progress', 'Completed', 'Invoiced'],
         datasets: [{
+            label: 'Jobcards',
             data: [
                 {{ $jobcardStatus['assigned'] }},
                 {{ $jobcardStatus['in_progress'] }},
                 {{ $jobcardStatus['completed'] }},
                 {{ $jobcardStatus['invoiced'] }}
             ],
-            backgroundColor: ['#ffc107', '#fd7e14', '#28a745', '#007bff'],
-            borderWidth: 3,
-            borderColor: '#fff'
+            backgroundColor: [
+                '#ffc107',  // Yellow for Assigned
+                '#fd7e14',  // Orange for In Progress  
+                '#28a745',  // Green for Completed
+                '#007bff'   // Blue for Invoiced
+            ],
+            borderColor: [
+                '#e0a800',
+                '#e8690b', 
+                '#1e7e34',
+                '#0056b3'
+            ],
+            borderWidth: 2,
+            borderRadius: 6,
+            borderSkipped: false,
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: {
-                position: 'right',
-                labels: {
-                    font: { size: 11 },
-                    usePointStyle: true
+            legend: { 
+                display: false  // Hide legend since we have labels on x-axis
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + context.parsed.y + ' jobcards';
+                    }
                 }
             }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { 
+                    color: '#e9ecef',
+                    drawBorder: false
+                },
+                ticks: {
+                    stepSize: 1,  // Show whole numbers only
+                    color: '#6c757d'
+                }
+            },
+            x: {
+                grid: { 
+                    display: false 
+                },
+                ticks: {
+                    color: '#6c757d',
+                    maxRotation: 45,
+                    minRotation: 0
+                }
+            }
+        },
+        animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     }
 });
@@ -260,10 +307,10 @@ new Chart(agingCtx, {
     }
 });
 
-// Hours Productivity Chart (Line)
+// Hours Productivity Chart (Changed from Line to Bar)
 const hoursCtx = document.getElementById('hoursChart').getContext('2d');
 new Chart(hoursCtx, {
-    type: 'line',
+    type: 'bar',
     data: {
         labels: ['Available Hours', 'Booked Hours', 'Invoiced Hours'],
         datasets: [{
@@ -273,31 +320,68 @@ new Chart(hoursCtx, {
                 {{ $hoursData['booked_hours'] }},
                 {{ $hoursData['invoiced_hours'] }}
             ],
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-            borderColor: '#007bff',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#007bff',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 6
+            backgroundColor: [
+                '#17a2b8',  // Teal for Available
+                '#007bff',  // Blue for Booked
+                '#28a745'   // Green for Invoiced
+            ],
+            borderColor: [
+                '#138496',
+                '#0056b3',
+                '#1e7e34'
+            ],
+            borderWidth: 2,
+            borderRadius: 6,
+            borderSkipped: false,
         }]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { display: false }
+            legend: { 
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + context.parsed.y + ' hours';
+                    }
+                }
+            }
         },
         scales: {
             y: {
                 beginAtZero: true,
-                grid: { color: '#e9ecef' }
+                grid: { 
+                    color: '#e9ecef',
+                    drawBorder: false
+                },
+                ticks: {
+                    color: '#6c757d',
+                    callback: function(value) {
+                        return value + 'h';
+                    }
+                }
             },
             x: {
-                grid: { display: false }
+                grid: { 
+                    display: false 
+                },
+                ticks: {
+                    color: '#6c757d',
+                    maxRotation: 45,
+                    minRotation: 0
+                }
             }
+        },
+        animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index'
         }
     }
 });

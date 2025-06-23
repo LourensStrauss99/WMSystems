@@ -2,6 +2,58 @@
 @extends('layouts.app')
 
 @section('content')
+<!-- Add custom CSS for button styling -->
+<style>
+.btn-save-custom {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-save-custom:hover {
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.btn-pdf-custom {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-pdf-custom:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.btn-back-custom {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    color: white !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-back-custom:hover {
+    background-color: #5a6268 !important;
+    border-color: #545b62 !important;
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+}
+
+.btn i {
+    margin-right: 8px;
+}
+</style>
+
 <div class="container mt-4">
     <h2>Edit Jobcard</h2>
     <form method="POST" action="{{ route('jobcard.update', $jobcard->id) }}">
@@ -59,8 +111,6 @@
             <label class="form-label">Work Done</label>
             <textarea name="work_done" class="form-control">{{ old('work_done', $jobcard->work_done) }}</textarea>
         </div>
-
-       
 
         <!-- Employees Section -->
         <div class="mb-3">
@@ -126,7 +176,23 @@
             </ul>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Jobcard</button>
+        <!-- Custom styled buttons -->
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-save-custom">
+                <i class="fas fa-save"></i>Save Jobcard
+            </button>
+            
+            <a href="{{ route('jobcard.pdf', $jobcard->id) }}" 
+               class="btn btn-pdf-custom" 
+               target="_blank">
+                <i class="fas fa-file-pdf"></i>Export PDF
+            </a>
+            
+            <a href="{{ route('jobcard.index') }}" 
+               class="btn btn-back-custom">
+                <i class="fas fa-arrow-left"></i>Back to List
+            </a>
+        </div>
     </form>
 </div>
 

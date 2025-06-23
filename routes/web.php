@@ -193,7 +193,8 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/client/{client}', [CustomerController::class, 'update'])->name('clients.update');
     Route::post('/client/{client}/notes', [CustomerController::class, 'updateNotes'])->name('clients.notes');
     Route::post('/client/{client}/regenerate-reference', [CustomerController::class, 'regenerateReference'])->name('clients.regenerate-reference');
-});
+}); 
 
 Route::get('/invoice/{jobcard}/pdf', [InvoiceController::class, 'generatePDF'])->name('invoice.pdf');
+Route::get('/jobcard/{jobcard}/pdf', [JobcardController::class, 'generatePDF'])->name('jobcard.pdf');
 

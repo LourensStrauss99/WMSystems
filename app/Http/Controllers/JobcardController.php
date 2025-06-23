@@ -8,8 +8,9 @@ use App\Models\Inventory;
 use App\Models\Invoice;
 use App\Models\Client;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB; 
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
@@ -216,5 +217,22 @@ class JobcardController extends Controller
         }
 
         return redirect()->route('progress')->with('success', 'Jobcard updated!');
+    }
+
+    public function generatePDF($id)
+    {
+        $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
+        
+        // Calculate totals
+        $totalHours = $jobcard->employees->sum('pivot.hours_worked');
+        $totalInventoryItems = $jobcard->inventory->sum('pivot.quantity');
+        
+        $pdf = PDF::loadView('jobcard.pdf', compact('jobcard', 'totalHours', 'totalInventoryItems'));
+        
+        // Set PDF options
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->setOptions(['dpi' => 150, 'defaultFont' => 'sans-serif']);
+        
+        return $pdf->download('jobcard-' . $jobcard->jobcard_number . '.pdf');
     }
 }
