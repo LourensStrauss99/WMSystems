@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CompanyDetail extends Model
 {
     protected $fillable = [
-        'id', // <-- Add this line
+        'id',
         'labour_rate',
         'vat_percent',
         'company_name',
@@ -26,7 +26,14 @@ class CompanyDetail extends Model
         'company_telephone',
         'company_email',
         'company_website',
+        'company_logo', // <- ADD THIS
         'invoice_terms',
         'invoice_footer',
+    ];
+
+    // Add casts for decimal fields
+    protected $casts = [
+        'labour_rate' => 'decimal:2',
+        'vat_percent' => 'decimal:2',
     ];
 }

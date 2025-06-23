@@ -201,9 +201,12 @@
                     <i class="fas fa-envelope"></i> Email Invoice
                 </button>
             </form>
-            <button type="button" class="action-btn print-btn" onclick="optimizedPrint()">
-                <i class="fas fa-print"></i> Print Invoice (A4)
-            </button>
+            
+            <!-- NEW PDF BUTTON -->
+            <a href="{{ route('invoice.pdf', $jobcard->id) }}" class="action-btn pdf-btn" target="_blank">
+                <i class="fas fa-file-pdf"></i> Download PDF
+            </a>
+            
             <a href="{{ route('invoice.index') }}" class="action-btn back-btn">
                 <i class="fas fa-arrow-left"></i> Back to Invoices
             </a>
@@ -483,6 +486,16 @@
 .email-btn:hover {
     background: #218838;
     transform: translateY(-2px);
+}
+
+.pdf-btn {
+    background: #dc3545 !important;
+    color: white !important;
+}
+
+.pdf-btn:hover {
+    background: #c82333 !important;
+    transform: translateY(-2px) !important;
 }
 
 .print-btn {
