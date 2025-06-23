@@ -2,79 +2,339 @@
 @extends('layouts.app')
 
 @section('content')
-    
-    <div class="container mx-auto py-8">
-        <div class="flex justify-between items-center mb-4">
-            <div></div>
-            <div class="flex items-center gap-2">
+<div class="container mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2 class="text-dark fw-bold">
+                <i class="fas fa-users me-2 text-primary"></i>
+                Customer Directory
+            </h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <div class="btn-group" role="group">
                 @if(request('search'))
-                    <a href="{{ route('customers.index') }}"
-                       class="flex items-center px-3 py-2 rounded border border-graysearch and view updated-300 bg-white text-black font-semibold shadow hover:bg-gray-100 transition"
-                       title="Back to Customers">
-                        <i class="bi bi-arrow-left" style="font-size: 1.3rem; color: #222;"></i>
+                    <a href="{{ route('customers.index') }}" 
+                       class="btn btn-outline-secondary"
+                       title="Back to All Customers">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Back
                     </a>
                 @endif
-                <a href="{{ route('client.create') }}"
-                   class="flex items-center px-4 py-2 rounded border border-blue-300 bg-blue-200 text-black font-semibold shadow hover:bg-blue-300 transition"
-                   style="gap: 0.5rem;">
-                    <i class="bi bi-person" style="font-size: 1.3rem; color: #3b82f6; background: #e0edff; border-radius: 50%; padding: 0.2rem;"></i>
+                <a href="{{ route('client.create') }}" 
+                   class="btn btn-success">
+                    <i class="fas fa-user-plus me-2"></i>
                     Add New Customer
                 </a>
             </div>
         </div>
-        <form method="GET" action="{{ route('customers.index') }}" class="mb-4 flex items-center">
-            <input type="text" name="search" value="{{ old('search', $search ?? '') }}" placeholder="Search"
-                   class="border rounded px-2 py-1 mr-2" />
-            <select name="perPage" class="border rounded px-2 py-1 mr-2" onchange="this.form.submit()">
-                <option value="10" {{ $perPage == 10 ? 'selected' : '' }}>10</option>
-                <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25</option>
-                <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50</option>
-            </select>
-            <button type="submit"
-                class="flex items-center px-4 py-1 rounded bg-blue-200 text-black font-semibold shadow hover:bg-blue-300 transition"
-                style="gap: 0.5rem;">
-                <i class="bi bi-search" style="font-size: 1.1rem;"></i>
-                Name Search
-            </button>
-        </form>
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white rounded shadow">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-2 border-b">ID</th>
-                        <th class="px-4 py-2 border-b">Name</th>
-                        <th class="px-4 py-2 border-b">Surname</th>
-                        <th class="px-4 py-2 border-b">Telephone</th>
-                        <th class="px-4 py-2 border-b">Address</th>
-                        <th class="px-4 py-2 border-b">Email</th>
-                        <th class="px-4 py-2 border-b">View</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($customers as $customer)
-                    <tr class="hover:bg-gray-100">
-                        <td class="px-4 py-2 border-b">{{ $customer->id }}</td>
-                        <td class="px-4 py-2 border-b">{{ $customer->name }}</td>
-                        <td class="px-4 py-2 border-b">{{ $customer->surname }}</td>
-                        <td class="px-4 py-2 border-b">{{ $customer->telephone }}</td>
-                        <td class="px-4 py-2 border-b">{{ $customer->address }}</td>
-                        <td class="px-4 py-2 border-b">{{ $customer->email }}</td>
-                        <td class="px-4 py-2 border-b text-center">
-                            <a href="{{ route('client.show', $customer->id) }}" 
-                               class="btn btn-sm rounded-circle d-inline-flex align-items-center justify-content-center"
-                               style="width:2rem; height:2rem; background-color:#649ff7; color:white;" 
-                               title="View">
-                                <i class="bi bi-eye"></i>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <form method="GET" action="{{ route('customers.index') }}" class="row g-3">
+                <div class="col-md-5">
+                    <label for="search" class="form-label">
+                        <i class="fas fa-search me-1"></i>Search Customers
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input type="text" 
+                               name="search" 
+                               id="search"
+                               value="{{ old('search', $search ?? '') }}" 
+                               placeholder="Search by name, surname, phone, or email..."
+                               class="form-control" />
+                        @if(request('search'))
+                            <a href="{{ route('customers.index') }}" 
+                               class="btn btn-outline-secondary"
+                               title="Clear Search">
+                                <i class="fas fa-times"></i>
                             </a>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            <div class="mt-4">
-                {{ $customers->links('pagination::tailwind') }}
+                        @endif
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="perPage" class="form-label">
+                        <i class="fas fa-list me-1"></i>Show Entries
+                    </label>
+                    <select name="perPage" id="perPage" class="form-select" onchange="this.form.submit()">
+                        <option value="10" {{ $perPage == 10 ? 'selected' : '' }}>10 per page</option>
+                        <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25 per page</option>
+                        <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50 per page</option>
+                        <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100 per page</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="btn-group w-100" role="group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>
+                            Search
+                        </button>
+                        <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-refresh me-1"></i>
+                            Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Results Summary -->
+    @if(request('search'))
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Search Results:</strong> 
+            Found {{ $customers->total() }} customer(s) matching "{{ request('search') }}"
+            @if($customers->total() == 0)
+                - <a href="{{ route('customers.index') }}" class="alert-link">Show all customers</a>
+            @endif
+        </div>
+    @endif
+
+    <!-- Customers Table -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Customer List
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-light text-dark">
+                        {{ $customers->total() }} Total
+                    </span>
+                </div>
             </div>
         </div>
-       
+        
+        <div class="card-body p-0">
+            @if($customers->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 60px;">
+                                    <i class="fas fa-hashtag"></i>
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-user me-1"></i>Name
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-user-tag me-1"></i>Surname
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-phone me-1"></i>Telephone
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Address
+                                </th>
+                                <th scope="col">
+                                    <i class="fas fa-envelope me-1"></i>Email
+                                </th>
+                                <th scope="col" class="text-center" style="width: 120px;">
+                                    <i class="fas fa-cog"></i> Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($customers as $customer)
+                                <tr class="align-middle">
+                                    <td class="text-center text-muted fw-bold">
+                                        {{ $customer->id }}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle me-2">
+                                                {{ strtoupper(substr($customer->name ?? 'N', 0, 1)) }}
+                                            </div>
+                                            <strong>{{ $customer->name ?? 'N/A' }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark">{{ $customer->surname ?? 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        @if($customer->telephone)
+                                            <a href="tel:{{ $customer->telephone }}" 
+                                               class="text-decoration-none text-success">
+                                                <i class="fas fa-phone me-1"></i>
+                                                {{ $customer->telephone }}
+                                            </a>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($customer->address)
+                                            <div class="text-truncate" style="max-width: 200px;" 
+                                                 title="{{ $customer->address }}">
+                                                <i class="fas fa-map-pin me-1 text-info"></i>
+                                                {{ $customer->address }}
+                                            </div>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($customer->email)
+                                            <a href="mailto:{{ $customer->email }}" 
+                                               class="text-decoration-none text-primary">
+                                                <i class="fas fa-envelope me-1"></i>
+                                                <span class="text-truncate d-inline-block" 
+                                                      style="max-width: 150px;">
+                                                    {{ $customer->email }}
+                                                </span>
+                                            </a>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('client.show', $customer->id) }}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="View Customer Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('client.edit', $customer->id) }}" 
+                                               class="btn btn-sm btn-outline-warning" 
+                                               title="Edit Customer">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-users fa-3x text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">No Customers Found</h4>
+                    @if(request('search'))
+                        <p class="text-muted">
+                            No customers match your search criteria "{{ request('search') }}"
+                        </p>
+                        <a href="{{ route('customers.index') }}" class="btn btn-primary">
+                            <i class="fas fa-list me-1"></i>Show All Customers
+                        </a>
+                    @else
+                        <p class="text-muted">
+                            No customers have been added yet.
+                        </p>
+                        <a href="{{ route('client.create') }}" class="btn btn-success">
+                            <i class="fas fa-plus me-1"></i>Add First Customer
+                        </a>
+                    @endif
+                </div>
+            @endif
+        </div>
     </div>
+
+    <!-- Pagination Section -->
+    @if($customers->hasPages())
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Showing {{ $customers->firstItem() }} to {{ $customers->lastItem() }} 
+                    of {{ $customers->total() }} entries
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex justify-content-end">
+                    {{ $customers->links() }}
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
+
+<!-- Custom CSS for styling -->
+<style>
+.avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.8rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+    border-bottom: 2px solid rgba(255,255,255,0.1);
+}
+
+.btn-group .btn {
+    margin-right: 2px;
+}
+
+.btn-group .btn:last-child {
+    margin-right: 0;
+}
+
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.input-group .form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .table th, .table td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .avatar-circle {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+    }
+}
+</style>
 @endsection

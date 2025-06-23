@@ -91,27 +91,56 @@
             </div>
         </form>
         
-        <!-- Quick Filters -->
+        <!-- Multi-level Dropdown Quick Filters -->
         <div class="quick-filters mt-3">
             <span class="me-2"><strong>Quick Filters:</strong></span>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="quickFilter('status', 'pending')">
-                Pending
-            </button>
-            <button class="btn btn-sm btn-outline-warning me-1" onclick="quickFilter('status', 'in_progress')">
-                In Progress
-            </button>
-            <button class="btn btn-sm btn-outline-success me-1" onclick="quickFilter('status', 'completed')">
-                Completed
-            </button>
-            <button class="btn btn-sm btn-outline-info me-1" onclick="dateFilter('today')">
-                Today
-            </button>
-            <button class="btn btn-sm btn-outline-info me-1" onclick="dateFilter('week')">
-                This Week
-            </button>
-            <button class="btn btn-sm btn-outline-info me-1" onclick="dateFilter('month')">
-                This Month
-            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-filter me-1"></i>Apply Filter
+                </button>
+                <ul class="dropdown-menu">
+                    <!-- Status Section -->
+                    <li class="dropdown-submenu">
+                        <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-tasks me-2"></i>By Status
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="quickFilter('status', 'pending')">
+                                <i class="fas fa-clock me-2 text-primary"></i>Pending
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="quickFilter('status', 'in_progress')">
+                                <i class="fas fa-spinner me-2 text-warning"></i>In Progress
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="quickFilter('status', 'completed')">
+                                <i class="fas fa-check-circle me-2 text-success"></i>Completed
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Date Section -->
+                    <li class="dropdown-submenu">
+                        <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar me-2"></i>By Date
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="dateFilter('today')">
+                                <i class="fas fa-calendar-day me-2 text-info"></i>Today
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="dateFilter('week')">
+                                <i class="fas fa-calendar-week me-2 text-info"></i>This Week
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="dateFilter('month')">
+                                <i class="fas fa-calendar-alt me-2 text-info"></i>This Month
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="clearAllFilters()">
+                        <i class="fas fa-times-circle me-2"></i>Clear All Filters
+                    </a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -200,20 +229,27 @@
                 </tbody>
             </table>
         </div>
-        <div id="loading" class="text-center" style="display: none;">
-            Loading more jobcards...
+
+        <!-- Pagination -->
+        @if($jobcards instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            {{ $jobcards->appends(request()->query())->links() }}
+        @endif
+
+        <!-- Loading indicator -->
+        <div id="loading" style="display: none; text-align: center; padding: 20px;">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
         </div>
     @else
-        <div class="alert alert-warning">
-            <h5>No jobcards found</h5>
+        <div class="alert alert-info">
+            <h4>No Jobcards Found</h4>
             <p>Try adjusting your search criteria or <a href="{{ route('jobcard.index') }}">view all jobcards</a>.</p>
         </div>
     @endif
 </div>
 
 <script>
-console.log('Script loaded at the top');
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');
     
@@ -387,6 +423,7 @@ function todayFilter() {
 }
 
 function quickFilter(field, value) {
+    event.preventDefault();
     const form = document.getElementById('searchForm');
     const input = document.getElementById(field);
     if (input) {
@@ -396,6 +433,7 @@ function quickFilter(field, value) {
 }
 
 function dateFilter(period) {
+    event.preventDefault();
     const today = new Date();
     let fromDate, toDate;
     
@@ -418,6 +456,11 @@ function dateFilter(period) {
     document.getElementById('date_from').value = fromDate;
     document.getElementById('date_to').value = toDate;
     document.getElementById('searchForm').submit();
+}
+
+function clearAllFilters() {
+    document.getElementById('searchForm').reset();
+    window.location.href = "{{ route('jobcard.index') }}";
 }
 
 window.onload = function() {
@@ -460,6 +503,88 @@ window.onload = function() {
 
 .tr-status-in-progress {
     background-color: #e8f5e8;
+}
+
+/* Multi-level dropdown styles */
+.dropdown-submenu {
+    position: relative;
+}
+
+.dropdown-submenu > .dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-top: -6px;
+    margin-left: -1px;
+    border-radius: 0 6px 6px 6px;
+}
+
+.dropdown-submenu:hover > .dropdown-menu {
+    display: block;
+}
+
+.dropdown-submenu > a:after {
+    display: block;
+    content: " ";
+    float: right;
+    width: 0;
+    height: 0;
+    border-color: transparent;
+    border-style: solid;
+    border-width: 5px 0 5px 5px;
+    border-left-color: #ccc;
+    margin-top: 5px;
+    margin-right: -10px;
+}
+
+.dropdown-submenu:hover > a:after {
+    border-left-color: #fff;
+}
+
+.dropdown-submenu.pull-left {
+    float: none;
+}
+
+.dropdown-submenu.pull-left > .dropdown-menu {
+    left: -100%;
+    margin-left: 10px;
+    border-radius: 6px 0 6px 6px;
+}
+
+/* Quick filters styling */
+.quick-filters .dropdown-menu {
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.quick-filters .dropdown-item {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.quick-filters .dropdown-item:hover {
+    background-color: #f8f9fa;
+    color: #495057;
+    transform: translateX(4px);
+}
+
+.quick-filters .dropdown-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.quick-filters .dropdown-toggle {
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.quick-filters .dropdown-toggle:hover {
+    background-color: #f8f9fa;
+    border-color: #6c757d;
 }
 </style>
 @endsection
