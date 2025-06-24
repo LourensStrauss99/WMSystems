@@ -24,7 +24,7 @@
                 <a href="{{ route('client.create') }}" 
                    class="btn btn-success">
                     <i class="fas fa-user-plus me-2"></i>
-                    Add New Customer
+                    Add New Customer 
                 </a>
             </div>
         </div>
@@ -202,14 +202,26 @@
                                         <div class="btn-group" role="group">
                                             <a href="{{ route('client.show', $customer->id) }}" 
                                                class="btn btn-sm btn-outline-primary" 
-                                               title="View Customer Details">
-                                                <i class="fas fa-eye"></i>
+                                               title="View Customer Details"
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-eye me-1"></i>
+                                                <span class="d-none d-md-inline">View</span>
                                             </a>
                                             <a href="{{ route('client.edit', $customer->id) }}" 
                                                class="btn btn-sm btn-outline-warning" 
-                                               title="Edit Customer">
-                                                <i class="fas fa-edit"></i>
+                                               title="Edit Customer"
+                                               data-bs-toggle="tooltip">
+                                                <i class="fas fa-edit me-1"></i>
+                                                <span class="d-none d-md-inline">Edit</span>
                                             </a>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    title="Delete Customer"
+                                                    data-bs-toggle="tooltip"
+                                                    onclick="confirmDelete({{ $customer->id }}, '{{ $customer->name }} {{ $customer->surname }}')">
+                                                <i class="fas fa-trash me-1"></i>
+                                                <span class="d-none d-md-inline">Delete</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -303,10 +315,35 @@
 
 .btn-group .btn {
     margin-right: 2px;
+    transition: all 0.3s ease;
 }
 
 .btn-group .btn:last-child {
     margin-right: 0;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Enhanced button styles */
+.btn-outline-primary:hover {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.btn-outline-warning:hover {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
 }
 
 .alert {
@@ -317,6 +354,11 @@
 .input-group .form-control:focus {
     border-color: #80bdff;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Icon styling */
+.btn i {
+    font-size: 0.9rem;
 }
 
 /* Responsive improvements */
@@ -330,11 +372,79 @@
         padding: 0.25rem 0.5rem;
     }
     
+    .btn-group .btn span {
+        display: none !important;
+    }
+    
     .avatar-circle {
         width: 24px;
         height: 24px;
         font-size: 0.7rem;
     }
+    
+    .btn i {
+        font-size: 0.8rem;
+        margin-right: 0 !important;
+    }
+}
+
+/* Tooltip styling */
+.tooltip {
+    font-size: 0.8rem;
 }
 </style>
+
+<!-- JavaScript for enhanced functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Delete confirmation function
+function confirmDelete(customerId, customerName) {
+    if (confirm(`Are you sure you want to delete customer "${customerName}"?\n\nThis action cannot be undone.`)) {
+        // Create and submit a delete form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/client/${customerId}`;
+        
+        // Add CSRF token
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        form.appendChild(csrfToken);
+        
+        // Add method override for DELETE
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        form.appendChild(methodField);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Enhanced row hover effects
+document.querySelectorAll('tbody tr').forEach(row => {
+    row.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = '#f8f9fa';
+        this.style.transform = 'scale(1.01)';
+        this.style.transition = 'all 0.2s ease';
+        this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+    });
+    
+    row.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '';
+        this.style.transform = '';
+        this.style.boxShadow = '';
+    });
+});
+</script>
 @endsection

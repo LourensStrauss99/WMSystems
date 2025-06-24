@@ -20,6 +20,11 @@ use App\Http\Controllers\QuotesController;
 use App\Http\Controllers\ReportController;
 // use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\GoodsReceivedVoucherController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\GrvController;
+use App\Http\Controllers\CompanyController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
@@ -197,4 +202,54 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/invoice/{jobcard}/pdf', [InvoiceController::class, 'generatePDF'])->name('invoice.pdf');
 Route::get('/jobcard/{jobcard}/pdf', [JobcardController::class, 'generatePDF'])->name('jobcard.pdf');
+
+// Purchase Orders
+Route::middleware(['auth'])->group(function () {
+    // Purchase Orders routes
+    Route::resource('purchase-orders', PurchaseOrderController::class);
+    
+    // Add this line for status updates
+    Route::post('purchase-orders/{purchaseOrder}/update-status', [PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.update-status');
+    
+    Route::get('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+    Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'generatePdf'])->name('purchase-orders.pdf');
+    Route::get('purchase-orders/create/low-stock', [PurchaseOrderController::class, 'createFromLowStock'])->name('purchase-orders.create-low-stock');
+    
+    // Suppliers routes
+    Route::resource('suppliers', SupplierController::class);
+    
+    // Add GRV (Goods Received Voucher) routes
+    Route::resource('grv', GrvController::class)->names([
+        'index' => 'grv.index',
+        'create' => 'grv.create',
+        'store' => 'grv.store',
+        'show' => 'grv.show',
+        'edit' => 'grv.edit',
+        'update' => 'grv.update',
+        'destroy' => 'grv.destroy',
+    ]);
+    
+    // Your other routes...
+});
+
+// Company Management Routes
+Route::middleware(['auth'])->group(function () {
+    // Company routes
+    Route::get('/company/edit', [CompanyController::class, 'edit'])->name('company.edit');
+    Route::put('/company/update', [CompanyController::class, 'update'])->name('company.update');
+    Route::get('/company/details', [CompanyController::class, 'show'])->name('company.details');
+    Route::post('/company/remove-logo', [CompanyController::class, 'removeLogo'])->name('company.remove-logo');
+});
+
+// Add this after your existing routes for debugging
+
+Route::post('debug-po', function(\Illuminate\Http\Request $request) {
+    dd([
+        'all_data' => $request->all(),
+        'has_items' => $request->has('items'),
+        'items_data' => $request->input('items'),
+        'method' => $request->method(),
+        'url' => $request->url()
+    ]);
+})->name('debug.po');
 
