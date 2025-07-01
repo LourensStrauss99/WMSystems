@@ -2,196 +2,281 @@
 @extends('layouts.app')
 
 @section('content')
-<!-- Add custom CSS for button styling -->
-<style>
-.btn-save-custom {
-    background-color: #28a745 !important;
-    border-color: #28a745 !important;
-    color: white !important;
-    transition: all 0.3s ease !important;
-}
+<div class="container-fluid mt-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="text-dark fw-bold mb-1">
+                <i class="fas fa-edit text-primary me-2"></i>
+                Edit Jobcard
+            </h2>
+            <p class="text-muted">Update jobcard details and manage resources</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="btn-group" role="group">
+                <a href="{{ route('jobcard.pdf', $jobcard->id) }}" class="btn btn-danger text-white" target="_blank">
+                    <i class="fas fa-file-pdf me-2"></i>Export PDF
+                </a>
+                <a href="{{ route('jobcard.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                </a>
+            </div>
+        </div>
+    </div>
 
-.btn-save-custom:hover {
-    background-color: #218838 !important;
-    border-color: #1e7e34 !important;
-    color: white !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
-}
-
-.btn-pdf-custom {
-    background-color: #dc3545 !important;
-    border-color: #dc3545 !important;
-    color: white !important;
-    transition: all 0.3s ease !important;
-}
-
-.btn-pdf-custom:hover {
-    background-color: #c82333 !important;
-    border-color: #bd2130 !important;
-    color: white !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
-}
-
-.btn-back-custom {
-    background-color: #6c757d !important;
-    border-color: #6c757d !important;
-    color: white !important;
-    transition: all 0.3s ease !important;
-}
-
-.btn-back-custom:hover {
-    background-color: #5a6268 !important;
-    border-color: #545b62 !important;
-    color: white !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
-}
-
-.btn i {
-    margin-right: 8px;
-}
-</style>
-
-<div class="container mt-4">
-    <h2>Edit Jobcard</h2>
     <form method="POST" action="{{ route('jobcard.update', $jobcard->id) }}">
         @csrf
         @method('PUT')
 
-        <!-- Basic Jobcard Fields -->
-        <div class="mb-3">
-            <label class="form-label">Jobcard Number</label>
-            <input type="text" name="jobcard_number" class="form-control" value="{{ old('jobcard_number', $jobcard->jobcard_number) }}" required>
-        </div>
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <!-- Basic Information Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle text-primary me-2"></i>Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Jobcard Number</label>
+                                    <input type="text" name="jobcard_number" class="form-control" 
+                                           value="{{ old('jobcard_number', $jobcard->jobcard_number) }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Job Date</label>
+                                    <input type="date" name="job_date" class="form-control" 
+                                           value="{{ old('job_date', $jobcard->job_date) }}" required>
+                                </div>
+                            </div>
+                        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Job Date</label>
-            <input type="date" name="job_date" class="form-control" value="{{ old('job_date', $jobcard->job_date) }}" required>
-        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Client</label>
+                                    <select name="client_id" class="form-control" required>
+                                        @foreach($clients as $client)
+                                            <option value="{{ $client->id }}" {{ $jobcard->client_id == $client->id ? 'selected' : '' }}>
+                                                {{ $client->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold text-muted">Category</label>
+                                    <input type="text" name="category" class="form-control" 
+                                           value="{{ old('category', $jobcard->category) }}">
+                                </div>
+                            </div>
+                        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Client</label>
-            <select name="client_id" class="form-control" required>
-                @foreach($clients as $client)
-                    <option value="{{ $client->id }}" {{ $jobcard->client_id == $client->id ? 'selected' : '' }}>
-                        {{ $client->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted">Work Request</label>
+                            <textarea name="work_request" class="form-control" rows="3">{{ old('work_request', $jobcard->work_request) }}</textarea>
+                        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Category</label>
-            <input type="text" name="category" class="form-control" value="{{ old('category', $jobcard->category) }}">
-        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted">Special Request</label>
+                            <textarea name="special_request" class="form-control" rows="3">{{ old('special_request', $jobcard->special_request) }}</textarea>
+                        </div>
 
-        <div class="mb-3">
-            <label class="form-label">Work Request</label>
-            <textarea name="work_request" class="form-control">{{ old('work_request', $jobcard->work_request) }}</textarea>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Special Request</label>
-            <textarea name="special_request" class="form-control">{{ old('special_request', $jobcard->special_request) }}</textarea>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select name="status" class="form-control" required>
-                <option value="assigned" {{ $jobcard->status == 'assigned' ? 'selected' : '' }}>Assigned</option>
-                <option value="in progress" {{ $jobcard->status == 'in progress' ? 'selected' : '' }}>In Progress</option>
-                <option value="completed" {{ $jobcard->status == 'completed' ? 'selected' : '' }}>Completed</option>
-                <option value="invoiced" {{ $jobcard->status == 'invoiced' ? 'selected' : '' }}>Invoiced</option>
-            </select>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Work Done</label>
-            <textarea name="work_done" class="form-control">{{ old('work_done', $jobcard->work_done) }}</textarea>
-        </div>
-
-        <!-- Employees Section -->
-        <div class="mb-3">
-            <label class="form-label">Add Employee</label>
-            <div class="row g-2">
-                <div class="col-md-5">
-                    <select id="employee_select" class="form-control">
-                        <option value="">Select Employee</option>
-                        @foreach($employees as $employee)
-                            <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                        @endforeach
-                    </select>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted">Work Done</label>
+                            <textarea name="work_done" class="form-control" rows="4">{{ old('work_done', $jobcard->work_done) }}</textarea>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <input type="number" id="employee_hours_input" class="form-control" min="0" placeholder="Hours Worked">
+
+                <!-- Employees Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users text-success me-2"></i>Assigned Employees
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold text-muted">Employee</label>
+                                <select id="employee_select" class="form-control">
+                                    <option value="">Select Employee</option>
+                                    @foreach($employees as $employee)
+                                        <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Hours Worked</label>
+                                <input type="number" id="employee_hours_input" class="form-control" 
+                                       min="0" step="0.5" placeholder="Hours">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">&nbsp;</label>
+                                <button type="button" class="btn btn-success text-white d-block" onclick="addEmployee()">
+                                    <i class="fas fa-plus me-2"></i>Add Employee
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 bg-light">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-list me-2"></i>Current Employees
+                            </h6>
+                            <ul id="employee_list" class="list-unstyled mb-0">
+                                @forelse($jobcard->employees as $employee)
+                                    <li data-id="{{ $employee->id }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <div>
+                                            <strong>{{ $employee->name }}</strong>
+                                            <span class="badge bg-info ms-2">{{ $employee->pivot->hours_worked ?? 0 }} hours</span>
+                                        </div>
+                                        <input type="hidden" name="employees[]" value="{{ $employee->id }}">
+                                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $employee->pivot->hours_worked ?? 0 }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </li>
+                                @empty
+                                    <li class="text-muted">No employees assigned yet</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-success" onclick="addEmployee()">Add</button>
+
+                <!-- Inventory Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-boxes text-warning me-2"></i>Inventory Items
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted">Inventory Item</label>
+                                <select id="inventory_select" class="form-control">
+                                    <option value="">Select Inventory Item</option>
+                                    @foreach($inventory as $item)
+                                        @php $stockStatus = $item->getStockStatus(); @endphp
+                                        <option value="{{ $item->id }}" 
+                                                data-short="{{ $item->short_description }}"
+                                                data-stock="{{ $item->stock_level }}"
+                                                data-min="{{ $item->min_level }}"
+                                                data-code="{{ $item->short_code }}"
+                                                data-status="{{ $stockStatus['status'] }}">
+                                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">Quantity</label>
+                                <input type="number" id="inventory_quantity" class="form-control" 
+                                       min="1" max="100" value="1" placeholder="Qty">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">&nbsp;</label>
+                                <button type="button" id="add_inventory" class="btn btn-primary text-white d-block">
+                                    <i class="fas fa-plus me-2"></i>Add Item
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 bg-light">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-list me-2"></i>Current Items
+                            </h6>
+                            <ul id="inventory_list" class="list-unstyled mb-0">
+                                @forelse($jobcard->inventory as $item)
+                                    <li data-id="{{ $item->id }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <div>
+                                            <strong>{{ $item->name }}</strong>
+                                            <span class="badge bg-warning text-dark ms-2">Qty: {{ $item->pivot->quantity ?? 0 }}</span>
+                                        </div>
+                                        <input type="hidden" name="inventory_items[]" value="{{ $item->id }}">
+                                        <input type="hidden" name="inventory_qty[{{ $item->id }}]" value="{{ $item->pivot->quantity ?? 0 }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInventory(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </li>
+                                @empty
+                                    <li class="text-muted">No inventory items added yet</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <ul id="employee_list" class="mt-2">
-                @foreach($jobcard->employees as $employee)
-                    <li data-id="{{ $employee->id }}">
-                        {{ $employee->name }} ({{ $employee->pivot->hours_worked ?? 0 }} hours)
-                        <input type="hidden" name="employees[]" value="{{ $employee->id }}">
-                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $employee->pivot->hours_worked ?? 0 }}">
-                        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeEmployee(this)">Remove</button>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
 
-        <!-- Inventory Section -->
-        <div class="mb-3">
-            <label class="form-label">Add Inventory Item</label>
-            <div class="input-group mb-3">
-                <select id="inventory_select" class="form-control">
-                    <option value="">Select Inventory</option>
-                    @foreach($inventory as $item)
-                        @php $stockStatus = $item->getStockStatus(); @endphp
-                        <option value="{{ $item->id }}" 
-                                data-short="{{ $item->short_description }}"
-                                data-stock="{{ $item->stock_level }}"
-                                data-min="{{ $item->min_level }}"
-                                data-code="{{ $item->short_code }}"
-                                data-status="{{ $stockStatus['status'] }}">
-                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
-                        </option>
-                    @endforeach
-                </select>
-                <input type="number" id="inventory_quantity" class="form-control" min="1" max="100" value="1" placeholder="Qty">
-                <button type="button" id="add_inventory" class="btn btn-primary">Add</button>
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Status Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-tasks text-info me-2"></i>Status & Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">Current Status</label>
+                            <select name="status" class="form-control" required>
+                                <option value="assigned" {{ $jobcard->status == 'assigned' ? 'selected' : '' }}>Assigned</option>
+                                <option value="in progress" {{ $jobcard->status == 'in progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="completed" {{ $jobcard->status == 'completed' ? 'selected' : '' }}>Completed</option>
+                                <option value="invoiced" {{ $jobcard->status == 'invoiced' ? 'selected' : '' }}>Invoiced</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success text-white">
+                                <i class="fas fa-save me-2"></i>Update Jobcard
+                            </button>
+                            
+                            <a href="{{ route('jobcard.pdf', $jobcard->id) }}" 
+                               class="btn btn-danger text-white" 
+                               target="_blank">
+                                <i class="fas fa-file-pdf me-2"></i>Export PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Card -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar text-primary me-2"></i>Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-calendar text-muted me-2"></i>Created:</div>
+                            <div class="col-5 text-end">{{ $jobcard->created_at->format('d M Y') }}</div>
+                        </div>
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-users text-muted me-2"></i>Employees:</div>
+                            <div class="col-5 text-end fw-bold" id="employee_count">{{ $jobcard->employees->count() }}</div>
+                        </div>
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-boxes text-muted me-2"></i>Items:</div>
+                            <div class="col-5 text-end fw-bold" id="inventory_count">{{ $jobcard->inventory->count() }}</div>
+                        </div>
+                        <div class="row text-sm">
+                            <div class="col-7"><i class="fas fa-clock text-muted me-2"></i>Total Hours:</div>
+                            <div class="col-5 text-end fw-bold" id="total_hours">{{ $jobcard->employees->sum('pivot.hours_worked') }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <ul id="inventory_list" class="mt-2">
-                @foreach($jobcard->inventory as $item)
-                    <li data-id="{{ $item->id }}">
-                        {{ $item->name }} (Qty: {{ $item->pivot->quantity ?? 0 }})
-                        <input type="hidden" name="inventory_items[]" value="{{ $item->id }}">
-                        <input type="hidden" name="inventory_qty[{{ $item->id }}]" value="{{ $item->pivot->quantity ?? 0 }}">
-                        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeInventory(this)">Remove</button>
-                    </li>
-                @endforeach
-            </ul>
-        </div>
-
-        <!-- Custom styled buttons -->
-        <div class="d-flex gap-2 mt-3">
-            <button type="submit" class="btn btn-save-custom">
-                <i class="fas fa-save"></i>Save Jobcard
-            </button>
-            
-            <a href="{{ route('jobcard.pdf', $jobcard->id) }}" 
-               class="btn btn-pdf-custom" 
-               target="_blank">
-                <i class="fas fa-file-pdf"></i>Export PDF
-            </a>
-            
-            <a href="{{ route('jobcard.index') }}" 
-               class="btn btn-back-custom">
-                <i class="fas fa-arrow-left"></i>Back to List
-            </a>
         </div>
     </form>
 </div>
@@ -205,22 +290,131 @@ function addEmployee() {
     let id = select.value;
     let name = select.options[select.selectedIndex].text;
 
-    if (!id || !hours || hours < 0) return;
+    if (!id || !hours || hours < 0) {
+        alert('Please select an employee and enter valid hours');
+        return;
+    }
 
     // Prevent duplicate
-    if (document.querySelector('#employee_list li[data-id="'+id+'"]')) return;
+    if (document.querySelector('#employee_list li[data-id="'+id+'"]')) {
+        alert('This employee is already assigned');
+        return;
+    }
+
+    // Remove "no employees" message
+    const noEmployeesMsg = document.querySelector('#employee_list .text-muted');
+    if (noEmployeesMsg && noEmployeesMsg.textContent.includes('No employees')) {
+        noEmployeesMsg.remove();
+    }
 
     let li = document.createElement('li');
     li.setAttribute('data-id', id);
-    li.innerHTML = `${name} (${hours} hours)
+    li.className = 'd-flex justify-content-between align-items-center py-2 border-bottom';
+    li.innerHTML = `
+        <div>
+            <strong>${name}</strong>
+            <span class="badge bg-info ms-2">${hours} hours</span>
+        </div>
         <input type="hidden" name="employees[]" value="${id}">
         <input type="hidden" name="employee_hours[${id}]" value="${hours}">
-        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeEmployee(this)">Remove</button>`;
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
+            <i class="fas fa-times"></i>
+        </button>`;
     document.getElementById('employee_list').appendChild(li);
+    
+    // Reset form
+    select.value = '';
+    document.getElementById('employee_hours_input').value = '';
+    
+    updateSummary();
 }
 
 function removeEmployee(btn) {
-    btn.parentElement.remove();
+    btn.closest('li').remove();
+    
+    // Add "no employees" message if list is empty
+    const list = document.getElementById('employee_list');
+    if (list.children.length === 0) {
+        list.innerHTML = '<li class="text-muted">No employees assigned yet</li>';
+    }
+    
+    updateSummary();
+}
+
+function addInventoryToJobcard() {
+    let select = document.getElementById('inventory_select');
+    let qty = document.getElementById('inventory_quantity').value;
+    let id = select.value;
+    let name = select.options[select.selectedIndex].text;
+
+    if (!id || !qty || qty < 1) {
+        alert('Please select an item and enter valid quantity');
+        return;
+    }
+
+    // Prevent duplicate
+    if (document.querySelector('#inventory_list li[data-id="'+id+'"]')) {
+        alert('This item is already added to the jobcard');
+        return;
+    }
+
+    // Remove "no items" message
+    const noItemsMsg = document.querySelector('#inventory_list .text-muted');
+    if (noItemsMsg && noItemsMsg.textContent.includes('No inventory')) {
+        noItemsMsg.remove();
+    }
+
+    let li = document.createElement('li');
+    li.setAttribute('data-id', id);
+    li.className = 'd-flex justify-content-between align-items-center py-2 border-bottom';
+    li.innerHTML = `
+        <div>
+            <strong>${name.split(' (Stock:')[0]}</strong>
+            <span class="badge bg-warning text-dark ms-2">Qty: ${qty}</span>
+        </div>
+        <input type="hidden" name="inventory_items[]" value="${id}">
+        <input type="hidden" name="inventory_qty[${id}]" value="${qty}">
+        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInventory(this)">
+            <i class="fas fa-times"></i>
+        </button>`;
+    document.getElementById('inventory_list').appendChild(li);
+    
+    // Reset form
+    select.value = '';
+    document.getElementById('inventory_quantity').value = 1;
+    
+    // Remove any existing alerts
+    removeAlerts();
+    updateSummary();
+}
+
+function removeInventory(btn) {
+    btn.closest('li').remove();
+    
+    // Add "no items" message if list is empty
+    const list = document.getElementById('inventory_list');
+    if (list.children.length === 0) {
+        list.innerHTML = '<li class="text-muted">No inventory items added yet</li>';
+    }
+    
+    updateSummary();
+}
+
+function updateSummary() {
+    // Update employee count
+    const employeeCount = document.querySelectorAll('#employee_list li[data-id]').length;
+    document.getElementById('employee_count').textContent = employeeCount;
+    
+    // Update inventory count
+    const inventoryCount = document.querySelectorAll('#inventory_list li[data-id]').length;
+    document.getElementById('inventory_count').textContent = inventoryCount;
+    
+    // Update total hours
+    let totalHours = 0;
+    document.querySelectorAll('#employee_list input[name^="employee_hours"]').forEach(input => {
+        totalHours += parseFloat(input.value) || 0;
+    });
+    document.getElementById('total_hours').textContent = totalHours;
 }
 
 // Real-time stock checking when adding inventory
@@ -246,40 +440,6 @@ document.getElementById('add_inventory').addEventListener('click', function(e) {
         }
     });
 });
-
-function addInventoryToJobcard() {
-    let select = document.getElementById('inventory_select');
-    let qty = document.getElementById('inventory_quantity').value;
-    let id = select.value;
-    let name = select.options[select.selectedIndex].text;
-
-    if (!id || !qty || qty < 1) return;
-
-    // Prevent duplicate
-    if (document.querySelector('#inventory_list li[data-id="'+id+'"]')) {
-        alert('This item is already added to the jobcard');
-        return;
-    }
-
-    let li = document.createElement('li');
-    li.setAttribute('data-id', id);
-    li.innerHTML = `${name} (Qty: ${qty})
-        <input type="hidden" name="inventory_items[]" value="${id}">
-        <input type="hidden" name="inventory_qty[${id}]" value="${qty}">
-        <button type="button" class="btn btn-sm btn-danger ms-2" onclick="removeInventory(this)">Remove</button>`;
-    document.getElementById('inventory_list').appendChild(li);
-    
-    // Reset form
-    select.value = '';
-    document.getElementById('inventory_quantity').value = 1;
-    
-    // Remove any existing alerts
-    removeAlerts();
-}
-
-function removeInventory(btn) {
-    btn.parentElement.remove();
-}
 
 function checkStockAvailability(itemId, quantity, callback) {
     fetch('/inventory/check-stock', {
@@ -309,8 +469,8 @@ function showStockError(stockData) {
     const shortCode = selectedOption ? selectedOption.getAttribute('data-code') : 'N/A';
     
     const alertHtml = `
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>❌ Insufficient Stock!</strong><br>
+        <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+            <strong><i class="fas fa-exclamation-triangle me-2"></i>Insufficient Stock!</strong><br>
             <strong>Code:</strong> [${shortCode}]<br>
             <strong>Item:</strong> ${stockData.item_name}<br>
             <strong>Available:</strong> ${stockData.current_stock}<br>
@@ -320,9 +480,9 @@ function showStockError(stockData) {
         </div>
     `;
     
-    // Show the alert above the inventory section
-    const inventorySection = document.getElementById('inventory_select').closest('.mb-3');
-    inventorySection.insertAdjacentHTML('afterbegin', alertHtml);
+    // Show the alert in the inventory card body
+    const inventoryCard = document.querySelector('#inventory_select').closest('.card-body');
+    inventoryCard.insertAdjacentHTML('afterbegin', alertHtml);
     
     // Auto-remove after 5 seconds
     setTimeout(function() {
@@ -333,15 +493,15 @@ function showStockError(stockData) {
 function showStockWarning(stockData) {
     if (stockData.warning) {
         const alertHtml = `
-            <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                <strong>⚠️ Stock Warning!</strong><br>
+            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
+                <strong><i class="fas fa-exclamation-triangle me-2"></i>Stock Warning!</strong><br>
                 ${stockData.warning}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="removeAlerts()"></button>
             </div>
         `;
         
-        const inventorySection = document.getElementById('inventory_select').closest('.mb-3');
-        inventorySection.insertAdjacentHTML('afterbegin', alertHtml);
+        const inventoryCard = document.querySelector('#inventory_select').closest('.card-body');
+        inventoryCard.insertAdjacentHTML('afterbegin', alertHtml);
         
         setTimeout(function() {
             removeAlerts();
@@ -403,6 +563,11 @@ document.getElementById('inventory_select').addEventListener('change', function(
     } else {
         document.getElementById('add_inventory').disabled = false;
     }
+});
+
+// Initialize summary on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateSummary();
 });
 </script>
 @endsection
