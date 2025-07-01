@@ -92,7 +92,7 @@ class Supplier extends Model
 
     public function getFormattedCreditLimitAttribute()
     {
-        return 'R ' . number_format($this->credit_limit, 2);
+        return 'R ' . number_format((float) $this->credit_limit, 2);
     }
 
     public function getPaymentTermsTextAttribute()

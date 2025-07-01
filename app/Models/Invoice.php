@@ -77,7 +77,9 @@ class Invoice extends Model
     {
         if ($this->status === 'paid') return 0;
         
-        $dueDate = $this->due_date ?: $this->invoice_date->addDays(30);
+        $dueDate = $this->due_date 
+            ? ($this->due_date instanceof Carbon ? $this->due_date : Carbon::parse((string)$this->due_date))
+            : ( $this->invoice_date ? ( $this->invoice_date instanceof Carbon ? $this->invoice_date->copy()->addDays(30) : Carbon::parse((string)$this->invoice_date)->addDays(30) ) : Carbon::now()->addDays(30) );
         return Carbon::now()->diffInDays($dueDate, false);
     }
 

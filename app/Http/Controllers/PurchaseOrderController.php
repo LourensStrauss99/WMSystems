@@ -244,7 +244,7 @@ class PurchaseOrderController extends Controller
         ]);
 
         // Log the status change (optional)
-        Log::info("Purchase Order {$purchaseOrder->po_number} status changed from {$oldStatus} to {$request->status} by user " . auth()->id());
+        Log::info("Purchase Order {$purchaseOrder->po_number} status changed from {$oldStatus} to {$request->status} by user " . Auth::id());
 
         return response()->json([
             'success' => true,

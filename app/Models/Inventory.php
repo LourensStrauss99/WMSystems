@@ -150,7 +150,7 @@ class Inventory extends Model
         $this->stock_level += $quantity;
         $this->quantity = $this->stock_level;
         $this->stock_added = $quantity;
-        $this->last_stock_update = now()->toDateString();
+        $this->last_stock_update = now();
         $this->stock_update_reason = $reason;
         
         // Update purchase info if provided
