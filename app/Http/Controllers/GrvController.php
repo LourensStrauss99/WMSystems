@@ -4,6 +4,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class GrvController extends Controller
 {
@@ -98,10 +100,25 @@ class GrvController extends Controller
     {
         return response()->json(['message' => 'PDF generation coming soon!']);
     }
-}
 
-// Update quantity received
-$purchaseOrderItem->update([
-    'quantity_received' => $newQuantityReceived,
-    'status' => $newQuantityReceived >= $purchaseOrderItem->quantity_ordered ? 'fully_received' : 'partially_received'
-]);
+    /**
+     * Some method name
+     */
+    public function someMethodName() // Replace with the actual method name
+    {
+        // Make sure $purchaseOrderItem is properly defined before using it
+        if (isset($purchaseOrderItem) && $purchaseOrderItem) {
+            // Update quantity received using DB query instead of model method
+            DB::table('purchase_order_items')
+                ->where('id', $purchaseOrderItem->id)
+                ->update([
+                    'quantity_received' => $newQuantityReceived,
+                    'status' => $newQuantityReceived >= $purchaseOrderItem->quantity_ordered ? 'fully_received' : 'partially_received'
+                ]);
+        } else {
+            // Handle the case where $purchaseOrderItem is not found
+            Log::error('Purchase Order Item not found or not defined');
+            return back()->with('error', 'Purchase Order Item not found');
+        }
+    }
+}

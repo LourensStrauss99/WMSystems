@@ -2,32 +2,39 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Inventory extends Model
 {
+    use HasFactory;
+
     protected $table = 'inventory';
 
     protected $fillable = [
-        'name',
         'description',
-        'short_description',
+        'name',
+        'code', // Add this
+        'item_code', // Add this  
         'short_code',
+        'short_description',
         'vendor',
         'supplier',
         'goods_received_voucher',
-        'invoice_number',        // New
-        'receipt_number',        // New
-        'purchase_date',         // New
-        'purchase_order_number', // New
-        'purchase_notes',        // New
-        'last_stock_update',     // New
-        'stock_added',           // New
-        'stock_update_reason',   // New
+        'invoice_number',
+        'receipt_number',
+        'purchase_date',
+        'purchase_order_number',
+        'purchase_notes',
+        'last_stock_update',
+        'stock_added',
+        'stock_update_reason',
         'nett_price',
         'buying_price',
         'sell_price',
         'selling_price',
+        'unit_price', // Add this
+        'price', // Add this
         'quantity',
         'stock_level',
         'min_quantity',
@@ -35,17 +42,17 @@ class Inventory extends Model
     ];
 
     protected $casts = [
-        'buying_price' => 'decimal:2',
-        'selling_price' => 'decimal:2',
-        'nett_price' => 'decimal:2',
-        'sell_price' => 'decimal:2',
-        'stock_level' => 'integer',
-        'quantity' => 'integer',
-        'min_level' => 'integer',
-        'min_quantity' => 'integer',
-        'stock_added' => 'integer',
         'purchase_date' => 'date',
-        'last_stock_update' => 'date',
+        'last_stock_update' => 'datetime',
+        'nett_price' => 'decimal:2',
+        'buying_price' => 'decimal:2',
+        'sell_price' => 'decimal:2',
+        'selling_price' => 'decimal:2',
+        'quantity' => 'integer',
+        'stock_level' => 'integer',
+        'min_quantity' => 'integer',
+        'min_level' => 'integer',
+        'stock_added' => 'integer',
     ];
 
     /**

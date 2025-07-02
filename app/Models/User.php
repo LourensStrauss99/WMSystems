@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -22,6 +22,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'is_superuser',
         'admin_level',
+        'role', // Added role field
     ];
 
     /**
@@ -52,5 +53,22 @@ class User extends Authenticatable implements MustVerifyEmail
             $initials .= strtoupper(substr($n, 0, 1));
         }
         return $initials ?: strtoupper(substr($this->email, 0, 1));
+    }
+
+    /**
+     * Check if the user can approve based on their role.
+     *
+     * @return bool
+     */
+    public function canApprove()
+    {
+        // For now, let's say all users can approve (change this logic as needed)
+        return true;
+
+        // OR if you have a role column:
+        // return $this->role === 'manager' || $this->role === 'admin';
+
+        // OR if you have specific user IDs that can approve:
+        // return in_array($this->id, [1, 2, 3]); // Replace with actual user IDs
     }
 }

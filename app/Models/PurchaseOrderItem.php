@@ -13,10 +13,11 @@ class PurchaseOrderItem extends Model
         'purchase_order_id',
         'item_name',
         'item_code',
-        'item_description', // Changed from 'description'
+        'item_description',
         'item_category',
         'quantity_ordered',
         'quantity_received',
+        'quantity_outstanding',
         'unit_price',
         'line_total',
         'unit_of_measure',
@@ -25,8 +26,9 @@ class PurchaseOrderItem extends Model
     ];
 
     protected $casts = [
-        'quantity_ordered' => 'integer',
-        'quantity_received' => 'integer',
+        'quantity_ordered' => 'decimal:3',
+        'quantity_received' => 'decimal:3',
+        'quantity_outstanding' => 'decimal:3',
         'unit_price' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];
@@ -40,26 +42,10 @@ class PurchaseOrderItem extends Model
     }
 
     /**
-     * Get remaining quantity to receive
+     * Get the inventory associated with the purchase order item
      */
-    public function getRemainingQuantityAttribute()
+    public function inventory()
     {
-        return $this->quantity_ordered - ($this->quantity_received ?? 0);
-    }
-
-    /**
-     * Check if item is fully received
-     */
-    public function getIsFullyReceivedAttribute()
-    {
-        return $this->quantity_received >= $this->quantity_ordered;
-    }
-
-    /**
-     * Get the outstanding quantity (calculated field)
-     */
-    public function getQuantityOutstandingAttribute()
-    {
-        return $this->quantity_ordered - $this->quantity_received;
+        return $this->belongsTo(Inventory::class, 'inventory_id');
     }
 }

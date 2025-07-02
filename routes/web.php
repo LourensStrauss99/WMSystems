@@ -205,20 +205,35 @@ Route::get('/jobcard/{jobcard}/pdf', [JobcardController::class, 'generatePDF'])-
 
 // Purchase Orders
 Route::middleware(['auth'])->group(function () {
-    // Purchase Orders routes
-    Route::resource('purchase-orders', PurchaseOrderController::class);
     
-    // Add this line for status updates
-    Route::post('purchase-orders/{purchaseOrder}/update-status', [PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.update-status');
+    // Purchase Orders - Clean up duplicates and fix parameter names
+    Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+    Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
+    Route::get('/purchase-orders/create/low-stock', [PurchaseOrderController::class, 'createFromLowStock'])->name('purchase-orders.create-low-stock');
+    Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase-orders.store');
     
-    Route::get('purchase-orders/{purchaseOrder}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
-    Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'generatePdf'])->name('purchase-orders.pdf');
-    Route::get('purchase-orders/create/low-stock', [PurchaseOrderController::class, 'createFromLowStock'])->name('purchase-orders.create-low-stock');
+    // Approvals dashboard
+    Route::get('/approvals', [PurchaseOrderController::class, 'approvals'])->name('approvals.index');
     
-    // Suppliers routes
+    // SPECIFIC routes MUST come before generic {purchaseOrder} route
+    Route::get('/purchase-orders/{id}/edit', [PurchaseOrderController::class, 'edit'])->name('purchase-orders.edit');
+    Route::get('/purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+    Route::get('/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-orders.pdf');
+    Route::put('/purchase-orders/{id}', [PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
+    Route::delete('/purchase-orders/{id}', [PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
+    Route::post('/purchase-orders/{id}/update-status', [PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.update-status');
+    
+    // Approval workflow routes - FIXED parameter names
+    Route::post('/purchase-orders/{purchaseOrder}/submit-for-approval', [PurchaseOrderController::class, 'submitForApproval'])->name('purchase-orders.submit-for-approval');
+    Route::post('/purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
+    Route::post('/purchase-orders/{purchaseOrder}/reject', [PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
+    Route::post('/purchase-orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'sendToSupplier'])->name('purchase-orders.send');
+    
+    // Generic show route - MUST come LAST
+    Route::get('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'show'])->name('purchase-orders.show');
+    
+    // Suppliers and GRV routes
     Route::resource('suppliers', SupplierController::class);
-    
-    // Add GRV (Goods Received Voucher) routes
     Route::resource('grv', GrvController::class)->names([
         'index' => 'grv.index',
         'create' => 'grv.create',
@@ -228,8 +243,6 @@ Route::middleware(['auth'])->group(function () {
         'update' => 'grv.update',
         'destroy' => 'grv.destroy',
     ]);
-    
-    // Your other routes...
 });
 
 // Company Management Routes
@@ -253,3 +266,64 @@ Route::post('debug-po', function(\Illuminate\Http\Request $request) {
     ]);
 })->name('debug.po');
 
+// Debug routes (add at the very end)
+Route::get('/debug-approvals', function() {
+    try {
+        $allPOs = \App\Models\PurchaseOrder::all();
+        $pendingOrders = \App\Models\PurchaseOrder::where('status', 'pending_approval')->get();
+        
+        return response()->json([
+            'total_pos' => $allPOs->count(),
+            'all_statuses' => $allPOs->pluck('status', 'id')->toArray(),
+            'pending_count' => $pendingOrders->count(),
+            'pending_orders' => $pendingOrders->toArray(),
+            'latest_po' => $allPOs->latest()->first()?->toArray(),
+            'fillable_fields' => (new \App\Models\PurchaseOrder())->getFillable(),
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});
+
+Route::get('/force-pending', function() {
+    try {
+        $latestPO = \App\Models\PurchaseOrder::latest()->first();
+        if ($latestPO) {
+            // Force update using DB query
+            DB::table('purchase_orders')
+                ->where('id', $latestPO->id)
+                ->update([
+                    'status' => 'pending_approval',
+                    'submitted_for_approval_at' => now(),
+                    'submitted_by' => optional(auth())->id()
+                ]);
+            return "Forced PO {$latestPO->id} to pending_approval status. Check /debug-approvals now.";
+        }
+        return "No PO found";
+    } catch (\Exception $e) {
+        return "Error: " . $e->getMessage();
+    }
+});
+
+// Add this route to check database
+Route::get('/check-db', function() {
+    try {
+        // Check if table exists
+        $tableExists = \Illuminate\Support\Facades\Schema::hasTable('purchase_orders');
+        
+        // Check columns
+        $columns = [];
+        if ($tableExists) {
+            $columns = \Illuminate\Support\Facades\Schema::getColumnListing('purchase_orders');
+        }
+        
+        return response()->json([
+            'table_exists' => $tableExists,
+            'columns' => $columns,
+            'has_status_column' => in_array('status', $columns),
+            'sample_data' => $tableExists ? \App\Models\PurchaseOrder::first()?->toArray() : null
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+});

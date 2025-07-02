@@ -19,10 +19,19 @@
         </div>
     </div>
 
+    @if($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- Purchase Order Form -->
     <form method="POST" action="{{ route('purchase-orders.store') }}" id="purchaseOrderForm">
         @csrf
-        <input type="hidden" name="debug_test" value="form_submitted">
         
         <div class="row">
             <!-- Left Column - PO Details -->
@@ -39,18 +48,25 @@
                                 <label for="supplier_id" class="form-label fw-bold">
                                     <i class="fas fa-building me-1"></i>Supplier *
                                 </label>
-                                <select name="supplier_id" id="supplier_id" 
-                                        class="form-select @error('supplier_id') is-invalid @enderror" required>
-                                    <option value="">Select Supplier</option>
-                                    @foreach($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}" 
-                                                data-payment-terms="{{ $supplier->payment_terms }}"
-                                                data-email="{{ $supplier->email }}"
-                                                data-phone="{{ $supplier->phone }}">
-                                            {{ $supplier->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <div class="input-group">
+                                    <select name="supplier_id" id="supplier_id" 
+                                            class="form-select @error('supplier_id') is-invalid @enderror" required>
+                                        <option value="">Select Supplier</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}" 
+                                                    data-payment-terms="{{ $supplier->payment_terms }}"
+                                                    data-email="{{ $supplier->email }}"
+                                                    data-phone="{{ $supplier->phone }}"
+                                                    {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                                {{ $supplier->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" onclick="window.open('{{ route('suppliers.create') }}', '_blank')">
+                                        <i class="fas fa-plus"></i> New
+                                    </button>
+                                </div>
+                                <small class="text-muted">Can't find your supplier? <a href="{{ route('suppliers.create') }}" target="_blank">Add a new supplier</a>.</small>
                                 @error('supplier_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -76,10 +92,11 @@
                                 </label>
                                 <input type="date" name="expected_delivery_date" id="expected_delivery_date" 
                                        class="form-control @error('expected_delivery_date') is-invalid @enderror" 
-                                       value="{{ old('expected_delivery_date') }}">
+                                       value="{{ old('expected_delivery_date', date('Y-m-d', strtotime('+1 day'))) }}">
                                 @error('expected_delivery_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <small class="text-muted">Default: Next day delivery (can be changed to same day if needed)</small>
                             </div>
                             
                             <div class="col-md-6">
@@ -116,43 +133,68 @@
                                 <i class="fas fa-list me-2"></i>Order Items
                             </h5>
                             <button type="button" class="btn btn-light btn-sm" onclick="showAddItemForm()">
-                                <i class="fas fa-plus me-1"></i>Add New Item
+                                <i class="fas fa-plus me-1"></i>Add Item
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Add Item Form (Initially Hidden) - NO required attributes -->
+                        <!-- Add Item Form (Initially Hidden) -->
                         <div id="add-item-form" class="border rounded p-3 mb-3 bg-light" style="display: none;">
                             <h6 class="text-success mb-3">
-                                <i class="fas fa-plus-circle me-1"></i>Add New Item
+                                <i class="fas fa-plus-circle me-1"></i>Add Item to Order
                             </h6>
+                            
+                            <!-- Inventory Selection -->
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">
+                                        <i class="fas fa-search me-1"></i>Search Inventory
+                                    </label>
+                                    <select id="inventory-select" class="form-select">
+                                        <option value="">Select from existing inventory or add new item below...</option>
+                                        @foreach($inventory as $item)
+                                            <option value="{{ $item->id }}" 
+                                                    data-name="{{ $item->name }}"
+                                                    data-code="{{ $item->short_code }}"
+                                                    data-description="{{ $item->description }}"
+                                                    data-price="{{ $item->buying_price }}"
+                                                    data-supplier="{{ $item->supplier }}"
+                                                    data-stock="{{ $item->quantity }}">
+                                                {{ $item->name }} ({{ $item->short_code }}) - R{{ number_format($item->buying_price, 2) }} - Stock: {{ $item->quantity }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Choose an existing inventory item or fill in details below for new item</small>
+                                </div>
+                            </div>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label">Item Name *</label>
-                                    <input type="text" id="new-item-name" class="form-control">
+                                    <input type="text" id="new-item-name" class="form-control" placeholder="Enter item name">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label">Item Code</label>
-                                    <input type="text" id="new-item-code" class="form-control">
+                                    <input type="text" id="new-item-code" class="form-control" placeholder="Enter item code">
                                 </div>
                             </div>
                             
                             <div class="row">
                                 <div class="col-12 mb-2">
                                     <label class="form-label">Description</label>
-                                    <textarea id="new-item-description" class="form-control" rows="2"></textarea>
+                                    <textarea id="new-item-description" class="form-control" rows="2" placeholder="Enter item description"></textarea>
                                 </div>
                             </div>
                             
                             <div class="row">
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label">Quantity *</label>
-                                    <input type="number" id="new-item-quantity" min="1" class="form-control">
+                                    <input type="number" id="new-item-quantity" min="0.001" step="0.001" class="form-control" placeholder="0">
+                                    <small class="text-muted">Minimum: 0.001</small>
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label">Unit Price (R) *</label>
-                                    <input type="number" id="new-item-price" step="0.01" min="0" class="form-control">
+                                    <input type="number" id="new-item-price" step="0.01" min="0" class="form-control" placeholder="0.00">
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label">Line Total</label>
@@ -168,6 +210,9 @@
                                     <i class="fas fa-times me-1"></i>Cancel
                                 </button>
                             </div>
+                            
+                            <!-- Hidden field for inventory ID -->
+                            <input type="hidden" id="selected-inventory-id" value="">
                         </div>
 
                         <!-- Items List -->
@@ -177,7 +222,8 @@
                         
                         <div class="alert alert-info" id="no-items-alert">
                             <i class="fas fa-info-circle me-2"></i>
-                            No items added yet. Click "Add New Item" to start adding products to this purchase order.
+                            No items added yet. Click "Add Item" to start adding products to this purchase order.
+                            <br><small class="text-muted">Debug: {{ isset($inventory) ? $inventory->count() : 'No inventory variable' }} inventory items available</small>
                         </div>
                     </div>
                 </div>
@@ -226,7 +272,7 @@
                 </div>
             </div>
         </div>
-    </form> <!-- Make sure form is properly closed -->
+    </form>
 </div>
 
 <script>
@@ -236,6 +282,27 @@ let orderItems = [];
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded');
     
+    // Inventory selection handler
+    const inventorySelect = document.getElementById('inventory-select');
+    if (inventorySelect) {
+        inventorySelect.addEventListener('change', function() {
+            if (this.value) {
+                const option = this.options[this.selectedIndex];
+                // Auto-fill all fields except quantity
+                document.getElementById('new-item-name').value = option.dataset.name || '';
+                document.getElementById('new-item-description').value = option.dataset.description || '';
+                document.getElementById('new-item-code').value = option.dataset.code || '';
+                document.getElementById('new-item-price').value = option.dataset.price || '';
+                document.getElementById('new-item-supplier').value = option.dataset.supplier || '';
+                document.getElementById('selected-inventory-id').value = this.value;
+                // Focus on quantity field
+                document.getElementById('new-item-quantity').focus();
+            } else {
+                clearAddItemForm();
+            }
+        });
+    }
+
     // Supplier selection handler
     const supplierSelect = document.getElementById('supplier_id');
     if (supplierSelect) {
@@ -245,18 +312,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add event listeners for new item form calculations
+    // Add event listeners for calculations
     const quantityInput = document.getElementById('new-item-quantity');
     const priceInput = document.getElementById('new-item-price');
     
     if (quantityInput) quantityInput.addEventListener('input', calculateNewItemTotal);
     if (priceInput) priceInput.addEventListener('input', calculateNewItemTotal);
+    
+    // Set delivery date to tomorrow by default
+    const deliveryDateInput = document.getElementById('expected_delivery_date');
+    if (deliveryDateInput && !deliveryDateInput.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        deliveryDateInput.value = tomorrow.toISOString().split('T')[0];
+    }
 });
 
 function showAddItemForm() {
     console.log('Show add item form');
     document.getElementById('add-item-form').style.display = 'block';
-    document.getElementById('new-item-name').focus();
+    document.getElementById('inventory-select').focus();
 }
 
 function hideAddItemForm() {
@@ -266,12 +341,14 @@ function hideAddItemForm() {
 }
 
 function clearAddItemForm() {
+    document.getElementById('inventory-select').value = '';
     document.getElementById('new-item-name').value = '';
     document.getElementById('new-item-code').value = '';
     document.getElementById('new-item-description').value = '';
     document.getElementById('new-item-quantity').value = '';
     document.getElementById('new-item-price').value = '';
     document.getElementById('new-item-total').value = '';
+    document.getElementById('selected-inventory-id').value = '';
 }
 
 function calculateNewItemTotal() {
@@ -290,6 +367,7 @@ function addItemToList() {
     const description = document.getElementById('new-item-description').value.trim();
     const quantity = parseFloat(document.getElementById('new-item-quantity').value) || 0;
     const price = parseFloat(document.getElementById('new-item-price').value) || 0;
+    const inventoryId = document.getElementById('selected-inventory-id').value;
     
     // Validation
     if (!itemName || quantity <= 0 || price < 0) {
@@ -302,6 +380,7 @@ function addItemToList() {
     
     const newItem = {
         index: itemIndex,
+        inventoryId: inventoryId,
         name: itemName,
         code: itemCode,
         description: description,
@@ -312,7 +391,6 @@ function addItemToList() {
     
     orderItems.push(newItem);
     console.log('Item added:', newItem);
-    console.log('Total items:', orderItems.length);
     
     renderItemsList();
     hideAddItemForm();
@@ -348,6 +426,7 @@ function renderItemsList() {
                 <div class="col-md-6">
                     ${item.code ? `<div><strong>Code:</strong> ${item.code}</div>` : ''}
                     ${item.description ? `<div><strong>Description:</strong> ${item.description}</div>` : ''}
+                    ${item.inventoryId ? `<div class="text-success"><strong>From Inventory</strong></div>` : '<div class="text-warning"><strong>New Item</strong></div>'}
                 </div>
                 <div class="col-md-6">
                     <div><strong>Quantity:</strong> ${item.quantity}</div>
@@ -357,9 +436,11 @@ function renderItemsList() {
             </div>
             
             <!-- Hidden form inputs -->
+            <input type="hidden" name="items[${index}][inventory_id]" value="${item.inventoryId || ''}">
             <input type="hidden" name="items[${index}][item_name]" value="${item.name}">
             <input type="hidden" name="items[${index}][item_code]" value="${item.code}">
-            <input type="hidden" name="items[${index}][description]" value="${item.description}">
+            <input type="hidden" name="items[${index}][item_description]" value="${item.description || ''}">
+            <input type="hidden" name="items[${index}][item_category]" value="${item.category || ''}">
             <input type="hidden" name="items[${index}][quantity_ordered]" value="${item.quantity}">
             <input type="hidden" name="items[${index}][unit_price]" value="${item.price}">
         </div>
@@ -421,19 +502,13 @@ function updateFormState() {
     border-radius: 10px 10px 0 0 !important;
 }
 
-.btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-}
-
-.btn-success {
-    background-color: #198754;
-    border-color: #198754;
-}
-
 #add-item-form {
     border: 2px dashed #28a745;
     background-color: #d4edda !important;
+}
+
+#inventory-select {
+    max-height: 200px;
 }
 </style>
 @endsection

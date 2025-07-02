@@ -14,17 +14,41 @@ class PurchaseOrder extends Model
     use HasFactory;
 
     protected $fillable = [
-        'po_number', 'supplier_id', 'supplier_name', 'order_date', 'expected_delivery_date',
-        'status', 'total_amount', 'vat_amount', 'grand_total',
-        'notes', 'created_by',
+        'po_number',
+        'supplier_id',
+        'supplier_name',
+        'supplier_contact',
+        'supplier_email',
+        'supplier_phone',
+        'supplier_address',
+        'order_date',
+        'expected_delivery_date',
+        'actual_delivery_date',
+        'total_amount',
+        'vat_amount',
+        'grand_total',
+        'notes',
+        'terms_conditions',
+        'payment_terms',
+        'status',
+        'submitted_for_approval_at',
+        'submitted_by',
+        'approved_at',
+        'approved_by',
+        'rejected_at',
+        'rejected_by',
+        'sent_at',
+        'sent_by',
     ];
 
     protected $casts = [
         'order_date' => 'date',
         'expected_delivery_date' => 'date',
-        'total_amount' => 'decimal:2',
-        'vat_amount' => 'decimal:2',
-        'grand_total' => 'decimal:2',
+        'actual_delivery_date' => 'date',
+        'submitted_for_approval_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     // Generate unique PO number
@@ -60,11 +84,43 @@ class PurchaseOrder extends Model
     }
 
     /**
+     * Get the user who submitted this PO for approval
+     */
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    /**
+     * Get the user who approved this PO
+     */
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /**
      * Get the user who created this purchase order
      */
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Add calculated attributes for totals
+    public function getTotalAmountAttribute()
+    {
+        return $this->items->sum('line_total');
+    }
+
+    public function getVatAmountAttribute()
+    {
+        return $this->total_amount * 0.15;
+    }
+
+    public function getGrandTotalAttribute()
+    {
+        return $this->total_amount + $this->vat_amount;
     }
 
     /**
