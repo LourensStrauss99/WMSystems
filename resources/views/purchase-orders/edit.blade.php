@@ -11,10 +11,16 @@
                 <i class="fas fa-edit text-warning me-2"></i>
                 Edit Purchase Order: {{ $purchaseOrder->po_number }}
             </h2>
-            <p class="text-muted">Modify purchase order details and items</p>
+            <p class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Modify purchase order details • Status: 
+                <span class="badge bg-{{ $purchaseOrder->status === 'draft' ? 'secondary' : 'danger' }}">
+                    {{ ucfirst($purchaseOrder->status) }}
+                </span>
+            </p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{{ route('purchase-orders.show', $purchaseOrder) }}" class="btn btn-outline-secondary">
+            <a href="{{ route('purchase-orders.show', $purchaseOrder->id) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>Back to View
             </a>
         </div>
@@ -22,6 +28,9 @@
 
     @if($errors->any())
         <div class="alert alert-danger">
+            <h6 class="alert-heading">
+                <i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:
+            </h6>
             <ul class="mb-0">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -31,7 +40,7 @@
     @endif
 
     <!-- Purchase Order Edit Form -->
-    <form method="POST" action="{{ route('purchase-orders.update', $purchaseOrder) }}" id="editPOForm">
+    <form method="POST" action="{{ route('purchase-orders.update', $purchaseOrder->id) }}" id="editPOForm">
         @csrf
         @method('PUT')
         
@@ -71,7 +80,7 @@
                                 </label>
                                 <input type="date" name="order_date" id="order_date" 
                                        class="form-control @error('order_date') is-invalid @enderror" 
-                                       value="{{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('Y-m-d') : '' }}" required>
+                                       value="{{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('Y-m-d') : date('Y-m-d') }}" required>
                                 @error('order_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -80,37 +89,14 @@
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="expected_delivery_date" class="form-label fw-bold">
-                                    <i class="fas fa-truck me-1"></i>Expected Delivery Date
-                                </label>
-                                <input type="date" name="expected_delivery_date" id="expected_delivery_date" 
-                                       class="form-control @error('expected_delivery_date') is-invalid @enderror" 
-                                       value="{{ $purchaseOrder->expected_delivery_date ? $purchaseOrder->expected_delivery_date->format('Y-m-d') : '' }}">
-                                @error('expected_delivery_date')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="col-md-6">
                                 <label class="form-label fw-bold">
                                     <i class="fas fa-hashtag me-1"></i>PO Number
                                 </label>
                                 <input type="text" class="form-control bg-light" 
                                        value="{{ $purchaseOrder->po_number }}" readonly>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <label for="notes" class="form-label fw-bold">
-                                    <i class="fas fa-sticky-note me-1"></i>Order Notes
-                                </label>
-                                <textarea name="notes" id="notes" rows="3" 
-                                          class="form-control @error('notes') is-invalid @enderror" 
-                                          placeholder="Additional instructions or notes for this purchase order">{{ $purchaseOrder->notes }}</textarea>
-                                @error('notes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                <small class="text-muted">
+                                    <i class="fas fa-lock me-1"></i>PO number cannot be changed
+                                </small>
                             </div>
                         </div>
                     </div>
@@ -123,128 +109,110 @@
                             <h5 class="card-title mb-0">
                                 <i class="fas fa-list me-2"></i>Order Items
                             </h5>
-                            <button type="button" class="btn btn-light btn-sm" onclick="showAddItemForm()">
-                                <i class="fas fa-plus me-1"></i>Add Item
+                            <!-- Remove the btn-group, keep only inventory button -->
+                            <button type="button" class="btn btn-light btn-sm" onclick="toggleInventoryPanel()">
+                                <i class="fas fa-box me-1"></i>Add from Inventory
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Add Item Form (Initially Hidden) -->
-                        <div id="add-item-form" class="border rounded p-3 mb-3 bg-light" style="display: none;">
+                        <!-- Add from Inventory Panel -->
+                        <div id="inventory-panel" class="border rounded p-3 mb-3 bg-light" style="display: none;">
                             <h6 class="text-success mb-3">
-                                <i class="fas fa-plus-circle me-1"></i>Add New Item to Order
+                                <i class="fas fa-box me-1"></i>Add Item from Inventory
                             </h6>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-2">
-                                    <label class="form-label">Item Name *</label>
-                                    <input type="text" id="new-item-name" class="form-control" placeholder="Enter item name">
+                                    <label class="form-label">Select Inventory Item</label>
+                                    <!-- Add the missing onchange handler -->
+                                    <select id="inventory-select" class="form-select" onchange="populateInventoryFields()">
+                                        <option value="">Choose an item...</option>
+                                        @foreach($inventory as $item)
+                                            <option value="{{ $item->id }}" 
+                                                    data-name="{{ $item->name }}" 
+                                                    data-code="{{ $item->code ?? $item->short_code }}" 
+                                                    data-description="{{ $item->description ?? '' }}"
+                                                    data-category="{{ $item->category ?? '' }}"
+                                                    data-price="{{ $item->buying_price ?? 0 }}">
+                                                {{ $item->name }} {{ ($item->code ?? $item->short_code) ? '(' . ($item->code ?? $item->short_code) . ')' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label">Item Code</label>
-                                    <input type="text" id="new-item-code" class="form-control" placeholder="Enter item code">
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-12 mb-2">
-                                    <label class="form-label">Description</label>
-                                    <textarea id="new-item-description" class="form-control" rows="2" placeholder="Enter item description"></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-4 mb-2">
+                                <div class="col-md-3 mb-2">
                                     <label class="form-label">Quantity *</label>
-                                    <input type="number" id="new-item-quantity" min="0.001" step="0.001" class="form-control" placeholder="0">
+                                    <input type="number" id="inventory-quantity" min="0.001" step="0.001" class="form-control" placeholder="0">
                                 </div>
-                                <div class="col-md-4 mb-2">
+                                <div class="col-md-3 mb-2">
                                     <label class="form-label">Unit Price (R) *</label>
-                                    <input type="number" id="new-item-price" step="0.01" min="0" class="form-control" placeholder="0.00">
+                                    <input type="number" id="inventory-price" step="0.01" min="0" class="form-control" placeholder="0.00">
                                 </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label">Line Total</label>
-                                    <input type="text" id="new-item-total" class="form-control bg-secondary text-white" readonly>
+                            </div>
+                            
+                            <!-- Show selected item details -->
+                            <div id="selected-item-details" class="row mt-2" style="display: none;">
+                                <div class="col-12">
+                                    <div class="alert alert-info">
+                                        <strong>Selected Item:</strong> <span id="selected-name"></span><br>
+                                        <strong>Code:</strong> <span id="selected-code"></span><br>
+                                        <strong>Description:</strong> <span id="selected-description"></span>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="d-flex gap-2 mt-3">
-                                <button type="button" class="btn btn-success" onclick="addItemToList()">
-                                    <i class="fas fa-check me-1"></i>Add Item
+                                <button type="button" class="btn btn-success" onclick="addInventoryItem()">
+                                    <i class="fas fa-plus me-1"></i>Add to Order
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary" onclick="hideAddItemForm()">
+                                <button type="button" class="btn btn-outline-secondary" onclick="toggleInventoryPanel()">
                                     <i class="fas fa-times me-1"></i>Cancel
                                 </button>
                             </div>
                         </div>
 
-                        <!-- Existing Items List -->
+                        <!-- Items List -->
                         <div id="items-list">
-                            @foreach($purchaseOrder->items as $index => $item)
-                                <div class="item-display border rounded p-3 mb-3 bg-white" data-item-index="{{ $index }}">
+                            <!-- Pre-populate existing items -->
+                            @foreach($purchaseOrder->items as $item)
+                                <div class="item-display border rounded p-3 mb-3 bg-white" data-item-index="{{ $loop->index }}">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h6 class="mb-0 text-primary">
-                                            <i class="fas fa-box me-1"></i>Item {{ $index + 1 }}: {{ $item->item_name }}
+                                            <i class="fas fa-box me-1"></i>{{ $item->item_name }}
                                         </h6>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExistingItem({{ $index }})" title="Remove Item">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem({{ $loop->index }})" title="Remove Item">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                     
-                                    <div class="row">
+                                    <div class="row small text-muted">
                                         <div class="col-md-6">
-                                            <div class="mb-2">
-                                                <label class="form-label small">Item Name *</label>
-                                                <input type="text" name="items[{{ $index }}][item_name]" 
-                                                       class="form-control form-control-sm" 
-                                                       value="{{ $item->item_name }}" required
-                                                       onchange="calculateItemTotal({{ $index }})">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label small">Item Code</label>
-                                                <input type="text" name="items[{{ $index }}][item_code]" 
-                                                       class="form-control form-control-sm" 
-                                                       value="{{ $item->item_code }}">
-                                            </div>
+                                            @if($item->item_code)
+                                                <div><strong>Code:</strong> {{ $item->item_code }}</div>
+                                            @endif
+                                            @if($item->item_description)
+                                                <div><strong>Description:</strong> {{ $item->item_description }}</div>
+                                            @endif
+                                            @if($item->inventory_id)
+                                                <div class="text-success"><strong>From Inventory</strong></div>
+                                            @else
+                                                <div class="text-warning"><strong>New Item</strong></div>
+                                            @endif
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="mb-2">
-                                                <label class="form-label small">Quantity *</label>
-                                                <input type="number" name="items[{{ $index }}][quantity_ordered]" 
-                                                       class="form-control form-control-sm" 
-                                                       value="{{ $item->quantity_ordered }}" 
-                                                       min="0.001" step="0.001" required
-                                                       onchange="calculateItemTotal({{ $index }})">
-                                            </div>
-                                            <div class="mb-2">
-                                                <label class="form-label small">Unit Price (R) *</label>
-                                                <input type="number" name="items[{{ $index }}][unit_price]" 
-                                                       class="form-control form-control-sm" 
-                                                       value="{{ $item->unit_price }}" 
-                                                       min="0" step="0.01" required
-                                                       onchange="calculateItemTotal({{ $index }})">
-                                            </div>
+                                            <div><strong>Quantity:</strong> {{ $item->quantity_ordered }}</div>
+                                            <div><strong>Unit Price:</strong> R {{ number_format($item->unit_price, 2) }}</div>
+                                            <div class="text-success"><strong>Line Total: R {{ number_format($item->line_total, 2) }}</strong></div>
                                         </div>
                                     </div>
                                     
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <label class="form-label small">Description</label>
-                                            <textarea name="items[{{ $index }}][item_description]" 
-                                                      class="form-control form-control-sm" rows="2">{{ $item->item_description }}</textarea>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="row mt-2">
-                                        <div class="col-md-6">
-                                            <small class="text-muted">
-                                                <strong>Line Total: R <span class="line-total">{{ number_format($item->line_total, 2) }}</span></strong>
-                                            </small>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Hidden inputs -->
-                                    <input type="hidden" name="items[{{ $index }}][inventory_id]" value="{{ $item->inventory_id }}">
+                                    <!-- Hidden form inputs --> 
+                                    <input type="hidden" name="items[{{ $loop->index }}][inventory_id]" value="{{ $item->inventory_id }}">
+                                    <input type="hidden" name="items[{{ $loop->index }}][item_name]" value="{{ $item->item_name }}">
+                                    <input type="hidden" name="items[{{ $loop->index }}][item_code]" value="{{ $item->item_code }}">
+                                    <input type="hidden" name="items[{{ $loop->index }}][item_description]" value="{{ $item->item_description }}">
+                                    <input type="hidden" name="items[{{ $loop->index }}][quantity_ordered]" value="{{ $item->quantity_ordered }}">
+                                    <input type="hidden" name="items[{{ $loop->index }}][unit_price]" value="{{ $item->unit_price }}">
                                 </div>
                             @endforeach
                         </div>
@@ -252,7 +220,7 @@
                         @if($purchaseOrder->items->count() == 0)
                             <div class="alert alert-info" id="no-items-alert">
                                 <i class="fas fa-info-circle me-2"></i>
-                                No items in this purchase order. Click "Add Item" to add products.
+                                No items in this purchase order. Click "Add from Inventory" to add products.
                             </div>
                         @endif
                     </div>
@@ -270,7 +238,7 @@
                     <div class="card-body">
                         <div class="summary-row d-flex justify-content-between mb-2">
                             <span>Subtotal:</span>
-                            <span id="subtotal">R {{ number_format($purchaseOrder->total_amount ?? 0, 2) }}</span>
+                            <span id="subtotal">R {{ number_format($purchaseOrder->calculateSubtotal(), 2) }}</span>
                         </div>
                         <div class="summary-row d-flex justify-content-between mb-2">
                             <span>VAT (15%):</span>
@@ -291,12 +259,70 @@
                     </div>
                 </div>
 
+                <!-- Amendment History -->
+                @if($purchaseOrder->amended_at)
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-history me-2"></i>Amendment History
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <small class="text-muted">
+                                <div><strong>Last Amended:</strong> {{ $purchaseOrder->amended_at->format('d M Y H:i') }}</div>
+                                <div><strong>Amended By:</strong> {{ $purchaseOrder->amendedBy->name ?? 'Unknown' }}</div>
+                            </small>
+                        </div>
+                    </div>
+                @endif
+
+                <!-- Rejection History - New Section -->
+                @if($purchaseOrder->status === 'rejected' || $purchaseOrder->getRejectionCount() > 0)
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Rejection History
+                                @if($purchaseOrder->getRejectionCount() > 1)
+                                    <span class="badge bg-danger">{{ $purchaseOrder->getRejectionCount() }} rejections</span>
+                                @endif
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            @if($purchaseOrder->status === 'rejected')
+                                <div class="alert alert-danger">
+                                    <strong>Current Status:</strong> Rejected<br>
+                                    <strong>Latest Reason:</strong> {{ $purchaseOrder->getLatestRejectionReason() ?: 'No reason provided' }}
+                                </div>
+                            @endif
+                            
+                            @if($purchaseOrder->getRejectionHistory())
+                                <h6>Previous Rejections:</h6>
+                                @foreach($purchaseOrder->getRejectionHistory() as $index => $rejection)
+                                    <div class="border-start border-danger ps-3 mb-2">
+                                        <small class="text-muted">
+                                            <strong>Version {{ $rejection['po_version'] ?? ($index + 1) }}:</strong> 
+                                            {{ isset($rejection['rejected_at']) ? date('d M Y H:i', strtotime($rejection['rejected_at'])) : 'Date unknown' }}
+                                        </small>
+                                        <p class="mb-0">{{ $rejection['reason'] }}</p>
+                                    </div>
+                                @endforeach
+                            @endif
+                            
+                            <div class="alert alert-info mt-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                After updating this order, it will be reset to draft status and can be resubmitted for approval.
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Submit Button -->
                 <div class="d-grid gap-2 mt-4">
                     <button type="submit" class="btn btn-warning btn-lg">
                         <i class="fas fa-save me-2"></i>Update Purchase Order
                     </button>
-                    <a href="{{ route('purchase-orders.show', $purchaseOrder) }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('purchase-orders.show', $purchaseOrder->id) }}" class="btn btn-outline-secondary">
                         <i class="fas fa-times me-1"></i>Cancel
                     </a>
                 </div>
@@ -306,187 +332,164 @@
 </div>
 
 <script>
-let itemIndex = {{ $purchaseOrder->items->count() }};
+let orderItems = [];
+
+// Initialize with existing items
+@foreach($purchaseOrder->items as $index => $item)
+    orderItems.push({
+        index: {{ $index }},
+        inventoryId: {{ $item->inventory_id ?? 'null' }},
+        name: "{{ addslashes($item->item_name) }}",
+        code: "{{ addslashes($item->item_code ?? '') }}",
+        description: "{{ addslashes($item->item_description ?? '') }}",
+        category: "{{ addslashes($item->item_category ?? '') }}",
+        quantity: {{ $item->quantity_ordered }},
+        price: {{ $item->unit_price }},
+        total: {{ $item->line_total }}
+    });
+@endforeach
+
+let nextItemIndex = {{ $purchaseOrder->items->count() }};
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Edit page loaded');
-    
-    // Add event listeners for new item calculations
-    const quantityInput = document.getElementById('new-item-quantity');
-    const priceInput = document.getElementById('new-item-price');
-    
-    if (quantityInput) quantityInput.addEventListener('input', calculateNewItemTotal);
-    if (priceInput) priceInput.addEventListener('input', calculateNewItemTotal);
-    
-    // Calculate initial totals
+    console.log('Edit page loaded with', orderItems.length, 'existing items');
     calculateOrderTotal();
 });
 
-function showAddItemForm() {
-    document.getElementById('add-item-form').style.display = 'block';
-    document.getElementById('new-item-name').focus();
-}
-
-function hideAddItemForm() {
-    document.getElementById('add-item-form').style.display = 'none';
-    clearAddItemForm();
-}
-
-function clearAddItemForm() {
-    document.getElementById('new-item-name').value = '';
-    document.getElementById('new-item-code').value = '';
-    document.getElementById('new-item-description').value = '';
-    document.getElementById('new-item-quantity').value = '';
-    document.getElementById('new-item-price').value = '';
-    document.getElementById('new-item-total').value = '';
-}
-
-function calculateNewItemTotal() {
-    const quantity = parseFloat(document.getElementById('new-item-quantity').value) || 0;
-    const price = parseFloat(document.getElementById('new-item-price').value) || 0;
-    const total = quantity * price;
+function toggleInventoryPanel() {
+    const panel = document.getElementById('inventory-panel');
     
-    document.getElementById('new-item-total').value = 'R ' + total.toFixed(2);
+    if (panel.style.display === 'none' || panel.style.display === '') {
+        panel.style.display = 'block';
+        document.getElementById('inventory-select').focus();
+    } else {
+        panel.style.display = 'none';
+        clearInventoryForm();
+    }
 }
 
-function addItemToList() {
-    const itemName = document.getElementById('new-item-name').value.trim();
-    const itemCode = document.getElementById('new-item-code').value.trim();
-    const description = document.getElementById('new-item-description').value.trim();
-    const quantity = parseFloat(document.getElementById('new-item-quantity').value) || 0;
-    const price = parseFloat(document.getElementById('new-item-price').value) || 0;
+function populateInventoryFields() {
+    const select = document.getElementById('inventory-select');
+    const selectedOption = select.options[select.selectedIndex];
+    const detailsDiv = document.getElementById('selected-item-details');
     
-    // Validation
-    if (!itemName || quantity <= 0 || price < 0) {
-        alert('Please fill in all required fields with valid values.');
+    if (select.value) {
+        // Populate price field from buying_price
+        document.getElementById('inventory-price').value = selectedOption.dataset.price || '';
+        
+        // Show item details
+        document.getElementById('selected-name').textContent = selectedOption.dataset.name || '';
+        document.getElementById('selected-code').textContent = selectedOption.dataset.code || 'N/A';
+        document.getElementById('selected-description').textContent = selectedOption.dataset.description || 'N/A';
+        
+        detailsDiv.style.display = 'block';
+        
+        // Focus on quantity field
+        document.getElementById('inventory-quantity').focus();
+    } else {
+        // Clear fields and hide details
+        document.getElementById('inventory-price').value = '';
+        detailsDiv.style.display = 'none';
+    }
+}
+
+function clearInventoryForm() {
+    document.getElementById('inventory-select').value = '';
+    document.getElementById('inventory-quantity').value = '';
+    document.getElementById('inventory-price').value = '';
+    document.getElementById('selected-item-details').style.display = 'none';
+}
+
+function addInventoryItem() {
+    const select = document.getElementById('inventory-select');
+    const selectedOption = select.options[select.selectedIndex];
+    const quantity = parseFloat(document.getElementById('inventory-quantity').value);
+    const price = parseFloat(document.getElementById('inventory-price').value);
+    
+    if (!select.value || !quantity || quantity <= 0 || price < 0) {
+        alert('Please select an item and enter valid quantity and price.');
         return;
     }
     
-    const lineTotal = quantity * price;
+    const item = {
+        index: nextItemIndex++,
+        inventoryId: select.value,
+        name: selectedOption.dataset.name,
+        code: selectedOption.dataset.code || '',
+        description: selectedOption.dataset.description || '',
+        category: selectedOption.dataset.category || '',
+        quantity: quantity,
+        price: price,
+        total: quantity * price
+    };
     
-    // Add new item to the list
+    orderItems.push(item);
+    renderItemsList();
+    calculateOrderTotal();
+    toggleInventoryPanel();
+    clearInventoryForm();
+}
+
+function renderItemsList() {
     const itemsList = document.getElementById('items-list');
-    const newItemHTML = `
-        <div class="item-display border rounded p-3 mb-3 bg-white" data-item-index="${itemIndex}">
+    const noItemsAlert = document.getElementById('no-items-alert');
+    
+    if (orderItems.length === 0) {
+        itemsList.innerHTML = '';
+        if (noItemsAlert) noItemsAlert.style.display = 'block';
+        return;
+    }
+    
+    if (noItemsAlert) noItemsAlert.style.display = 'none';
+    
+    itemsList.innerHTML = orderItems.map((item, index) => `
+        <div class="item-display border rounded p-3 mb-3 bg-white" data-item-index="${item.index}">
             <div class="d-flex justify-content-between align-items-start mb-2">
                 <h6 class="mb-0 text-primary">
-                    <i class="fas fa-box me-1"></i>Item ${itemIndex + 1}: ${itemName}
+                    <i class="fas fa-box me-1"></i>${item.name}
                 </h6>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeNewItem(${itemIndex})" title="Remove Item">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeItem(${item.index})" title="Remove Item">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
             
-            <div class="row">
+            <div class="row small text-muted">
                 <div class="col-md-6">
-                    <div class="mb-2">
-                        <label class="form-label small">Item Name *</label>
-                        <input type="text" name="items[${itemIndex}][item_name]" 
-                               class="form-control form-control-sm" 
-                               value="${itemName}" required
-                               onchange="calculateItemTotal(${itemIndex})">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small">Item Code</label>
-                        <input type="text" name="items[${itemIndex}][item_code]" 
-                               class="form-control form-control-sm" 
-                               value="${itemCode}">
-                    </div>
+                    ${item.code ? `<div><strong>Code:</strong> ${item.code}</div>` : ''}
+                    ${item.description ? `<div><strong>Description:</strong> ${item.description}</div>` : ''}
+                    <div class="text-success"><strong>From Inventory</strong></div>
                 </div>
                 <div class="col-md-6">
-                    <div class="mb-2">
-                        <label class="form-label small">Quantity *</label>
-                        <input type="number" name="items[${itemIndex}][quantity_ordered]" 
-                               class="form-control form-control-sm" 
-                               value="${quantity}" 
-                               min="0.001" step="0.001" required
-                               onchange="calculateItemTotal(${itemIndex})">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small">Unit Price (R) *</label>
-                        <input type="number" name="items[${itemIndex}][unit_price]" 
-                               class="form-control form-control-sm" 
-                               value="${price}" 
-                               min="0" step="0.01" required
-                               onchange="calculateItemTotal(${itemIndex})">
-                    </div>
+                    <div><strong>Quantity:</strong> ${item.quantity}</div>
+                    <div><strong>Unit Price:</strong> R ${item.price.toFixed(2)}</div>
+                    <div class="text-success"><strong>Line Total: R ${item.total.toFixed(2)}</strong></div>
                 </div>
             </div>
             
-            <div class="row">
-                <div class="col-12">
-                    <label class="form-label small">Description</label>
-                    <textarea name="items[${itemIndex}][item_description]" 
-                              class="form-control form-control-sm" rows="2">${description}</textarea>
-                </div>
-            </div>
-            
-            <div class="row mt-2">
-                <div class="col-md-6">
-                    <small class="text-muted">
-                        <strong>Line Total: R <span class="line-total">${lineTotal.toFixed(2)}</span></strong>
-                    </small>
-                </div>
-            </div>
-            
-            <input type="hidden" name="items[${itemIndex}][inventory_id]" value="">
+            <!-- Hidden form inputs --> 
+            <input type="hidden" name="items[${index}][inventory_id]" value="${item.inventoryId || ''}">
+            <input type="hidden" name="items[${index}][item_name]" value="${item.name}">
+            <input type="hidden" name="items[${index}][item_code]" value="${item.code || ''}">
+            <input type="hidden" name="items[${index}][item_description]" value="${item.description || ''}">
+            <input type="hidden" name="items[${index}][quantity_ordered]" value="${item.quantity}">
+            <input type="hidden" name="items[${index}][unit_price]" value="${item.price}">
         </div>
-    `;
-    
-    itemsList.insertAdjacentHTML('beforeend', newItemHTML);
-    itemIndex++;
-    
-    hideAddItemForm();
-    calculateOrderTotal();
-    
-    // Hide no items alert
-    const noItemsAlert = document.getElementById('no-items-alert');
-    if (noItemsAlert) {
-        noItemsAlert.style.display = 'none';
-    }
+    `).join('');
 }
 
-function removeExistingItem(index) {
+function removeItem(itemIndex) {
     if (confirm('Are you sure you want to remove this item?')) {
-        const itemElement = document.querySelector(`[data-item-index="${index}"]`);
-        if (itemElement) {
-            itemElement.remove();
-            calculateOrderTotal();
-        }
-    }
-}
-
-function removeNewItem(index) {
-    if (confirm('Are you sure you want to remove this item?')) {
-        const itemElement = document.querySelector(`[data-item-index="${index}"]`);
-        if (itemElement) {
-            itemElement.remove();
-            calculateOrderTotal();
-        }
-    }
-}
-
-function calculateItemTotal(index) {
-    const quantityInput = document.querySelector(`input[name="items[${index}][quantity_ordered]"]`);
-    const priceInput = document.querySelector(`input[name="items[${index}][unit_price]"]`);
-    const lineTotalSpan = document.querySelector(`[data-item-index="${index}"] .line-total`);
-    
-    if (quantityInput && priceInput && lineTotalSpan) {
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        const total = quantity * price;
-        
-        lineTotalSpan.textContent = total.toFixed(2);
+        orderItems = orderItems.filter(item => item.index !== itemIndex);
+        renderItemsList();
         calculateOrderTotal();
     }
 }
 
 function calculateOrderTotal() {
     let subtotal = 0;
-    const lineTotals = document.querySelectorAll('.line-total');
     
-    lineTotals.forEach(function(element) {
-        subtotal += parseFloat(element.textContent) || 0;
+    orderItems.forEach(item => {
+        subtotal += item.total;
     });
     
     const vatAmount = subtotal * 0.15;
@@ -495,7 +498,7 @@ function calculateOrderTotal() {
     document.getElementById('subtotal').textContent = 'R ' + subtotal.toFixed(2);
     document.getElementById('vat-amount').textContent = 'R ' + vatAmount.toFixed(2);
     document.getElementById('grand-total').textContent = 'R ' + grandTotal.toFixed(2);
-    document.getElementById('total-items').textContent = lineTotals.length;
+    document.getElementById('total-items').textContent = orderItems.length;
 }
 </script>
 
@@ -522,9 +525,14 @@ function calculateOrderTotal() {
     border-radius: 10px 10px 0 0 !important;
 }
 
-#add-item-form {
+#inventory-panel {
     border: 2px dashed #28a745;
     background-color: #d4edda !important;
+}
+
+#new-item-form {
+    border: 2px dashed #007bff;
+    background-color: #cce7ff !important;
 }
 </style>
 @endsection

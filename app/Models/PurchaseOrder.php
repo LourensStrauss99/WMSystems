@@ -15,40 +15,42 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number',
-        'supplier_id',
         'supplier_name',
         'supplier_contact',
         'supplier_email',
         'supplier_phone',
         'supplier_address',
-        'order_date',
-        'expected_delivery_date',
         'actual_delivery_date',
-        'total_amount',
-        'vat_amount',
-        'grand_total',
-        'notes',
+        'approved_by',
+        'approved_at',
         'terms_conditions',
         'payment_terms',
+        'supplier_id',
+        'vat_amount',
+        'grand_total',
         'status',
+        'order_date',
         'submitted_for_approval_at',
         'submitted_by',
-        'approved_at',
-        'approved_by',
         'rejected_at',
         'rejected_by',
+        'rejection_reason',
+        'rejection_history',
         'sent_at',
         'sent_by',
+        'amended_by',
+        'amended_at',
     ];
 
     protected $casts = [
         'order_date' => 'date',
-        'expected_delivery_date' => 'date',
         'actual_delivery_date' => 'date',
         'submitted_for_approval_at' => 'datetime',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
         'sent_at' => 'datetime',
+        'amended_at' => 'datetime',
+        'rejection_history' => 'array',
     ];
 
     // Generate unique PO number
@@ -86,7 +88,7 @@ class PurchaseOrder extends Model
     /**
      * Get the user who submitted this PO for approval
      */
-    public function submittedBy()
+    public function submittedBy() 
     {
         return $this->belongsTo(User::class, 'submitted_by');
     }
@@ -107,20 +109,12 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    // Add calculated attributes for totals
-    public function getTotalAmountAttribute()
+    /**
+     * Get the user who last amended this PO
+     */
+    public function amendedBy()
     {
-        return $this->items->sum('line_total');
-    }
-
-    public function getVatAmountAttribute()
-    {
-        return $this->total_amount * 0.15;
-    }
-
-    public function getGrandTotalAttribute()
-    {
-        return $this->total_amount + $this->vat_amount;
+        return $this->belongsTo(User::class, 'amended_by');
     }
 
     /**
@@ -146,5 +140,71 @@ class PurchaseOrder extends Model
     public function getFormattedStatusAttribute()
     {
         return ucwords(str_replace('_', ' ', $this->status));
+    }
+
+    // Add method to calculate subtotal
+    public function calculateSubtotal()
+    {
+        return $this->items->sum('line_total');
+    }
+
+    public function calculateVat()
+    {
+        return $this->calculateSubtotal() * 0.15;
+    }
+
+    public function calculateGrandTotal()
+    {
+        return $this->calculateSubtotal() + $this->calculateVat();
+    }
+
+    /**
+     * Add rejection to history
+     */
+    public function addRejectionToHistory($reason, $rejectedBy)
+    {
+        $history = $this->rejection_history ?? [];
+        
+        $history[] = [
+            'reason' => $reason,
+            'rejected_by' => $rejectedBy,
+            'rejected_at' => now()->toDateTimeString(),
+            'po_version' => count($history) + 1,
+        ];
+        
+        $this->rejection_history = $history;
+        $this->save();
+    }
+
+    /**
+     * Get latest rejection reason - BETTER APPROACH
+     */
+    public function getLatestRejectionReason()
+    {
+        if (empty($this->rejection_history)) {
+            return $this->rejection_reason;
+        }
+        
+        // Get the last element by index instead of using end()
+        $history = $this->rejection_history;
+        $lastIndex = count($history) - 1;
+        
+        return $history[$lastIndex]['reason'] ?? $this->rejection_reason;
+    }
+
+    /**
+     * Get rejection count
+     */
+    public function getRejectionCount()
+    {
+        return count($this->rejection_history ?? []);
+    }
+
+    /**
+     * Get all rejection history
+     */
+    public function getRejectionHistory()
+    {
+        return $this->rejection_history ?? [];
     }
 }

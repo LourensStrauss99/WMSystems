@@ -42,19 +42,19 @@
                     </form>
                 @endif
 
-                @if($purchaseOrder->status === 'pending_approval' && auth()->user()->canApprove())
-                    <form method="POST" action="{{ route('purchase-orders.approve', $purchaseOrder) }}" class="d-inline">
-                        @csrf
-                        <button class="btn btn-success">
-                            <i class="fas fa-check me-1"></i>Approve
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('purchase-orders.reject', $purchaseOrder) }}" class="d-inline">
-                        @csrf
-                        <button class="btn btn-danger">
+                @if($purchaseOrder->status == 'pending_approval' && auth()->user()->canApprove())
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{{ route('purchase-orders.approve', $purchaseOrder->id) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to approve this purchase order?')">
+                                <i class="fas fa-check me-1"></i>Approve
+                            </button>
+                        </form>
+                        
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
                             <i class="fas fa-times me-1"></i>Reject
                         </button>
-                    </form>
+                    </div>
                 @endif
 
                 @if($purchaseOrder->status === 'approved')
@@ -208,6 +208,54 @@
             <div class="text-center mt-4 footer-text">
                 <small>Purchase Order</small>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('purchase-orders.reject', $purchaseOrder->id) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rejectModalLabel">
+                        <i class="fas fa-times-circle text-danger me-2"></i>
+                        Reject Purchase Order
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>PO Number:</strong> {{ $purchaseOrder->po_number }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">
+                            <strong>Reason for Rejection <span class="text-danger">*</span></strong>
+                        </label>
+                        <textarea name="rejection_reason" id="rejection_reason" 
+                                  class="form-control @error('rejection_reason') is-invalid @enderror" 
+                                  rows="4" required 
+                                  placeholder="Please provide a detailed reason for rejecting this purchase order..."></textarea>
+                        @error('rejection_reason')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        This reason will be communicated to the person who created the order so they can make necessary adjustments.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle me-1"></i>Reject Order
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

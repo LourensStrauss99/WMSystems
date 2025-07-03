@@ -226,7 +226,8 @@ Route::middleware(['auth'])->group(function () {
     // Approval workflow routes - FIXED parameter names
     Route::post('/purchase-orders/{purchaseOrder}/submit-for-approval', [PurchaseOrderController::class, 'submitForApproval'])->name('purchase-orders.submit-for-approval');
     Route::post('/purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
-    Route::post('/purchase-orders/{purchaseOrder}/reject', [PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
+    Route::post('/purchase-orders/{purchaseOrder}/reject', [PurchaseOrderController::class, 'reject'])
+        ->name('purchase-orders.reject');
     Route::post('/purchase-orders/{purchaseOrder}/send', [PurchaseOrderController::class, 'sendToSupplier'])->name('purchase-orders.send');
     
     // Generic show route - MUST come LAST
@@ -301,7 +302,7 @@ Route::get('/force-pending', function() {
         }
         return "No PO found";
     } catch (\Exception $e) {
-        return "Error: " . $e->getMessage();
+        return "Error: " . $e->getMessage(); 
     }
 });
 

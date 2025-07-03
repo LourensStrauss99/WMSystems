@@ -435,7 +435,7 @@ function renderItemsList() {
                 </div>
             </div>
             
-            <!-- Hidden form inputs -->
+            <!-- Hidden form inputs --> 
             <input type="hidden" name="items[${index}][inventory_id]" value="${item.inventoryId || ''}">
             <input type="hidden" name="items[${index}][item_name]" value="${item.name}">
             <input type="hidden" name="items[${index}][item_code]" value="${item.code}">

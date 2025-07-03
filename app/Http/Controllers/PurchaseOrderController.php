@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 namespace App\Http\Controllers;
 
@@ -55,62 +55,52 @@ class PurchaseOrderController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'order_date' => 'required|date',
-            'expected_delivery_date' => 'nullable|date|after:order_date',
-            'notes' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
+            'items.*.inventory_id' => 'nullable|exists:inventory,id',
             'items.*.item_name' => 'required|string|max:255',
-            'items.*.item_code' => 'nullable|string|max:100',
-            'items.*.description' => 'nullable|string|max:500',
-            'items.*.quantity_ordered' => 'required|numeric|min:0.01',
+            'items.*.item_code' => 'nullable|string|max:50',
+            'items.*.item_description' => 'nullable|string',
+            'items.*.quantity_ordered' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function() use ($validated) {
             // Get supplier information
-            $supplier = Supplier::findOrFail($request->supplier_id);
+            $supplier = Supplier::findOrFail($validated['supplier_id']);
             
             // Calculate totals
             $subtotal = 0;
-            foreach ($request->items as $item) {
+            foreach ($validated['items'] as $item) {
                 $subtotal += $item['quantity_ordered'] * $item['unit_price'];
             }
             
-            $vatAmount = $subtotal * 0.15; // 15% VAT
+            $vatAmount = $subtotal * 0.15;
             $grandTotal = $subtotal + $vatAmount;
 
             // Create Purchase Order
             $purchaseOrder = PurchaseOrder::create([
                 'po_number' => $this->generatePONumber(),
-                'supplier_id' => $request->supplier_id,
+                'supplier_id' => $validated['supplier_id'],
                 'supplier_name' => $supplier->name,
-                'order_date' => $request->order_date,
-                'expected_delivery_date' => $request->expected_delivery_date,
+                'order_date' => $validated['order_date'],
                 'status' => 'draft',
-                'total_amount' => $subtotal,
                 'vat_amount' => $vatAmount,
                 'grand_total' => $grandTotal,
-                'notes' => $request->notes,
-                'created_by' => Auth::id(),
             ]);
 
-            // Create Purchase Order Items - Remove quantity_outstanding
-            foreach ($request->items as $itemData) {
-                PurchaseOrderItem::create([
-                    'purchase_order_id' => $purchaseOrder->id,
+            // Create Purchase Order Items
+            foreach ($validated['items'] as $itemData) {
+                $purchaseOrder->items()->create([
+                    'inventory_id' => $itemData['inventory_id'],
                     'item_name' => $itemData['item_name'],
-                    'item_code' => $itemData['item_code'] ?? '',
-                    'item_description' => $itemData['description'] ?? '',
-                    'item_category' => $itemData['item_category'] ?? '',
+                    'item_code' => $itemData['item_code'],
+                    'item_description' => $itemData['item_description'],
                     'quantity_ordered' => $itemData['quantity_ordered'],
-                    'quantity_received' => 0,
                     'unit_price' => $itemData['unit_price'],
                     'line_total' => $itemData['quantity_ordered'] * $itemData['unit_price'],
-                    'unit_of_measure' => $itemData['unit_of_measure'] ?? 'each',
-                    'status' => 'pending',
-                    'inventory_id' => $itemData['inventory_id'] ?? null,
                 ]);
             }
         });
@@ -136,93 +126,106 @@ class PurchaseOrderController extends Controller
     /**
      * Show the form for editing the specified purchase order
      */
-    public function edit($id)  // Change parameter from PurchaseOrder $purchaseOrder to $id
+    public function edit($id)
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
         
-        if (!in_array($purchaseOrder->status, ['draft', 'pending_approval'])) {
-            return redirect()->route('purchase-orders.show', $id)  // Use $id instead of $purchaseOrder
-                ->with('error', 'Only draft or pending approval purchase orders can be edited.');
+        // Only allow editing draft and rejected POs
+        if (!in_array($purchaseOrder->status, ['draft', 'rejected'])) {
+            return redirect()->route('purchase-orders.show', $id)
+                ->with('error', 'Only draft or rejected purchase orders can be edited.');
         }
-
+        
         $suppliers = Supplier::where('active', true)->orderBy('name')->get();
+        $inventory = Inventory::orderBy('name')->get(); // Remove the active filter
+        
+        // Load existing items for pre-population
         $purchaseOrder->load(['supplier', 'items']);
         
-        return view('purchase-orders.edit', compact('purchaseOrder', 'suppliers'));
+        return view('purchase-orders.edit', compact('purchaseOrder', 'suppliers', 'inventory'));
     }
 
     /**
      * Update the specified purchase order
      */
-    public function update(Request $request, $id)  // Change parameter from PurchaseOrder $purchaseOrder to $id
+    public function update(Request $request, $id)
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
         
-        if (!in_array($purchaseOrder->status, ['draft', 'pending_approval'])) {
-            return redirect()->route('purchase-orders.show', $id)  // Use $id instead of $purchaseOrder
-                ->with('error', 'Only draft or pending approval purchase orders can be updated.');
+        // Only allow updating draft and rejected POs
+        if (!in_array($purchaseOrder->status, ['draft', 'rejected'])) {
+            return redirect()->route('purchase-orders.show', $id)
+                ->with('error', 'Only draft or rejected purchase orders can be updated.');
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'order_date' => 'required|date',
-            'expected_delivery_date' => 'nullable|date|after_or_equal:order_date',
-            'notes' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
+            'items.*.inventory_id' => 'nullable|exists:inventory,id',
             'items.*.item_name' => 'required|string|max:255',
-            'items.*.item_code' => 'nullable|string|max:100',
-            'items.*.item_description' => 'nullable|string|max:500',
+            'items.*.item_code' => 'nullable|string|max:50',
+            'items.*.item_description' => 'nullable|string',
             'items.*.quantity_ordered' => 'required|numeric|min:0.001',
             'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $purchaseOrder) {
-            // Get supplier information
-            $supplier = Supplier::findOrFail($request->supplier_id);
-            
+        DB::transaction(function() use ($validated, $purchaseOrder) {
             // Calculate totals
             $subtotal = 0;
-            foreach ($request->items as $item) {
+            foreach ($validated['items'] as $item) {
                 $subtotal += $item['quantity_ordered'] * $item['unit_price'];
             }
             
             $vatAmount = $subtotal * 0.15;
             $grandTotal = $subtotal + $vatAmount;
 
-            // Update Purchase Order
-            $purchaseOrder->update([
-                'supplier_id' => $request->supplier_id,
-                'supplier_name' => $supplier->name,
-                'order_date' => $request->order_date,
-                'expected_delivery_date' => $request->expected_delivery_date,
-                'total_amount' => $subtotal,
+            // Prepare update data
+            $updateData = [
+                'supplier_id' => $validated['supplier_id'],
+                'order_date' => $validated['order_date'],
                 'vat_amount' => $vatAmount,
                 'grand_total' => $grandTotal,
-                'notes' => $request->notes,
-            ]);
+                'amended_by' => auth()->id(),
+                'amended_at' => now(),
+            ];
 
-            // Delete existing items and create new ones
+            // If the order was rejected, reset it to draft status
+            if ($purchaseOrder->status === 'rejected') {
+                $updateData['status'] = 'draft';
+                // Clear current rejection data but keep history
+                $updateData['rejected_by'] = null;
+                $updateData['rejected_at'] = null;
+                $updateData['rejection_reason'] = null;
+                // rejection_history is preserved
+            }
+
+            // Update purchase order
+            $purchaseOrder->update($updateData);
+
+            // Delete existing items
             $purchaseOrder->items()->delete();
-            
-            foreach ($request->items as $itemData) {
-                PurchaseOrderItem::create([
-                    'purchase_order_id' => $purchaseOrder->id,
-                    'item_name' => $itemData['item_name'],
-                    'item_code' => $itemData['item_code'] ?? '',
-                    'item_description' => $itemData['item_description'] ?? '',
-                    'quantity_ordered' => $itemData['quantity_ordered'],
-                    'quantity_received' => 0,
-                    'unit_price' => $itemData['unit_price'],
-                    'line_total' => $itemData['quantity_ordered'] * $itemData['unit_price'],
-                    'unit_of_measure' => 'each',
-                    'status' => 'pending',
-                    'inventory_id' => $itemData['inventory_id'] ?? null,
+
+            // Add new items
+            foreach ($validated['items'] as $item) {
+                $purchaseOrder->items()->create([
+                    'inventory_id' => $item['inventory_id'],
+                    'item_name' => $item['item_name'],
+                    'item_code' => $item['item_code'],
+                    'item_description' => $item['item_description'],
+                    'quantity_ordered' => $item['quantity_ordered'],
+                    'unit_price' => $item['unit_price'],
+                    'line_total' => $item['quantity_ordered'] * $item['unit_price'],
                 ]);
             }
         });
 
-        return redirect()->route('purchase-orders.show', $id)  // Use $id instead of $purchaseOrder
-            ->with('success', 'Purchase Order updated successfully!');
+        $message = $purchaseOrder->status === 'draft' 
+            ? 'Purchase order updated and reset to draft status. You can now submit it for approval again.'
+            : 'Purchase order updated successfully.';
+
+        return redirect()->route('purchase-orders.show', $id)
+            ->with('success', $message);
     }
 
     /**
@@ -395,19 +398,27 @@ class PurchaseOrderController extends Controller
     /**
      * Reject purchase order
      */
-    public function reject(PurchaseOrder $purchaseOrder)
+    public function reject(Request $request, PurchaseOrder $purchaseOrder)
     {
         if ($purchaseOrder->status !== 'pending_approval') {
             return back()->with('error', 'Only orders pending approval can be rejected.');
         }
 
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        // Add to rejection history
+        $purchaseOrder->addRejectionToHistory($request->rejection_reason, Auth::id());
+
         $purchaseOrder->update([
             'status' => 'rejected',
             'rejected_by' => Auth::id(),
             'rejected_at' => now(),
+            'rejection_reason' => $request->rejection_reason,
         ]);
 
-        return back()->with('success', 'Purchase Order rejected.');
+        return back()->with('success', 'Purchase Order rejected with reason provided.');
     }
 
     /**
