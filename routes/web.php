@@ -328,3 +328,15 @@ Route::get('/check-db', function() {
         return response()->json(['error' => $e->getMessage()]);
     }
 });
+
+// Add these routes to your existing routes section:
+Route::middleware(['auth'])->group(function () {
+    // ... existing routes ...
+    
+    // GRV routes
+    Route::resource('grv', GrvController::class);
+    Route::post('/grv/{id}/approve', [GrvController::class, 'approve'])->name('grv.approve');
+    Route::post('/grv/{id}/quality-pass', [GrvController::class, 'passQualityCheck'])->name('grv.quality-pass');
+    Route::post('/grv/{id}/quality-fail', [GrvController::class, 'failQualityCheck'])->name('grv.quality-fail');
+    Route::get('/api/purchase-orders/{id}/details', [GrvController::class, 'getPurchaseOrderDetails'])->name('api.purchase-orders.details');
+});

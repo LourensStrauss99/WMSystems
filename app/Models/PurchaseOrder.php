@@ -8,6 +8,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class PurchaseOrder extends Model
 {
@@ -206,5 +207,80 @@ class PurchaseOrder extends Model
     public function getRejectionHistory()
     {
         return $this->rejection_history ?? [];
+    }
+
+    /**
+     * Update PO status based on item statuses
+     */
+    public function updateStatusBasedOnItems()
+    {
+        $totalOrdered = $this->items->sum('quantity_ordered');
+        $totalReceived = $this->items->sum('quantity_received');
+        
+        Log::info("Updating PO status", [
+            'po_id' => $this->id,
+            'po_number' => $this->po_number,
+            'total_ordered' => $totalOrdered,
+            'total_received' => $totalReceived,
+            'current_status' => $this->status
+        ]);
+        
+        $newStatus = $this->status; // Keep current status as default
+        
+        if ($totalReceived >= $totalOrdered && $totalOrdered > 0) {
+            $newStatus = 'fully_received';
+        } elseif ($totalReceived > 0) {
+            $newStatus = 'partially_received';
+        }
+        
+        if ($newStatus !== $this->status) {
+            $this->update(['status' => $newStatus]);
+            Log::info("PO status updated", [
+                'po_id' => $this->id,
+                'old_status' => $this->status,
+                'new_status' => $newStatus
+            ]);
+        }
+    }
+
+    /**
+     * Get total received quantity across all items
+     */
+    public function getTotalReceivedQuantity()
+    {
+        return $this->items->sum('quantity_received');
+    }
+
+    /**
+     * Get total ordered quantity across all items
+     */
+    public function getTotalOrderedQuantity()
+    {
+        return $this->items->sum('quantity_ordered');
+    }
+
+    /**
+     * Check if PO is fully received
+     */
+    public function isFullyReceived()
+    {
+        return $this->getTotalReceivedQuantity() >= $this->getTotalOrderedQuantity();
+    }
+
+    /**
+     * Check if PO can create GRV
+     */
+    public function canCreateGrv()
+    {
+        return in_array($this->status, ['approved', 'sent', 'partially_received']) && 
+               $this->getTotalReceivedQuantity() < $this->getTotalOrderedQuantity();
+    }
+
+    /**
+     * Get GRVs for this PO
+     */
+    public function grvs()
+    {
+        return $this->hasMany(GoodsReceivedVoucher::class);
     }
 }

@@ -6,16 +6,32 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class GoodsReceivedVoucher extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'grv_number', 'purchase_order_id', 'received_date', 'received_time',
-        'received_by', 'checked_by', 'delivery_note_number', 'vehicle_registration',
-        'driver_name', 'delivery_company', 'overall_status', 'general_notes',
-        'discrepancies', 'quality_check_passed', 'quality_notes',
-        'delivery_note_received', 'invoice_received', 'photos'
+        'grv_number',
+        'purchase_order_id',
+        'received_date',
+        'received_time',
+        'received_by',
+        'checked_by',
+        'delivery_note_number',
+        'vehicle_registration',
+        'driver_name',
+        'delivery_company',
+        'overall_status',
+        'general_notes',
+        'discrepancies',
+        'quality_check_passed',
+        'quality_notes',
+        'delivery_note_received',
+        'invoice_received',
+        'photos'
     ];
 
     protected $casts = [
@@ -31,16 +47,20 @@ class GoodsReceivedVoucher extends Model
     public static function generateGrvNumber()
     {
         $year = now()->year;
-        $latest = self::where('grv_number', 'like', "GRV-{$year}-%")->latest()->first();
+        $month = now()->format('m');
+        
+        $latest = self::where('grv_number', 'like', "GRV-{$year}{$month}-%")
+            ->orderBy('grv_number', 'desc')
+            ->first();
         
         if ($latest) {
-            $lastNumber = (int) substr($latest->grv_number, -3);
-            $newNumber = $lastNumber + 1;
+            $lastSequence = (int) substr($latest->grv_number, -4);
+            $newSequence = $lastSequence + 1;
         } else {
-            $newNumber = 1;
+            $newSequence = 1;
         }
         
-        return "GRV-{$year}-" . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+        return sprintf('GRV-%s%s-%04d', $year, $month, $newSequence);
     }
 
     // Relationships
@@ -62,5 +82,58 @@ class GoodsReceivedVoucher extends Model
     public function checkedBy()
     {
         return $this->belongsTo(User::class, 'checked_by');
+    }
+
+    // Check if GRV can be approved
+    public function canBeApproved()
+    {
+        return $this->overall_status === 'complete' && $this->quality_check_passed;
+    }
+
+    // Update purchase order status based on received quantities
+    public function updatePurchaseOrderStatus()
+    {
+        $po = $this->purchaseOrder;
+        $allItemsReceived = true;
+        
+        foreach ($po->items as $poItem) {
+            $totalReceived = $this->items->where('purchase_order_item_id', $poItem->id)->sum('quantity_received');
+            
+            if ($totalReceived < $poItem->quantity_ordered) {
+                $allItemsReceived = false;
+            }
+        }
+        
+        if ($allItemsReceived) {
+            $po->update(['status' => 'fully_received']);
+        } else {
+            $po->update(['status' => 'partially_received']);
+        }
+    }
+
+    // Calculate completion percentage
+    public function getCompletionPercentage()
+    {
+        $totalOrdered = $this->items->sum('quantity_ordered');
+        $totalReceived = $this->items->sum('quantity_received');
+        
+        return $totalOrdered > 0 ? round(($totalReceived / $totalOrdered) * 100) : 0;
+    }
+
+    // Get overall quality status
+    public function getQualityStatus()
+    {
+        if (!$this->quality_check_passed) {
+            return 'failed';
+        }
+        
+        $hasRejected = $this->items->where('quantity_rejected', '>', 0)->count() > 0;
+        $hasDamaged = $this->items->where('quantity_damaged', '>', 0)->count() > 0;
+        
+        if ($hasRejected || $hasDamaged) {
+            return 'partial';
+        }
+        
+        return 'passed';
     }
 }

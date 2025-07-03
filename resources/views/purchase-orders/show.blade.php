@@ -65,6 +65,12 @@
                         </button>
                     </form>
                 @endif
+
+                @if($purchaseOrder->canCreateGrv())
+                    <a href="{{ route('grv.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="btn btn-warning">
+                        <i class="fas fa-truck me-1"></i>Create GRV
+                    </a>
+                @endif
             </div>
         </div>
         <hr>
@@ -140,10 +146,12 @@
                 <thead class="table-dark">
                     <tr>
                         <th class="text-center" width="5%">#</th>
-                        <th width="25%">Item Description</th>
-                        <th class="text-center" width="12%">Item Code</th>
-                        <th class="text-center" width="10%">Qty</th>
-                        <th class="text-center" width="12%">Unit Price</th>
+                        <th width="20%">Item Description</th>
+                        <th class="text-center" width="10%">Item Code</th>
+                        <th class="text-center" width="8%">Ordered</th>
+                        <th class="text-center" width="8%">Received</th>
+                        <th class="text-center" width="8%">Outstanding</th>
+                        <th class="text-center" width="10%">Unit Price</th>
                         <th class="text-center" width="12%">Line Total</th>
                         <th class="text-center" width="10%">Status</th>
                     </tr>
@@ -154,14 +162,37 @@
                             <td class="text-center">{{ $i + 1 }}</td>
                             <td>{{ $item->item_description ?? $item->item_name }}</td>
                             <td class="text-center">{{ $item->item_code }}</td>
-                            <td class="text-center">{{ $item->quantity_ordered }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary">{{ number_format($item->quantity_ordered) }}</span>
+                            </td>
+                            <td class="text-center">
+                                @if($item->quantity_received > 0)
+                                    <span class="badge bg-success">{{ number_format($item->quantity_received) }}</span>
+                                @else
+                                    <span class="text-muted">0</span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @php
+                                    $outstanding = $item->quantity_ordered - ($item->quantity_received ?? 0);
+                                @endphp
+                                @if($outstanding > 0)
+                                    <span class="badge bg-warning">{{ number_format($outstanding) }}</span>
+                                @else
+                                    <span class="text-muted">0</span>
+                                @endif
+                            </td>
                             <td class="text-center">R {{ number_format($item->unit_price, 2) }}</td>
                             <td class="text-center">R {{ number_format($item->line_total, 2) }}</td>
-                            <td class="text-center">{{ ucfirst($item->status ?? 'pending') }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{{ $item->status === 'fully_received' ? 'success' : ($item->status === 'partially_received' ? 'warning' : 'secondary') }}">
+                                    {{ ucfirst(str_replace('_', ' ', $item->status ?? 'pending')) }}
+                                </span>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted">No items found for this order.</td>
+                            <td colspan="9" class="text-center text-muted">No items found for this order.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -202,6 +233,48 @@
                 </div>
             </div>
         </div>
+
+        <!-- Related GRVs Section -->
+        @if($purchaseOrder->grvs->count() > 0)
+            <div class="mb-4">
+                <h4 class="section-title">Related GRVs</h4>
+                <div class="mb-2">
+                    @foreach($purchaseOrder->grvs as $grv)
+                        <a href="{{ route('grv.show', $grv->id) }}" class="btn btn-sm btn-outline-info me-2 mb-1">
+                            {{ $grv->grv_number }} 
+                            <span class="badge bg-secondary">{{ ucfirst($grv->overall_status) }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        <!-- Delivery Progress Section -->
+        @if($purchaseOrder->grvs->count() > 0)
+            <div class="mb-4">
+                <h4 class="section-title">Delivery Progress</h4>
+                @php
+                    $totalOrdered = $purchaseOrder->items->sum('quantity_ordered');
+                    $totalReceived = $purchaseOrder->items->sum('quantity_received');
+                    $completionPercent = $totalOrdered > 0 ? round(($totalReceived / $totalOrdered) * 100) : 0;
+                @endphp
+                
+                <div class="progress mb-2">
+                    <div class="progress-bar 
+                        @if($completionPercent == 100) bg-success
+                        @elseif($completionPercent >= 50) bg-warning  
+                        @else bg-danger
+                        @endif" 
+                         style="width: {{ $completionPercent }}%">
+                        {{ $completionPercent }}%
+                    </div>
+                </div>
+                
+                <small class="text-muted">
+                    Received: {{ number_format($totalReceived) }} / {{ number_format($totalOrdered) }} items
+                </small>
+            </div>
+        @endif
 
         <!-- Footer -->
         <div class="footer-section mt-5 pt-4">

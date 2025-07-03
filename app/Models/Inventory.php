@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Inventory extends Model
 {
@@ -150,7 +151,7 @@ class Inventory extends Model
                     ->withTimestamps();
     }
 
-    // Add this method to track stock additions
+    // Update your existing addStock method (around line 143)
     public function addStock($quantity, $reason = 'Stock replenishment', $purchaseData = [])
     {
         $oldStock = $this->stock_level;
@@ -171,10 +172,31 @@ class Inventory extends Model
         
         $this->save();
         
+        Log::info("Stock added to inventory", [
+            'inventory_id' => $this->id,
+            'item_name' => $this->name,
+            'old_stock' => $oldStock,
+            'quantity_added' => $quantity,
+            'new_stock' => $this->stock_level,
+            'reason' => $reason,
+            'purchase_data' => $purchaseData
+        ]);
+        
         return [
             'old_stock' => $oldStock,
             'new_stock' => $this->stock_level,
             'added' => $quantity
         ];
+    }
+
+    // Add these relationships if not already present
+    public function purchaseOrderItems()
+    {
+        return $this->hasMany(\App\Models\PurchaseOrderItem::class);
+    }
+
+    public function grvItems()
+    {
+        return $this->hasMany(\App\Models\GrvItem::class);
     }
 }
