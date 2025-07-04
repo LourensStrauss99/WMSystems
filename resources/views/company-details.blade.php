@@ -1,456 +1,406 @@
-{{-- filepath: resources/views/company-details.blade.php --}}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Company Details - Workflow Management</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50 font-sans">
-    <!-- Enhanced Navigation -->
-    <nav class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-building text-2xl"></i>
-                    <h1 class="text-xl font-bold">Company Details</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="/master-settings" class="hover:bg-blue-700 px-3 py-2 rounded transition-colors">
-                        <i class="fas fa-cog mr-2"></i>Master Settings
-                    </a>
-                    <a href="/dashboard" class="hover:bg-blue-700 px-3 py-2 rounded transition-colors">
-                        <i class="fas fa-home mr-2"></i>Dashboard
-                    </a>
+<!-- filepath: resources/views/company-details.blade.php -->
+@extends('layouts.app')
+
+@section('content')
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="text-dark fw-bold mb-1">
+                <i class="fas fa-building text-primary me-2"></i>
+                Company Details & Business Settings
+            </h2>
+            <p class="text-muted">Configure your company information and business rates for all documentation</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ route('master.settings') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Settings
+            </a>
+        </div>
+    </div>
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Please fix the following errors:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    <form action="{{ route('company.details.update') }}" method="POST" enctype="multipart/form-data">
+        @csrf
+        @method('PUT')
+        
+        <!-- Company Information Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-building me-2"></i>Company Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Company Name *</label>
+                                <input type="text" name="company_name" class="form-control" value="{{ old('company_name', $company->company_name) }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Trading Name</label>
+                                <input type="text" name="trading_name" class="form-control" value="{{ old('trading_name', $company->trading_name) }}">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Company Registration Number</label>
+                                <input type="text" name="company_reg_number" class="form-control" value="{{ old('company_reg_number', $company->company_reg_number) }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">VAT Registration Number</label>
+                                <input type="text" name="vat_reg_number" class="form-control" value="{{ old('vat_reg_number', $company->vat_reg_number) }}">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">PAYE Number</label>
+                                <input type="text" name="paye_number" class="form-control" value="{{ old('paye_number', $company->paye_number) }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">UIF Number</label>
+                                <input type="text" name="uif_number" class="form-control" value="{{ old('uif_number', $company->uif_number) }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">B-BBEE Level</label>
+                                <select name="bee_level" class="form-select">
+                                    <option value="">-- Select Level --</option>
+                                    @for($i = 1; $i <= 8; $i++)
+                                        <option value="Level {{ $i }}" {{ old('bee_level', $company->bee_level) == "Level $i" ? 'selected' : '' }}>Level {{ $i }}</option>
+                                    @endfor
+                                    <option value="Non-Compliant" {{ old('bee_level', $company->bee_level) == 'Non-Compliant' ? 'selected' : '' }}>Non-Compliant</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Company Logo</label>
+                        <div class="text-center">
+                            @if($company->company_logo)
+                                <div class="mb-3">
+                                    <img src="{{ asset('storage/' . $company->company_logo) }}" alt="Company Logo" class="img-thumbnail" style="max-height: 150px;">
+                                    <div class="mt-2">
+                                        <a href="{{ route('company.remove-logo') }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove logo?')">
+                                            <i class="fas fa-trash me-1"></i>Remove Logo
+                                        </a>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="border rounded p-4 mb-3 bg-light">
+                                    <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                                    <p class="text-muted">No logo uploaded</p>
+                                </div>
+                            @endif
+                            <input type="file" name="company_logo" class="form-control" accept="image/*">
+                            <small class="text-muted">Max 2MB, JPG/PNG formats</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </nav>
 
-    <div class="container mx-auto mt-8 p-4 max-w-6xl">
-        <!-- Success/Error Messages -->
-        @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>{{ session('success') }}</span>
+        <!-- Contact Information Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-address-book me-2"></i>Contact Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Primary Phone *</label>
+                        <input type="text" name="company_telephone" class="form-control" value="{{ old('company_telephone', $company->company_telephone) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Mobile/Cell</label>
+                        <input type="text" name="company_cell" class="form-control" value="{{ old('company_cell', $company->company_cell) }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Fax</label>
+                        <input type="text" name="company_fax" class="form-control" value="{{ old('company_fax', $company->company_fax) }}">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">General Email *</label>
+                        <input type="email" name="company_email" class="form-control" value="{{ old('company_email', $company->company_email) }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Accounts Email</label>
+                        <input type="email" name="accounts_email" class="form-control" value="{{ old('accounts_email', $company->accounts_email) }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Orders Email</label>
+                        <input type="email" name="orders_email" class="form-control" value="{{ old('orders_email', $company->orders_email) }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Support Email</label>
+                        <input type="email" name="support_email" class="form-control" value="{{ old('support_email', $company->support_email) }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Website</label>
+                        <input type="url" name="company_website" class="form-control" value="{{ old('company_website', $company->company_website) }}" placeholder="https://www.yourcompany.com">
+                    </div>
                 </div>
             </div>
-        @endif
+        </div>
 
-        @if($errors->any())
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                <div class="flex items-center mb-2">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
-                    <span class="font-semibold">Please fix the following errors:</span>
-                </div>
-                <ul class="list-disc list-inside">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+        <!-- Address Information Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>Address Information
+                </h5>
             </div>
-        @endif
-
-        <!-- Main Form -->
-        <form method="POST" action="{{ route('company.details.update') }}" enctype="multipart/form-data" class="space-y-8">
-            @csrf
-            @method('PUT')
-
-            <!-- Business Settings Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-chart-line mr-3 text-blue-600"></i>Business Settings
-                </h2>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Physical Address *</label>
+                        <textarea name="physical_address" class="form-control" rows="3" required>{{ old('physical_address', $company->physical_address) }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Postal Address</label>
+                        <textarea name="postal_address" class="form-control" rows="3">{{ old('postal_address', $company->postal_address) }}</textarea>
+                        <small class="text-muted">Leave blank to use physical address</small>
+                    </div>
+                </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-tools mr-2 text-gray-600"></i>Labour Rate (per hour) *
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-2 text-gray-500">R</span>
-                            <input type="number" step="0.01" name="labour_rate" 
-                                   value="{{ old('labour_rate', $companyDetails->labour_rate ?? '') }}"
-                                   class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                                   placeholder="0.00" required>
-                        </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">City *</label>
+                        <input type="text" name="city" class="form-control" value="{{ old('city', $company->city) }}" required>
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-percent mr-2 text-gray-600"></i>VAT Percentage *
-                        </label>
-                        <div class="relative">
-                            <input type="number" step="0.01" name="vat_percent" 
-                                   value="{{ old('vat_percent', $companyDetails->vat_percent ?? '') }}"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                                   placeholder="15.00" required>
-                            <span class="absolute right-3 top-2 text-gray-500">%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Company Information Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-building mr-3 text-blue-600"></i>Company Information
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-tag mr-2 text-gray-600"></i>Company Name *
-                        </label>
-                        <input type="text" name="company_name" 
-                               value="{{ old('company_name', $companyDetails->company_name ?? '') }}" 
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="Your Company Name" required>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-certificate mr-2 text-gray-600"></i>Company Registration Number
-                        </label>
-                        <input type="text" name="company_reg_number" 
-                               value="{{ old('company_reg_number', $companyDetails->company_reg_number ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="2021/123456/07">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-receipt mr-2 text-gray-600"></i>VAT Registration Number
-                        </label>
-                        <input type="text" name="vat_reg_number" 
-                               value="{{ old('vat_reg_number', $companyDetails->vat_reg_number ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="4123456789">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Banking Details Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-university mr-3 text-blue-600"></i>Banking Details
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-landmark mr-2 text-gray-600"></i>Bank Name
-                        </label>
-                        <select name="bank_name" 
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                            <option value="">Select Bank</option>
-                            <option value="ABSA" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'ABSA' ? 'selected' : '' }}>ABSA</option>
-                            <option value="Standard Bank" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'Standard Bank' ? 'selected' : '' }}>Standard Bank</option>
-                            <option value="FNB" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'FNB' ? 'selected' : '' }}>FNB</option>
-                            <option value="Nedbank" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'Nedbank' ? 'selected' : '' }}>Nedbank</option>
-                            <option value="Capitec" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'Capitec' ? 'selected' : '' }}>Capitec</option>
-                            <option value="Other" {{ old('bank_name', $companyDetails->bank_name ?? '') == 'Other' ? 'selected' : '' }}>Other</option>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Province</label>
+                        <select name="province" class="form-select">
+                            <option value="">-- Select Province --</option>
+                            @php
+                                $provinces = ['Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape', 'Free State', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape'];
+                            @endphp
+                            @foreach($provinces as $province)
+                                <option value="{{ $province }}" {{ old('province', $company->province) == $province ? 'selected' : '' }}>{{ $province }}</option>
+                            @endforeach
                         </select>
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-user mr-2 text-gray-600"></i>Account Holder
-                        </label>
-                        <input type="text" name="account_holder" 
-                               value="{{ old('account_holder', $companyDetails->account_holder ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="Account holder name">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Postal Code</label>
+                        <input type="text" name="postal_code" class="form-control" value="{{ old('postal_code', $company->postal_code) }}">
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-credit-card mr-2 text-gray-600"></i>Account Number
-                        </label>
-                        <input type="text" name="account_number" 
-                               value="{{ old('account_number', $companyDetails->account_number ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="1234567890">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-code-branch mr-2 text-gray-600"></i>Branch Code
-                        </label>
-                        <input type="text" name="branch_code" 
-                               value="{{ old('branch_code', $companyDetails->branch_code ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="250655">
-                    </div>
-                    
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-globe mr-2 text-gray-600"></i>SWIFT/BIC Code
-                        </label>
-                        <input type="text" name="swift_code" 
-                               value="{{ old('swift_code', $companyDetails->swift_code ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="ABSAZAJJ">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Country *</label>
+                        <input type="text" name="country" class="form-control" value="{{ old('country', $company->country) }}" required>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Address Details Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-map-marker-alt mr-3 text-blue-600"></i>Address Details
-                </h2>
+        <!-- Business Rates Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-calculator me-2"></i>Business Rates & Pricing
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Standard Labour Rate *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R</span>
+                            <input type="number" step="0.01" name="labour_rate" class="form-control" value="{{ old('labour_rate', $company->labour_rate) }}" required>
+                            <span class="input-group-text">/hour</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Call-Out Rate</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R</span>
+                            <input type="number" step="0.01" name="call_out_rate" class="form-control" value="{{ old('call_out_rate', $company->call_out_rate) }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">VAT Percentage *</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="vat_percent" class="form-control" value="{{ old('vat_percent', $company->vat_percent) }}" required>
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Default Markup</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="markup_percentage" class="form-control" value="{{ old('markup_percentage', $company->markup_percentage) }}">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Overtime Multiplier</label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" name="overtime_multiplier" class="form-control" value="{{ old('overtime_multiplier', $company->overtime_multiplier) }}">
+                            <span class="input-group-text">x</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Weekend Multiplier</label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" name="weekend_multiplier" class="form-control" value="{{ old('weekend_multiplier', $company->weekend_multiplier) }}">
+                            <span class="input-group-text">x</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Public Holiday Multiplier</label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" name="public_holiday_multiplier" class="form-control" value="{{ old('public_holiday_multiplier', $company->public_holiday_multiplier) }}">
+                            <span class="input-group-text">x</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Mileage Rate</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R</span>
+                            <input type="number" step="0.01" name="mileage_rate" class="form-control" value="{{ old('mileage_rate', $company->mileage_rate) }}">
+                            <span class="input-group-text">/km</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banking Information Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-university me-2"></i>Banking Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Bank Name</label>
+                        <input type="text" name="bank_name" class="form-control" value="{{ old('bank_name', $company->bank_name) }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Account Holder</label>
+                        <input type="text" name="account_holder" class="form-control" value="{{ old('account_holder', $company->account_holder) }}">
+                    </div>
+                </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-home mr-2 text-gray-600"></i>Physical Address
-                        </label>
-                        <textarea name="address" rows="3"
-                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                                  placeholder="Street address, building number, etc.">{{ old('address', $companyDetails->address ?? '') }}</textarea>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Account Number</label>
+                        <input type="text" name="account_number" class="form-control" value="{{ old('account_number', $company->account_number) }}">
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-city mr-2 text-gray-600"></i>City
-                        </label>
-                        <input type="text" name="city" 
-                               value="{{ old('city', $companyDetails->city ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="City name">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Branch Code</label>
+                        <input type="text" name="branch_code" class="form-control" value="{{ old('branch_code', $company->branch_code) }}">
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-flag mr-2 text-gray-600"></i>Province/State
-                        </label>
-                        <select name="province" 
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                            <option value="">Select Province</option>
-                            <option value="Western Cape" {{ old('province', $companyDetails->province ?? '') == 'Western Cape' ? 'selected' : '' }}>Western Cape</option>
-                            <option value="Eastern Cape" {{ old('province', $companyDetails->province ?? '') == 'Eastern Cape' ? 'selected' : '' }}>Eastern Cape</option>
-                            <option value="Northern Cape" {{ old('province', $companyDetails->province ?? '') == 'Northern Cape' ? 'selected' : '' }}>Northern Cape</option>
-                            <option value="Free State" {{ old('province', $companyDetails->province ?? '') == 'Free State' ? 'selected' : '' }}>Free State</option>
-                            <option value="KwaZulu-Natal" {{ old('province', $companyDetails->province ?? '') == 'KwaZulu-Natal' ? 'selected' : '' }}>KwaZulu-Natal</option>
-                            <option value="North West" {{ old('province', $companyDetails->province ?? '') == 'North West' ? 'selected' : '' }}>North West</option>
-                            <option value="Gauteng" {{ old('province', $companyDetails->province ?? '') == 'Gauteng' ? 'selected' : '' }}>Gauteng</option>
-                            <option value="Mpumalanga" {{ old('province', $companyDetails->province ?? '') == 'Mpumalanga' ? 'selected' : '' }}>Mpumalanga</option>
-                            <option value="Limpopo" {{ old('province', $companyDetails->province ?? '') == 'Limpopo' ? 'selected' : '' }}>Limpopo</option>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Branch Name</label>
+                        <input type="text" name="branch_name" class="form-control" value="{{ old('branch_name', $company->branch_name) }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Account Type</label>
+                        <select name="account_type" class="form-select">
+                            <option value="">-- Select Type --</option>
+                            <option value="Current" {{ old('account_type', $company->account_type) == 'Current' ? 'selected' : '' }}>Current Account</option>
+                            <option value="Savings" {{ old('account_type', $company->account_type) == 'Savings' ? 'selected' : '' }}>Savings Account</option>
+                            <option value="Business" {{ old('account_type', $company->account_type) == 'Business' ? 'selected' : '' }}>Business Account</option>
                         </select>
                     </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-mail-bulk mr-2 text-gray-600"></i>Postal/ZIP Code
-                        </label>
-                        <input type="text" name="postal_code" 
-                               value="{{ old('postal_code', $companyDetails->postal_code ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="7925">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-globe-africa mr-2 text-gray-600"></i>Country
-                        </label>
-                        <input type="text" name="country" 
-                               value="{{ old('country', $companyDetails->country ?? 'South Africa') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="South Africa">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">SWIFT Code</label>
+                        <input type="text" name="swift_code" class="form-control" value="{{ old('swift_code', $company->swift_code) }}">
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Contact Details Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-address-book mr-3 text-blue-600"></i>Contact Details
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-phone mr-2 text-gray-600"></i>Telephone
-                        </label>
-                        <input type="text" name="company_telephone" 
-                               value="{{ old('company_telephone', $companyDetails->company_telephone ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="+27 21 123 4567">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-envelope mr-2 text-gray-600"></i>Email
-                        </label>
-                        <input type="email" name="company_email" 
-                               value="{{ old('company_email', $companyDetails->company_email ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="info@company.com">
-                    </div>
-                    
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-link mr-2 text-gray-600"></i>Website
-                        </label>
-                        <input type="url" name="company_website" 
-                               value="{{ old('company_website', $companyDetails->company_website ?? '') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="https://www.company.com">
-                    </div>
-                </div>
+        <!-- Business Terms Card -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-contract me-2"></i>Business Terms & Policies
+                </h5>
             </div>
-
-            <!-- Invoice Settings Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-file-invoice mr-3 text-blue-600"></i>Invoice Settings
-                </h2>
-                
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-handshake mr-2 text-gray-600"></i>Default Invoice Terms
-                        </label>
-                        <input type="text" name="invoice_terms" 
-                               value="{{ old('invoice_terms', $companyDetails->invoice_terms ?? 'Payment due within 30 days') }}"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                               placeholder="Payment due within 30 days">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-sticky-note mr-2 text-gray-600"></i>Invoice Footer/Notes
-                        </label>
-                        <textarea name="invoice_footer" rows="4"
-                                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                                  placeholder="Thank you for your business! For any queries, please contact us.">{{ old('invoice_footer', $companyDetails->invoice_footer ?? '') }}</textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Company Logo Section -->
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-200 pb-3">
-                    <i class="fas fa-image mr-3 text-blue-600"></i>Company Logo
-                </h2>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-gray-700 font-bold mb-2">
-                            <i class="fas fa-upload mr-2 text-gray-600"></i>Upload Logo
-                        </label>
-                        <input type="file" name="company_logo" accept="image/*" 
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-                        <small class="text-gray-600 mt-1 block">Recommended: PNG or JPG, max 2MB, square format works best</small>
-                    </div>
-                    
-                    @if(!empty($companyDetails->company_logo ?? ''))
-                        <div class="mt-4">
-                            <p class="text-gray-700 font-semibold mb-2">Current Logo:</p>
-                            <div class="bg-gray-50 p-4 rounded-lg border-2 border-dashed border-gray-300 inline-block">
-                                <img src="{{ asset('storage/' . $companyDetails->company_logo) }}"
-                                     alt="Company Logo"
-                                     class="h-32 w-auto rounded shadow-md border">
-                            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Default Payment Terms</label>
+                        <div class="input-group">
+                            <input type="number" name="default_payment_terms" class="form-control" value="{{ old('default_payment_terms', $company->default_payment_terms) }}">
+                            <span class="input-group-text">days</span>
                         </div>
-                    @endif
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Quote Validity</label>
+                        <div class="input-group">
+                            <input type="number" name="quote_validity_days" class="form-control" value="{{ old('quote_validity_days', $company->quote_validity_days) }}">
+                            <span class="input-group-text">days</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">Invoice Terms & Conditions</label>
+                        <textarea name="invoice_terms" class="form-control" rows="3">{{ old('invoice_terms', $company->invoice_terms) }}</textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Quote Terms</label>
+                        <textarea name="quote_terms" class="form-control" rows="3">{{ old('quote_terms', $company->quote_terms) }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Warranty Terms</label>
+                        <textarea name="warranty_terms" class="form-control" rows="3">{{ old('warranty_terms', $company->warranty_terms) }}</textarea>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Submit Button -->
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <div class="flex justify-between items-center">
-                    <a href="/master-settings" class="bg-gray-500 text-white px-6 py-3 rounded-lg shadow-md hover:bg-gray-600 transition-colors font-semibold">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Master Settings
-                    </a>
-                    <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded-lg shadow-md hover:bg-blue-700 transition-colors font-semibold">
-                        <i class="fas fa-save mr-2"></i>Save Company Details
-                    </button>
-                </div>
+        <!-- Submit Button -->
+        <div class="row">
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-save me-2"></i>Save Company Details
+                </button>
             </div>
-        </form>
-    </div>
-
-    <script>
-        // Form validation and enhancement
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add loading state to form submission
-            const form = document.querySelector('form');
-            const submitBtn = form.querySelector('button[type="submit"]');
-            
-            form.addEventListener('submit', function(e) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
-                submitBtn.disabled = true;
-            });
-            
-            // Auto-format phone numbers
-            const phoneInput = document.querySelector('input[name="company_telephone"]');
-            if (phoneInput) {
-                phoneInput.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, '');
-                    if (value.startsWith('27')) {
-                        value = '+' + value;
-                    } else if (value.startsWith('0')) {
-                        value = '+27' + value.substring(1);
-                    }
-                    // Format as +27 XX XXX XXXX
-                    if (value.length > 3) {
-                        value = value.substring(0, 3) + ' ' + value.substring(3);
-                    }
-                    if (value.length > 6) {
-                        value = value.substring(0, 6) + ' ' + value.substring(6);
-                    }
-                    if (value.length > 10) {
-                        value = value.substring(0, 10) + ' ' + value.substring(10);
-                    }
-                    e.target.value = value;
-                });
-            }
-            
-            // Auto-format VAT number
-            const vatInput = document.querySelector('input[name="vat_reg_number"]');
-            if (vatInput) {
-                vatInput.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, '');
-                    if (value.length > 10) {
-                        value = value.substring(0, 10);
-                    }
-                    e.target.value = value;
-                });
-            }
-            
-            // Preview logo before upload
-            const logoInput = document.querySelector('input[name="company_logo"]');
-            if (logoInput) {
-                logoInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            // Create preview if it doesn't exist
-                            let preview = document.getElementById('logo-preview');
-                            if (!preview) {
-                                preview = document.createElement('div');
-                                preview.id = 'logo-preview';
-                                preview.className = 'mt-4';
-                                logoInput.parentNode.appendChild(preview);
-                            }
-                            preview.innerHTML = `
-                                <p class="text-gray-700 font-semibold mb-2">Preview:</p>
-                                <div class="bg-gray-50 p-4 rounded-lg border-2 border-dashed border-gray-300 inline-block">
-                                    <img src="${e.target.result}" alt="Logo Preview" class="h-32 w-auto rounded shadow-md border">
-                                </div>
-                            `;
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-        });
-    </script>
-</body>
-</html>
+        </div>
+    </form>
+</div>
+@endsection

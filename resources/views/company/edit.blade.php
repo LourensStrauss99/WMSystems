@@ -20,7 +20,7 @@
 
     <form method="POST" action="{{ route('company.update') }}" enctype="multipart/form-data">
         @csrf
-        @method('PUT')
+        @method('PUT') 
         
         <div class="row">
             <!-- Company Information -->

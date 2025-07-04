@@ -3,48 +3,39 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CompanyDetail;
 use Illuminate\Http\Request;
+use App\Models\CompanyDetail;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class CompanyController extends Controller
 {
-    public function __construct()
+    /**
+     * Show company details (redirects to edit form)
+     */
+    public function show()
     {
-        $this->middleware('auth');
+        return $this->edit();
     }
 
     /**
-     * Show the form for editing company details
+     * Show company details form
      */
     public function edit()
     {
-        $company = CompanyDetail::first();
-        
-        // If no company details exist, create default ones
-        if (!$company) {
-            $company = CompanyDetail::create([
-                'company_name' => 'Your Company Name',
-                'trading_name' => 'Your Trading Name',
-                'registration_number' => '',
-                'vat_number' => '',
-                'address_line_1' => '',
-                'address_line_2' => '',
-                'city' => '',
-                'state_province' => '',
-                'postal_code' => '',
-                'country' => 'South Africa',
-                'phone' => '',
-                'email' => '',
-                'website' => '',
-                'bank_name' => '',
-                'bank_account_number' => '',
-                'bank_branch_code' => '',
-                'bank_account_type' => '',
-            ]);
+        // Check if user has access to company settings
+        if (!Auth::user()->canAccessCompanySettings()) {
+            abort(403, 'Access denied. Administrator privileges required to access company settings.');
         }
 
-        return view('company.edit', compact('company'));
+        // Get existing company details or create default
+        $company = CompanyDetail::first();
+        
+        if (!$company) {
+            $company = CompanyDetail::createDefault();
+        }
+
+        return view('company-details', compact('company'));
     }
 
     /**
@@ -52,70 +43,45 @@ class CompanyController extends Controller
      */
     public function update(Request $request)
     {
-        $validated = $request->validate([
+        // Check permissions
+        if (!Auth::user()->canAccessCompanySettings()) {
+            abort(403, 'Access denied. Administrator privileges required.');
+        }
+
+        $request->validate([
             'company_name' => 'required|string|max:255',
-            'trading_name' => 'nullable|string|max:255',
-            'registration_number' => 'nullable|string|max:100',
-            'vat_number' => 'nullable|string|max:100',
-            'address_line_1' => 'required|string|max:255',
-            'address_line_2' => 'nullable|string|max:255',
+            'company_email' => 'required|email|max:255',
+            'company_telephone' => 'required|string|max:20',
+            'physical_address' => 'required|string|max:500',
             'city' => 'required|string|max:100',
-            'state_province' => 'nullable|string|max:100',
-            'postal_code' => 'required|string|max:20',
             'country' => 'required|string|max:100',
-            'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'website' => 'nullable|url|max:255',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_account_number' => 'nullable|string|max:50',
-            'bank_branch_code' => 'nullable|string|max:20',
-            'bank_account_type' => 'nullable|string|max:50',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'labour_rate' => 'required|numeric|min:0',
+            'vat_percent' => 'required|numeric|min:0|max:100',
+            'markup_percentage' => 'required|numeric|min:0',
+            'company_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $company = CompanyDetail::first();
-        
         if (!$company) {
             $company = new CompanyDetail();
         }
 
         // Handle logo upload
-        if ($request->hasFile('logo')) {
+        if ($request->hasFile('company_logo')) {
             // Delete old logo if exists
-            if ($company->logo && Storage::exists('public/' . $company->logo)) {
-                Storage::delete('public/' . $company->logo);
+            if ($company->company_logo && Storage::exists('public/' . $company->company_logo)) {
+                Storage::delete('public/' . $company->company_logo);
             }
-
-            // Store new logo
-            $logoPath = $request->file('logo')->store('company', 'public');
-            $validated['logo'] = $logoPath;
+            
+            $logoPath = $request->file('company_logo')->store('company', 'public');
+            $company->company_logo = $logoPath;
         }
 
-        $company->fill($validated);
+        // Update all fields
+        $company->fill($request->except(['company_logo', '_token', '_method']));
         $company->save();
 
-        return redirect()->route('company.details')
-            ->with('success', 'Company details updated successfully!');
-    }
-
-    /**
-     * Show company details (view only)
-     */
-    public function show()
-    {
-        $company = CompanyDetail::first();
-        
-        return view('company.show', compact('company'));
-    }
-
-    /**
-     * Get company details for API
-     */
-    public function getDetails()
-    {
-        $company = CompanyDetail::first();
-        
-        return response()->json($company);
+        return back()->with('success', 'Company details updated successfully!');
     }
 
     /**
@@ -123,62 +89,39 @@ class CompanyController extends Controller
      */
     public function removeLogo()
     {
+        if (!Auth::user()->canAccessCompanySettings()) {
+            abort(403);
+        }
+
         $company = CompanyDetail::first();
-        
-        if ($company && $company->logo) {
-            // Delete logo file
-            if (Storage::exists('public/' . $company->logo)) {
-                Storage::delete('public/' . $company->logo);
+        if ($company && $company->company_logo) {
+            // Delete file
+            if (Storage::exists('public/' . $company->company_logo)) {
+                Storage::delete('public/' . $company->company_logo);
             }
             
-            // Remove logo from database
-            $company->update(['logo' => null]);
-            
-            return back()->with('success', 'Company logo removed successfully!');
+            // Clear from database
+            $company->company_logo = null;
+            $company->save();
         }
-        
-        return back()->with('error', 'No logo to remove.');
+
+        return back()->with('success', 'Company logo removed successfully!');
     }
 
     /**
-     * Validate company setup
+     * Check if company setup is complete
      */
-    public function validateSetup()
+    public function checkSetup()
     {
         $company = CompanyDetail::first();
         
         if (!$company) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Company details not configured'
-            ]);
-        }
-
-        $required_fields = [
-            'company_name',
-            'address_line_1',
-            'city',
-            'postal_code',
-            'country'
-        ];
-
-        $missing_fields = [];
-        foreach ($required_fields as $field) {
-            if (empty($company->$field)) {
-                $missing_fields[] = str_replace('_', ' ', ucfirst($field));
-            }
-        }
-
-        if (!empty($missing_fields)) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'Missing required fields: ' . implode(', ', $missing_fields)
-            ]);
+            return response()->json(['complete' => false, 'message' => 'Company details not set up']);
         }
 
         return response()->json([
-            'valid' => true,
-            'message' => 'Company setup is complete'
+            'complete' => $company->isSetupComplete(),
+            'company' => $company->getDocumentHeader()
         ]);
     }
 }

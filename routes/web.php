@@ -25,6 +25,7 @@ use App\Http\Controllers\GoodsReceivedVoucherController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\GrvController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\UserController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
@@ -69,7 +70,7 @@ Route::get('/admin-panel', [InventoryController::class, 'adminPanel'])->name('ad
 Route::post('/admin/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
 Route::post('/admin/employees', [EmployeeController::class, 'store'])->name('admin.employees.store');
 
-// Static pages (views)
+// Static pages
 Route::view('/client', 'client')->name('client');
 Route::view('/invoice', 'invoice')->name('invoice');
 Route::view('/settings', 'settings')->name('settings');
@@ -339,4 +340,37 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/grv/{id}/quality-pass', [GrvController::class, 'passQualityCheck'])->name('grv.quality-pass');
     Route::post('/grv/{id}/quality-fail', [GrvController::class, 'failQualityCheck'])->name('grv.quality-fail');
     Route::get('/api/purchase-orders/{id}/details', [GrvController::class, 'getPurchaseOrderDetails'])->name('api.purchase-orders.details');
+});
+
+// Add these routes to your web.php
+Route::middleware(['auth'])->group(function () {
+    Route::get('/company-details', [CompanyController::class, 'edit'])->name('company.details');
+    Route::put('/company-details', [CompanyController::class, 'update'])->name('company.details.update');
+    Route::get('/company/remove-logo', [CompanyController::class, 'removeLogo'])->name('company.remove-logo');
+    Route::get('/company/check-setup', [CompanyController::class, 'checkSetup'])->name('company.check-setup');
+});
+
+// Add to your routes/web.php:
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/master_settings', [MasterSettingsController::class, 'index'])->name('master.settings');
+    
+    // User management routes - FIX THE STORE ROUTE
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store'); // Change from MasterSettingsController
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    
+    // Add missing routes
+    Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::post('/company/check-setup', [CompanyController::class, 'checkSetup'])->name('company.check-setup');
+    Route::get('/company/details', [CompanyController::class, 'edit'])->name('company.details');
+    Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
+    Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
+    Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+    Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
+    Route::get('/grv', [GrvController::class, 'index'])->name('grv.index');
 });

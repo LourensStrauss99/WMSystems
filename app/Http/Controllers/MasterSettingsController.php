@@ -3,78 +3,112 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Setting;
-use App\Models\CompanyDetail;
-use App\Models\Jobcard;
+use App\Models\User;
 use App\Models\Inventory;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class MasterSettingsController extends Controller
 {
     public function index()
     {
-        $companyDetails = CompanyDetail::first();
-
-        // Get all inventory items for the replenishment dropdown
-        $items = Inventory::orderBy('name')->get();
-        
-        return view('master-settings', compact('companyDetails', 'items'));
-    }
-
-    public function update(Request $request)
-    {
-        $data = $request->validate([
-            'labour_rate' => 'required|numeric',
-            'vat_percent' => 'required|numeric',
-            'company_name' => 'required|string',
-            'company_reg_number' => 'nullable|string',
-            'vat_reg_number' => 'nullable|string',
-            'bank_name' => 'nullable|string',
-            'account_holder' => 'nullable|string',
-            'account_number' => 'nullable|string',
-            'branch_code' => 'nullable|string',
-            'swift_code' => 'nullable|string',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string',
-            'province' => 'nullable|string',
-            'postal_code' => 'nullable|string',
-            'country' => 'nullable|string',
-            'company_telephone' => 'nullable|string',
-            'company_email' => 'nullable|email',
-            'company_website' => 'nullable|string',
-            'invoice_terms' => 'nullable|string',
-            'invoice_footer' => 'nullable|string',
-            'company_logo' => 'nullable|image|max:2048',
-        ]);
-
-        $company = CompanyDetail::firstOrNew(['id' => 1]);
-
-        // Handle logo upload
-        if ($request->hasFile('company_logo')) {
-            $path = $request->file('company_logo')->store('company_logos', 'public');
-            $data['company_logo'] = $path;
+        // Check if user has access to master settings
+        if (!Auth::user()->canAccessMasterSettings()) {
+            abort(403, 'Access denied. Administrator privileges required.');
         }
 
-        $company->fill($data);
-        $company->save();
+        $users = User::orderBy('is_superuser', 'desc')
+                    ->orderBy('admin_level', 'desc')
+                    ->orderBy('created_at', 'asc')
+                    ->get();
+                    
+        $items = Inventory::orderBy('name')->get();
 
-        return redirect()->route('company.details')->with('success', 'Company details updated!');
+        return view('master-settings', compact('users', 'items'));
     }
 
-    public function showInvoice($jobcardId)
+    public function storeEmployee(Request $request)
     {
-        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
-        $company = \App\Models\CompanyDetail::first();
-        return view('invoice', compact('jobcard', 'company'));
+        // Validate the request
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'role' => 'required|string',
+            'admin_level' => 'nullable|integer|between:0,5',
+            'employee_id' => 'nullable|string|max:50',
+            'department' => 'nullable|string|max:100',
+            'position' => 'nullable|string|max:100',
+        ]);
+
+        // Create the user
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make('password'), // Default password
+            'role' => $validated['role'],
+            'admin_level' => $validated['admin_level'] ?? 0,
+            'employee_id' => $validated['employee_id'],
+            'department' => $validated['department'],
+            'position' => $validated['position'],
+            'is_active' => true,
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()->route('master.settings')
+            ->with('success', 'User created successfully! Default password is "password".');
     }
-    public function email($jobcardId)
+
+    public function updateUser(Request $request, $id)
     {
-        $jobcard = \App\Models\Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
-        $company = \App\Models\CompanyDetail::first();
+        $user = User::findOrFail($id);
+        
+        // Check permissions
+        if (!Auth::user()->canManageUsers()) {
+            abort(403, 'Access denied. User management privileges required.');
+        }
 
-        // Send email logic here (use Laravel Mailable)
-        Mail::to($jobcard->client->email)->send(new \App\Mail\InvoiceMailable($jobcard, $company));
+        // Prevent editing superusers unless you are one
+        if ($user->is_superuser && !Auth::user()->isSuperUser()) {
+            abort(403, 'Only superusers can edit superuser accounts.');
+        }
 
-        return back()->with('success', 'Invoice emailed to client!');
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'role' => 'required|in:admin,artisan,staff,manager,supervisor',
+            'admin_level' => 'required|integer|min:0|max:5',
+            'is_active' => 'boolean',
+        ]);
+
+        // Prevent privilege escalation
+        if (!Auth::user()->isSuperUser() && $request->admin_level >= Auth::user()->admin_level) {
+            return back()->withErrors(['admin_level' => 'You cannot set admin level equal or higher than your own.']);
+        }
+
+        $user->update($request->only([
+            'name', 'email', 'role', 'admin_level', 'is_active', 
+            'department', 'position', 'phone'
+        ]));
+
+        return back()->with('success', 'User updated successfully!');
+    }
+
+    public function toggleUserStatus($id)
+    {
+        $user = User::findOrFail($id);
+        
+        if (!Auth::user()->canManageUsers()) {
+            abort(403, 'Access denied.');
+        }
+
+        // Prevent deactivating superusers
+        if ($user->is_superuser && !Auth::user()->isSuperUser()) {
+            return back()->withErrors(['error' => 'Cannot deactivate superuser accounts.']);
+        }
+
+        $user->update(['is_active' => !$user->is_active]);
+        
+        $status = $user->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "User {$status} successfully!");
     }
 }
