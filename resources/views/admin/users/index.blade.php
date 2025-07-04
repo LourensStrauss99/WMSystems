@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>User Management - Admin Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -265,9 +266,9 @@
                                         <td>
                                             <div class="btn-group btn-group-sm">
                                                 @if(auth()->user()->canManageUsers())
-                                                    <button class="btn btn-outline-primary btn-sm" onclick="editUser({{ $user->id }})">
+                                                    <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
                                                         <i class="fas fa-edit"></i>
-                                                    </button>
+                                                    </a>
                                                     @if($user->id !== auth()->id())
                                                         <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})">
                                                             <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
@@ -464,30 +465,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Edit User Function
-        function editUser(userId) {
-            fetch(`/users/${userId}`)
-                .then(response => response.json())
-                .then(user => {
-                    document.getElementById('edit_name').value = user.name;
-                    document.getElementById('edit_email').value = user.email;
-                    document.getElementById('edit_role').value = user.role;
-                    document.getElementById('edit_admin_level').value = user.admin_level;
-                    document.getElementById('edit_employee_id').value = user.employee_id || '';
-                    document.getElementById('edit_department').value = user.department || '';
-                    document.getElementById('edit_position').value = user.position || '';
-                    document.getElementById('edit_is_active').checked = user.is_active;
-                    
-                    document.getElementById('editUserForm').action = `/users/${userId}`;
-                    
-                    new bootstrap.Modal(document.getElementById('editUserModal')).show();
-                })
-                .catch(error => {
-                    alert('Error loading user data');
-                    console.error('Error:', error);
-                });
-        }
-
         // Toggle User Status
         function toggleUserStatus(userId) {
             if (confirm('Are you sure you want to toggle this user\'s status?')) {
@@ -496,19 +473,30 @@
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                     },
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        location.reload();
+                        // Show success message
+                        showAlert('success', data.message);
+                        // Reload page to reflect changes
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
                     } else {
-                        alert('Error updating user status');
+                        showAlert('danger', data.message || 'Error updating user status');
                     }
                 })
                 .catch(error => {
-                    alert('Error updating user status');
                     console.error('Error:', error);
+                    showAlert('danger', 'Error updating user status');
                 });
             }
         }
@@ -521,21 +509,54 @@
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                     },
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        location.reload();
+                        // Show success message
+                        showAlert('success', data.message);
+                        // Reload page to reflect changes
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
                     } else {
-                        alert('Error deleting user');
+                        showAlert('danger', data.message || 'Error deleting user');
                     }
                 })
                 .catch(error => {
-                    alert('Error deleting user');
                     console.error('Error:', error);
+                    showAlert('danger', 'Error deleting user');
                 });
             }
+        }
+
+        // Show alert function
+        function showAlert(type, message) {
+            const alertContainer = document.querySelector('.container-fluid');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert at the top of the container
+            alertContainer.insertBefore(alertDiv, alertContainer.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
         }
     </script>
 </body>

@@ -5,14 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
         'email',
+        'email_verified_at',
         'password',
         'role',
         'admin_level',
@@ -23,6 +25,9 @@ class User extends Authenticatable
         'telephone',
         'is_active',
         'created_by',
+        'phone_verified_at', // Add this
+        'verification_code', // Add this
+        'bypass_verification', // Add this for testing
     ];
 
     protected $hidden = [
@@ -32,28 +37,32 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'phone_verified_at' => 'datetime', // Add this
         'is_superuser' => 'boolean',
         'admin_level' => 'integer',
         'is_active' => 'boolean',
         'last_login' => 'datetime',
+        'bypass_verification' => 'boolean', // Add this
     ];
 
     // ===== CORE PERMISSION METHODS =====
 
     /**
-     * Check if user is super user
+     * Check if user is a super administrator
      */
-    public function isSuperUser()
+    public function isSuperAdmin()
     {
-        return $this->is_superuser == 1;
+        return $this->is_superuser == 1 || $this->admin_level >= 5;
     }
 
     /**
-     * Check if user is admin
+     * Check if user can manage other users
      */
-    public function isAdmin() 
+    public function canManageUsers()
     {
-        return $this->is_superuser == 1 || $this->admin_level >= 2;
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 3 || 
+               $this->role === 'admin';
     }
 
     /**
@@ -67,23 +76,13 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user can access master settings
+     * Check if user can manage purchase orders
      */
-    public function canAccessMasterSettings()
+    public function canManagePurchaseOrders()
     {
         return $this->is_superuser == 1 || 
-               $this->admin_level >= 3 || 
-               in_array($this->role, ['admin', 'manager']);
-    }
-
-    /**
-     * Check if user can manage users
-     */
-    public function canManageUsers()
-    {
-        return $this->is_superuser == 1 || 
-               $this->admin_level >= 3 || 
-               $this->role === 'admin';
+               $this->admin_level >= 2 || 
+               in_array($this->role, ['admin', 'manager', 'supervisor']);
     }
 
     /**
@@ -93,17 +92,7 @@ class User extends Authenticatable
     {
         return $this->is_superuser == 1 || 
                $this->admin_level >= 1 || 
-               in_array($this->role, ['admin', 'artisan', 'manager']);
-    }
-
-    /**
-     * Check if user can manage purchase orders
-     */
-    public function canManagePurchaseOrders()
-    {
-        return $this->is_superuser == 1 || 
-               $this->admin_level >= 2 || 
-               in_array($this->role, ['admin', 'manager']);
+               in_array($this->role, ['admin', 'manager', 'supervisor', 'artisan']);
     }
 
     /**
@@ -195,6 +184,16 @@ class User extends Authenticatable
                in_array($this->role, ['admin', 'manager', 'artisan']);
     }
 
+    /**
+     * Check if user can access master settings
+     */
+    public function canAccessMasterSettings()
+    {
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 2 || 
+               in_array($this->role, ['admin', 'manager']);
+    }
+
     // ===== DISPLAY METHODS =====
 
     /**
@@ -206,7 +205,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Get admin level name
+     * Get admin level display name
      */
     public function getAdminLevelNameAttribute()
     {
@@ -323,5 +322,73 @@ class User extends Authenticatable
             'can_access_master_settings' => $this->canAccessMasterSettings(),
             'max_approval_amount' => $this->max_approval_amount,
         ];
+    }
+
+    /**
+     * Check if user needs email verification
+     */
+    public function needsEmailVerification()
+    {
+        return !$this->hasVerifiedEmail() && !$this->bypass_verification;
+    }
+
+    /**
+     * Check if user needs phone verification
+     */
+    public function needsPhoneVerification()
+    {
+        return !$this->hasVerifiedPhone() && !$this->bypass_verification && $this->telephone;
+    }
+
+    /**
+     * Check if phone is verified
+     */
+    public function hasVerifiedPhone()
+    {
+        return !is_null($this->phone_verified_at);
+    }
+
+    /**
+     * Mark phone as verified
+     */
+    public function markPhoneAsVerified()
+    {
+        return $this->forceFill([
+            'phone_verified_at' => $this->freshTimestamp(),
+        ])->save();
+    }
+
+    /**
+     * Generate verification code for phone
+     */
+    public function generatePhoneVerificationCode()
+    {
+        $code = sprintf('%06d', mt_rand(100000, 999999));
+        $this->update(['verification_code' => $code]);
+        return $code;
+    }
+
+    /**
+     * Verify phone with code
+     */
+    public function verifyPhone($code)
+    {
+        if ($this->verification_code === $code) {
+            $this->markPhoneAsVerified();
+            $this->update(['verification_code' => null]);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if user can bypass verification (for testing)
+     */
+    public function canBypassVerification()
+    {
+        return $this->bypass_verification || 
+               $this->is_superuser || 
+               $this->admin_level >= 4 ||
+               app()->environment('local', 'testing');
     }
 }

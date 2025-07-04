@@ -26,6 +26,7 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\GrvController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VerificationController;
 
 use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
@@ -33,6 +34,17 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 // Authentication Routes
 Auth::routes(['verify' => true]);
+
+// Email Verification Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/verify', [VerificationController::class, 'show'])->name('verification.notice');
+    Route::post('/email/resend', [VerificationController::class, 'resendEmail'])->name('verification.send');
+    Route::post('/phone/send-code', [VerificationController::class, 'sendPhoneCode'])->name('verification.phone.send');
+    Route::post('/phone/verify', [VerificationController::class, 'verifyPhone'])->name('verification.phone.verify');
+    
+    // Testing bypass (local only)
+    Route::get('/verification/bypass', [VerificationController::class, 'bypassVerification'])->name('verification.bypass');
+});
 
 // Home Route
 Route::get('/', function () {
@@ -355,11 +367,13 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/master_settings', [MasterSettingsController::class, 'index'])->name('master.settings');
     
-    // User management routes - FIX THE STORE ROUTE
+    // User management routes - ADD THE MISSING EDIT ROUTE
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store'); // Change from MasterSettingsController
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::patch('/users/{user}/change-password', [UserController::class, 'changePassword'])->name('users.change-password');
     Route::patch('/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     

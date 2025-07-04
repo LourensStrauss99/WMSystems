@@ -373,9 +373,9 @@
                                         <td>
                                             <div class="btn-group btn-group-sm">
                                                 @if(auth()->user()->canManageUsers())
-                                                    <button class="btn btn-outline-primary btn-sm" onclick="editUser({{ $user->id }})">
+                                                    <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
                                                         <i class="fas fa-edit"></i>
-                                                    </button>
+                                                    </a>
                                                     @if($user->id !== auth()->id())
                                                         <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})">
                                                             <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
@@ -449,6 +449,27 @@
                             <div class="col-md-3">
                                 <label class="form-label">Position</label>
                                 <input type="text" name="position" class="form-control">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" name="telephone" class="form-control" placeholder="+27 XX XXX XXXX">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" name="bypass_verification" id="bypass_verification" value="1">
+                                    <label class="form-check-label" for="bypass_verification">
+                                        Skip verification (Testing)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Password *</label>
+                                <input type="password" name="password" class="form-control" required>
+                                <small class="text-muted">User will need this password to sign in</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm Password *</label>
+                                <input type="password" name="password_confirmation" class="form-control" required>
                             </div>
                             <div class="col-12 text-end">
                                 <button type="submit" class="btn btn-success">
@@ -884,4 +905,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
