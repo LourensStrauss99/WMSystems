@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
-class Employee extends Model
+class Employee extends Authenticatable
 {
+    use HasFactory, Notifiable;
+
     protected $table = 'employees';
 
     protected $fillable = [
@@ -15,12 +19,106 @@ class Employee extends Model
         'password',
         'role',
         'admin_level',
+        'is_superuser',
+        'employee_id',
+        'department',
+        'position',
         'telephone',
+        'is_active',
+        'created_by',
     ];
 
-    // If you have a many-to-many relationship with Jobcard:
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+        'is_superuser' => 'boolean',
+        'admin_level' => 'integer',
+    ];
+
+    // Add the relationship with jobcards
     public function jobcards()
     {
-        return $this->belongsToMany(Jobcard::class);
+        return $this->belongsToMany(Jobcard::class, 'employee_jobcard')
+                    ->withPivot('hours_worked')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Check if employee can access company settings
+     */
+    public function canAccessCompanySettings()
+    {
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 2 || 
+               in_array($this->role, ['admin', 'manager']);
+    }
+
+    /**
+     * Check if employee can manage purchase orders
+     */
+    public function canManagePurchaseOrders()
+    {
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 2 || 
+               in_array($this->role, ['admin', 'manager', 'supervisor']);
+    }
+
+    /**
+     * Check if employee can manage inventory
+     */
+    public function canManageInventory()
+    {
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 1 || 
+               in_array($this->role, ['admin', 'manager', 'supervisor', 'artisan']);
+    }
+
+    /**
+     * Check if employee can manage users
+     */
+    public function canManageUsers()
+    {
+        return $this->is_superuser == 1 || 
+               $this->admin_level >= 3 || 
+               $this->role === 'admin';
+    }
+
+    /**
+     * Get role display name
+     */
+    public function getRoleDisplayAttribute()
+    {
+        return ucfirst(str_replace('_', ' ', $this->role));
+    }
+
+    /**
+     * Get admin level display name
+     */
+    public function getAdminLevelNameAttribute()
+    {
+        $levels = [
+            0 => 'No Admin Rights',
+            1 => 'Basic Access',
+            2 => 'Company Settings',
+            3 => 'User Management',
+            4 => 'System Admin',
+            5 => 'Master Admin'
+        ];
+        
+        return $levels[$this->admin_level] ?? 'Unknown';
+    }
+
+    /**
+     * Get full name (name + surname)
+     */
+    public function getFullNameAttribute()
+    {
+        return trim($this->name . ' ' . $this->surname);
     }
 }

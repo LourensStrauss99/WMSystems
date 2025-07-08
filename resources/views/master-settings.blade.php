@@ -283,18 +283,19 @@
                 </div>
             </div>
             
-            {{-- Current Users Table --}}
+            {{-- Current Users/Employees Table --}}
             <div class="card-body border-bottom">
                 <h5 class="fw-semibold mb-3">
-                    <i class="fas fa-list me-2 text-primary"></i>Current Users
+                    <i class="fas fa-list me-2 text-primary"></i>Current Users/Employees
                 </h5>
                 
-                @if(isset($users) && $users->count() > 0)
+                @if((isset($users) && $users->count() > 0) || (isset($employees) && $employees->count() > 0))
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>User</th>
+                                    <th>User/Employee</th>
+                                    <th>Type</th>
                                     <th>Role</th>
                                     <th>Admin Level</th>
                                     <th>Status</th>
@@ -303,97 +304,210 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($users as $user)
-                                    <tr class="{{ !$user->is_active ? 'table-secondary opacity-75' : '' }}">
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-circle me-3">
-                                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                </div>
-                                                <div>
-                                                    <div class="fw-semibold d-flex align-items-center">
-                                                        {{ $user->name }}
-                                                        @if($user->is_superuser)
-                                                            <span class="badge bg-danger ms-2">
-                                                                <i class="fas fa-crown me-1"></i>SUPER USER
-                                                            </span>
+                                {{-- Display Users --}}
+                                @if(isset($users))
+                                    @foreach($users as $user)
+                                        <tr class="{{ !$user->is_active ? 'table-secondary opacity-75' : '' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle me-3">
+                                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-semibold d-flex align-items-center">
+                                                            {{ $user->name }}
+                                                            @if($user->is_superuser)
+                                                                <span class="badge bg-danger ms-2">
+                                                                    <i class="fas fa-crown me-1"></i>SUPER USER
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-muted small">{{ $user->email }}</div>
+                                                        @if($user->employee_id)
+                                                            <div class="text-muted smaller">ID: {{ $user->employee_id }}</div>
                                                         @endif
                                                     </div>
-                                                    <div class="text-muted small">{{ $user->email }}</div>
-                                                    @if($user->employee_id)
-                                                        <div class="text-muted smaller">ID: {{ $user->employee_id }}</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-user me-1"></i>User
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge admin-level-{{ min($user->admin_level, 5) }}">
+                                                    {{ $user->role_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">Level {{ $user->admin_level }}</span>
+                                                <div class="text-muted small">{{ $user->admin_level_name }}</div>
+                                            </td>
+                                            <td>
+                                                @if($user->is_active)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check-circle me-1"></i>Active
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times-circle me-1"></i>Inactive
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    @if($user->canAccessCompanySettings())
+                                                        <div class="text-success mb-1">
+                                                            <i class="fas fa-building me-1"></i>Company Settings
+                                                        </div>
+                                                    @endif
+                                                    @if($user->canManageUsers())
+                                                        <div class="text-primary mb-1">
+                                                            <i class="fas fa-users me-1"></i>User Management
+                                                        </div>
+                                                    @endif
+                                                    @if($user->canManagePurchaseOrders())
+                                                        <div class="text-info mb-1">
+                                                            <i class="fas fa-file-invoice me-1"></i>Purchase Orders
+                                                        </div>
+                                                    @endif
+                                                    @if($user->canManageInventory())
+                                                        <div class="text-warning">
+                                                            <i class="fas fa-boxes me-1"></i>Inventory
+                                                        </div>
                                                     @endif
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge admin-level-{{ min($user->admin_level, 5) }}">
-                                                {{ $user->role_display }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="fw-medium">Level {{ $user->admin_level }}</span>
-                                            <div class="text-muted small">{{ $user->admin_level_name }}</div>
-                                        </td>
-                                        <td>
-                                            @if($user->is_active)
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle me-1"></i>Active
-                                                </span>
-                                            @else
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle me-1"></i>Inactive
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="small">
-                                                @if($user->canAccessCompanySettings())
-                                                    <div class="text-success mb-1">
-                                                        <i class="fas fa-building me-1"></i>Company Settings
-                                                    </div>
-                                                @endif
-                                                @if($user->canManageUsers())
-                                                    <div class="text-primary mb-1">
-                                                        <i class="fas fa-users me-1"></i>User Management
-                                                    </div>
-                                                @endif
-                                                @if($user->canManagePurchaseOrders())
-                                                    <div class="text-info mb-1">
-                                                        <i class="fas fa-file-invoice me-1"></i>Purchase Orders
-                                                    </div>
-                                                @endif
-                                                @if($user->canManageInventory())
-                                                    <div class="text-warning">
-                                                        <i class="fas fa-boxes me-1"></i>Inventory
-                                                    </div>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                @if(auth()->user()->canManageUsers())
-                                                    <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    @if($user->id !== auth()->id())
-                                                        <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})">
-                                                            <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
-                                                        </button>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    @if(auth()->user()->canManageUsers())
+                                                        <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm" title="Edit User">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        @if($user->id !== auth()->id())
+                                                            <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})" title="Toggle Status">
+                                                                <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
+                                                            </button>
+                                                            @if(!$user->is_superuser || auth()->user()->is_superuser)
+                                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteUser({{ $user->id }})" title="Delete User">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            @endif
+                                                        @endif
                                                     @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
+
+                                {{-- Display Employees --}}
+                                @if(isset($employees))
+                                    @foreach($employees as $employee)
+                                        <tr class="{{ !$employee->is_active ? 'table-secondary opacity-75' : '' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle me-3" style="background: #28a745;">
+                                                        {{ strtoupper(substr($employee->name, 0, 1)) }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-semibold d-flex align-items-center">
+                                                            {{ $employee->name }} {{ $employee->surname }}
+                                                            @if($employee->is_superuser)
+                                                                <span class="badge bg-danger ms-2">
+                                                                    <i class="fas fa-crown me-1"></i>SUPER USER
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-muted small">{{ $employee->email }}</div>
+                                                        @if($employee->employee_id)
+                                                            <div class="text-muted smaller">ID: {{ $employee->employee_id }}</div>
+                                                        @endif
+                                                        @if($employee->telephone)
+                                                            <div class="text-muted smaller">
+                                                                <i class="fas fa-phone me-1"></i>{{ $employee->telephone }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-user-tie me-1"></i>Employee
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge admin-level-{{ min($employee->admin_level, 5) }}">
+                                                    {{ $employee->role_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">Level {{ $employee->admin_level }}</span>
+                                                <div class="text-muted small">{{ $employee->admin_level_name }}</div>
+                                            </td>
+                                            <td>
+                                                @if($employee->is_active)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check-circle me-1"></i>Active
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times-circle me-1"></i>Inactive
+                                                    </span>
                                                 @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    @if($employee->canAccessCompanySettings())
+                                                        <div class="text-success mb-1">
+                                                            <i class="fas fa-building me-1"></i>Company Settings
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManageUsers())
+                                                        <div class="text-primary mb-1">
+                                                            <i class="fas fa-users me-1"></i>User Management
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManagePurchaseOrders())
+                                                        <div class="text-info mb-1">
+                                                            <i class="fas fa-file-invoice me-1"></i>Purchase Orders
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManageInventory())
+                                                        <div class="text-warning">
+                                                            <i class="fas fa-boxes me-1"></i>Inventory
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    @if(auth()->user()->canManageUsers())
+                                                        <a href="{{ route('employees.edit', $employee) }}" class="btn btn-outline-success btn-sm" title="Edit Employee">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <button class="btn btn-outline-warning btn-sm" onclick="toggleEmployeeStatus({{ $employee->id }})" title="Toggle Status">
+                                                            <i class="fas fa-{{ $employee->is_active ? 'pause' : 'play' }}"></i>
+                                                        </button>
+                                                        @if(!$employee->is_superuser || auth()->user()->is_superuser)
+                                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteEmployee({{ $employee->id }})" title="Delete Employee">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
                             </tbody>
                         </table>
                     </div>
                 @else
                     <div class="text-center text-muted py-4">
                         <i class="fas fa-users fa-3x mb-3"></i>
-                        <h5>No Users Found</h5>
-                        <p>There are no users in the system yet.</p>
+                        <h5>No Users or Employees Found</h5>
+                        <p>There are no users or employees in the system yet.</p>
                     </div>
                 @endif
             </div>
@@ -402,19 +516,37 @@
             @if(auth()->user()->canManageUsers())
                 <div class="card-body">
                     <h5 class="fw-semibold mb-3">
-                        <i class="fas fa-user-plus me-2 text-success"></i>Add New User
+                        <i class="fas fa-user-plus me-2 text-success"></i>Add New User/Employee
                     </h5>
-                    <form action="{{ route('users.store') }}" method="POST">
+                    <form action="#" method="POST" id="userEmployeeForm">
                         @csrf
                         <div class="row g-3">
+                            {{-- Type Selection Dropdown --}}
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Account Type *</label>
+                                <select name="account_type" id="account_type" class="form-select" required onchange="updateFormAction()">
+                                    <option value="">-- Select Account Type --</option>
+                                    <option value="user">User (System Access)</option>
+                                    <option value="employee">Employee (Staff Record)</option>
+                                </select>
+                                <small class="text-muted">Choose "User" for system access accounts or "Employee" for staff records</small>
+                            </div>
+
+                            {{-- Name Fields --}}
                             <div class="col-md-4">
-                                <label class="form-label">Full Name *</label>
+                                <label class="form-label">First Name *</label>
                                 <input type="text" name="name" class="form-control" required>
+                            </div>
+                            <div class="col-md-4" id="surname_field" style="display: none;">
+                                <label class="form-label">Surname *</label>
+                                <input type="text" name="surname" class="form-control">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Email Address *</label>
                                 <input type="email" name="email" class="form-control" required>
                             </div>
+
+                            {{-- Rest of your existing fields... --}}
                             <div class="col-md-4">
                                 <label class="form-label">Role *</label>
                                 <select name="role" class="form-select" required>
@@ -438,6 +570,8 @@
                                     <option value="5">Master Admin</option>
                                 </select>
                             </div>
+                            
+                            {{-- Keep your existing fields --}}
                             <div class="col-md-3">
                                 <label class="form-label">Employee ID</label>
                                 <input type="text" name="employee_id" class="form-control">
@@ -472,8 +606,8 @@
                                 <input type="password" name="password_confirmation" class="form-control" required>
                             </div>
                             <div class="col-12 text-end">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-user-plus me-2"></i>Add User
+                                <button type="submit" class="btn btn-success" disabled id="submitBtn">
+                                    <i class="fas fa-user-plus me-2"></i><span id="submitText">Add User/Employee</span>
                                 </button>
                             </div>
                         </div>
@@ -482,7 +616,7 @@
             @else
                 <div class="card-body text-center">
                     <div class="text-muted">
-                        <i class="fas fa-lock fa-2x mb-3"></i>
+                        <i class="fas fa-user-slash fa-3x mb-3"></i>
                         <h5>Access Restricted</h5>
                         <p>You don't have permission to manage users. Contact an administrator for access.</p>
                     </div>
@@ -874,6 +1008,126 @@
         function toggleUserStatus(userId) {
             if (confirm('Are you sure you want to toggle this user\'s status?')) {
                 alert('Toggle user status functionality coming soon...');
+            }
+        }
+
+        // Toggle Employee Status
+        function toggleEmployeeStatus(employeeId) {
+            if (confirm('Are you sure you want to toggle this employee\'s status?')) {
+                fetch(`/employees/${employeeId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', data.message);
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        showAlert('danger', data.message || 'Error updating employee status');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'Error updating employee status');
+                });
+            }
+        }
+
+        // Delete Employee
+        function deleteEmployee(employeeId) {
+            if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+                fetch(`/employees/${employeeId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', data.message);
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        showAlert('danger', data.message || 'Error deleting employee');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'Error deleting employee');
+                });
+            }
+        }
+
+        // Update the existing showAlert function if it doesn't exist
+        function showAlert(type, message) {
+            const alertContainer = document.querySelector('.container-fluid');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Insert at the top of the container
+            alertContainer.insertBefore(alertDiv, alertContainer.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // Update form action based on account type selection
+        function updateFormAction() {
+            const accountType = document.getElementById('account_type').value;
+            const form = document.getElementById('userEmployeeForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const surnameField = document.getElementById('surname_field');
+            const surnameInput = document.querySelector('input[name="surname"]');
+
+            if (accountType === 'user') {
+                form.action = '{{ route("users.store") }}';
+                submitBtn.disabled = false;
+                submitText.textContent = 'Add User';
+                surnameField.style.display = 'none';
+                surnameInput.required = false;
+            } else if (accountType === 'employee') {
+                form.action = '{{ route("employees.store") }}'; // Fixed route
+                submitBtn.disabled = false;
+                submitText.textContent = 'Add Employee';
+                surnameField.style.display = 'block';
+                surnameInput.required = true;
+            } else {
+                form.action = '#';
+                submitBtn.disabled = true;
+                submitText.textContent = 'Add User/Employee';
+                surnameField.style.display = 'none';
+                surnameInput.required = false;
             }
         }
 

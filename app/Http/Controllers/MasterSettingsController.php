@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Inventory;
+use App\Models\Employee;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,19 +13,19 @@ class MasterSettingsController extends Controller
 {
     public function index()
     {
-        // Check if user has access to master settings
-        if (!Auth::user()->canAccessMasterSettings()) {
-            abort(403, 'Access denied. Administrator privileges required.');
-        }
-
         $users = User::orderBy('is_superuser', 'desc')
                     ->orderBy('admin_level', 'desc')
                     ->orderBy('created_at', 'asc')
                     ->get();
-                    
-        $items = Inventory::orderBy('name')->get();
 
-        return view('master-settings', compact('users', 'items'));
+        // Add employees to the data
+        $employees = Employee::orderBy('admin_level', 'desc')
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+
+        $inventory = Inventory::orderBy('name', 'asc')->get();
+
+        return view('master-settings', compact('users', 'employees', 'inventory'));
     }
 
     public function storeEmployee(Request $request)
