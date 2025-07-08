@@ -18,25 +18,20 @@ class Supplier extends Model
         'address',
         'city',
         'postal_code',
-        'vat_number',
-        'account_number',
-        'credit_limit',
-        'payment_terms',
-        'active'
+        'country',
+        'status',
+        'notes',
     ];
 
     protected $casts = [
-        'credit_limit' => 'decimal:2',
-        'active' => 'boolean',
+        'status' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
 
     protected $attributes = [
-        'active' => true,
-        'credit_limit' => 0.00,
-        'payment_terms' => '30_days',
+        'status' => true,
     ];
 
     // Relationships
@@ -47,23 +42,18 @@ class Supplier extends Model
 
     public function inventoryItems(): HasMany
     {
-        return $this->hasMany(Inventory::class, 'supplier_id');
+        return $this->hasMany(Inventory::class, 'supplier', 'name');
     }
 
     // Scopes
     public function scopeActive($query)
     {
-        return $query->where('active', true);
+        return $query->where('status', true);
     }
 
     public function scopeInactive($query)
     {
-        return $query->where('active', false);
-    }
-
-    public function scopeByPaymentTerms($query, $terms)
-    {
-        return $query->where('payment_terms', $terms);
+        return $query->where('status', false);
     }
 
     public function scopeSearch($query, $search)
@@ -88,34 +78,6 @@ class Supplier extends Model
             $address .= " " . $this->postal_code;
         }
         return $address;
-    }
-
-    public function getFormattedCreditLimitAttribute()
-    {
-        return 'R ' . number_format((float) $this->credit_limit, 2);
-    }
-
-    public function getPaymentTermsTextAttribute()
-    {
-        return match($this->payment_terms) {
-            'cash' => 'Cash on Delivery',
-            '30_days' => '30 Days',
-            '60_days' => '60 Days',
-            '90_days' => '90 Days',
-            default => 'Unknown'
-        };
-    }
-
-    public function getStatusTextAttribute()
-    {
-        return $this->active ? 'Active' : 'Inactive';
-    }
-
-    public function getStatusBadgeAttribute()
-    {
-        return $this->active 
-            ? '<span class="badge bg-success">Active</span>'
-            : '<span class="badge bg-danger">Inactive</span>';
     }
 
     // Business Logic Methods
@@ -174,36 +136,7 @@ class Supplier extends Model
                $this->inventoryItems()->count() === 0;
     }
 
-    public function isWithinCreditLimit($amount)
-    {
-        if ($this->credit_limit <= 0) {
-            return true; // No credit limit set
-        }
-        
-        $pendingValue = $this->getPendingOrderValue();
-        return ($pendingValue + $amount) <= $this->credit_limit;
-    }
-
-    public function getRemainingCredit()
-    {
-        if ($this->credit_limit <= 0) {
-            return null; // No credit limit
-        }
-        
-        return max(0, $this->credit_limit - $this->getPendingOrderValue());
-    }
-
     // Static Methods
-    public static function getPaymentTermsOptions()
-    {
-        return [
-            'cash' => 'Cash on Delivery',
-            '30_days' => '30 Days',
-            '60_days' => '60 Days',
-            '90_days' => '90 Days'
-        ];
-    }
-
     public static function getTopSuppliers($limit = 5)
     {
         return static::withCount('purchaseOrders')
@@ -266,13 +199,10 @@ class Supplier extends Model
         
         // Add computed attributes
         $array['full_address'] = $this->full_address;
-        $array['formatted_credit_limit'] = $this->formatted_credit_limit;
-        $array['payment_terms_text'] = $this->payment_terms_text;
-        $array['status_text'] = $this->status_text;
+        $array['status_text'] = $this->status ? 'Active' : 'Inactive';
         $array['total_purchase_orders'] = $this->getTotalPurchaseOrders();
         $array['total_purchase_value'] = $this->getTotalPurchaseValue();
         $array['active_purchase_orders'] = $this->getActivePurchaseOrders();
-        $array['remaining_credit'] = $this->getRemainingCredit();
         
         return $array;
     }
@@ -294,11 +224,9 @@ class Supplier extends Model
             'address' => 'nullable|string|max:500',
             'city' => 'nullable|string|max:100',
             'postal_code' => 'nullable|string|max:20',
-            'vat_number' => 'nullable|string|max:50',
-            'account_number' => 'nullable|string|max:50',
-            'credit_limit' => 'nullable|numeric|min:0|max:999999999.99',
-            'payment_terms' => 'required|in:cash,30_days,60_days,90_days',
-            'active' => 'boolean'
+            'country' => 'nullable|string|max:100',
+            'status' => 'boolean',
+            'notes' => 'nullable|string',
         ];
     }
 
@@ -309,10 +237,6 @@ class Supplier extends Model
             'name.unique' => 'A supplier with this name already exists.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email address is already registered to another supplier.',
-            'credit_limit.numeric' => 'Credit limit must be a valid number.',
-            'credit_limit.min' => 'Credit limit cannot be negative.',
-            'payment_terms.required' => 'Payment terms are required.',
-            'payment_terms.in' => 'Please select valid payment terms.'
         ];
     }
 }

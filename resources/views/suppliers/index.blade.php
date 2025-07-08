@@ -38,10 +38,12 @@
                         <a href="{{ route('suppliers.edit', $supplier) }}" class="btn btn-outline-warning btn-sm" title="Edit">
                             <i class="fas fa-edit"></i>
                         </a>
-                        <form action="{{ route('suppliers.destroy', $supplier) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this supplier?');">
+                        {{-- Replace the existing delete form with this enhanced version --}}
+                        <form action="{{ route('suppliers.destroy', $supplier) }}" method="POST" class="d-inline delete-form">
                             @csrf
                             @method('DELETE')
-                            <button class="btn btn-outline-danger btn-sm" title="Delete">
+                            <button type="button" class="btn btn-outline-danger btn-sm delete-btn" 
+                                    title="Delete" data-supplier-name="{{ $supplier->name }}">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>
@@ -58,4 +60,23 @@
         {{ $suppliers->links() }}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle delete confirmation
+    document.querySelectorAll('.delete-btn').forEach(function(button) {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const supplierName = this.dataset.supplierName;
+            const form = this.closest('.delete-form');
+            
+            if (confirm(`Are you sure you want to delete supplier "${supplierName}"?\n\nThis action cannot be undone.`)) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+
 @endsection

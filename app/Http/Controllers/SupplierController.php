@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -118,23 +119,32 @@ class SupplierController extends Controller
     }
 
     /**
-     * Remove the specified supplier
+     * Remove the specified supplier from storage.
      */
     public function destroy(Supplier $supplier)
     {
         try {
-            if (!$supplier->canBeDeleted()) {
-                return back()->with('error', 'Cannot delete supplier with existing purchase orders or inventory items.');
+            // Check if supplier is used in any inventory items
+            $inventoryCount = DB::table('inventory')
+                               ->where('supplier', $supplier->name)
+                               ->orWhere('vendor', $supplier->name)
+                               ->count();
+            
+            if ($inventoryCount > 0) {
+                return redirect()->route('suppliers.index')
+                               ->with('error', "Cannot delete supplier '{$supplier->name}' because it's linked to {$inventoryCount} inventory item(s).");
             }
             
+            // Delete the supplier
             $supplierName = $supplier->name;
             $supplier->delete();
             
             return redirect()->route('suppliers.index')
-                ->with('success', "Supplier '{$supplierName}' deleted successfully!");
-                
+                           ->with('success', "Supplier '{$supplierName}' has been deleted successfully.");
+            
         } catch (\Exception $e) {
-            return back()->with('error', 'Failed to delete supplier: ' . $e->getMessage());
+            return redirect()->route('suppliers.index')
+                           ->with('error', 'An error occurred while deleting the supplier: ' . $e->getMessage());
         }
     }
 

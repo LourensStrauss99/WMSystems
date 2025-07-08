@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\Payment;
-use App\Models\Jobcard;  // Make sure this model exists
-use App\Models\Invoice;  // Make sure this model exists
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
@@ -14,6 +12,7 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $filter = $request->input('filter'); // Add this
         $perPage = $request->input('perPage', 10);
 
         if (!in_array($perPage, [10, 25, 50])) {
@@ -26,15 +25,17 @@ class CustomerController extends Controller
                   ->orWhere('surname', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             })
+            ->when($filter === 'active', function($q) {
+                $q->active();
+            })
+            ->when($filter === 'inactive', function($q) {
+                $q->inactive();
+            })
             ->orderByDesc('id')
             ->paginate($perPage)
-            ->appends(['search' => $search, 'perPage' => $perPage]);
+            ->appends(['search' => $search, 'perPage' => $perPage, 'filter' => $filter]);
 
-        return view('customers', [
-            'customers' => $customers,
-            'search' => $search,
-            'perPage' => $perPage,
-        ]);
+        return view('customers', compact('customers', 'search', 'perPage', 'filter'));
     }
     
     public function show($id)
@@ -247,6 +248,54 @@ class CustomerController extends Controller
             'success' => true,
             'reference' => $newReference
         ]);
+    }
+
+    /**
+     * Remove the specified customer from storage.
+     */
+    public function destroy(Client $customer)
+    {
+        try {
+            // Check for related records
+            $jobcardCount = DB::table('jobcards')->where('client_id', $customer->id)->count();
+            
+            if ($jobcardCount > 0) {
+                return redirect()->route('customers.index')
+                               ->with('error', "Cannot delete customer '{$customer->name}' because they have {$jobcardCount} associated jobcard(s).");
+            }
+            
+            // Delete the customer
+            $customerName = $customer->name . ' ' . ($customer->surname ?? '');
+            $customer->delete();
+            
+            return redirect()->route('customers.index')
+                           ->with('success', "Customer '{$customerName}' has been deleted successfully.");
+            
+        } catch (\Exception $e) {
+            return redirect()->route('customers.index')
+                           ->with('error', 'Error deleting customer: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Toggle customer active status
+     */
+    public function toggleStatus(Request $request, Client $customer)
+    {
+        $newStatus = !$customer->is_active;
+        $reason = $request->input('reason', 'Manual toggle');
+        
+        $customer->update([
+            'is_active' => $newStatus,
+            'inactive_reason' => $newStatus ? null : $reason,
+            'last_activity' => $newStatus ? now() : $customer->last_activity
+        ]);
+        
+        $status = $newStatus ? 'activated' : 'deactivated';
+        $customerName = $customer->name . ' ' . ($customer->surname ?? '');
+        
+        return redirect()->route('customers.index')
+                       ->with('success', "Customer '{$customerName}' has been {$status}.");
     }
 }
 

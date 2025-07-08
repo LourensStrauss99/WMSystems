@@ -394,7 +394,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
     Route::get('/suppliers/create', [SupplierController::class, 'create'])->name('suppliers.create');
-    Route::get('/grv', [GrvController::class, 'index'])->name('grv.index');
 });
 
 // Employee management routes
@@ -404,3 +403,17 @@ Route::get('/employees/{employee}/edit', [EmployeeController::class, 'edit'])->n
 Route::put('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
 Route::patch('/employees/{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->name('employees.toggle-status');
 Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+
+// Replace individual customer routes with this single line:
+Route::resource('customers', CustomerController::class);
+
+// This automatically creates all these routes:
+// GET customers - index
+// GET customers/create - create  
+// POST customers - store
+// GET customers/{customer} - show
+// GET customers/{customer}/edit - edit
+// PUT/PATCH customers/{customer} - update
+// DELETE customers/{customer} - destroy
+
+Route::patch('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');

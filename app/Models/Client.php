@@ -16,12 +16,17 @@ class Client extends Model
         'telephone',
         'address',
         'notes',
-        'payment_reference'
+        'payment_reference',
+        'is_active',
+        'last_activity',
+        'inactive_reason'
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'is_active' => 'boolean',
+        'last_activity' => 'datetime',
     ];
 
     /**
@@ -80,5 +85,40 @@ class Client extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Get status badge for display
+     */
+    public function getStatusBadgeAttribute()
+    {
+        return $this->is_active 
+            ? '<span class="badge bg-success">Active</span>' 
+            : '<span class="badge bg-warning text-dark">Inactive</span>';
+    }
+
+    /**
+     * Scope for active customers only
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope for inactive customers
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    /**
+     * Check if customer should be marked inactive (no activity in 6 months)
+     */
+    public function shouldBeInactive()
+    {
+        if (!$this->last_activity) return false;
+        return $this->last_activity->lt(now()->subMonths(6));
     }
 }

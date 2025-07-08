@@ -86,6 +86,22 @@
         </div>
     </div>
 
+    <!-- Filter Buttons -->
+    <div class="btn-group mb-3" role="group">
+        <a href="{{ route('customers.index') }}" 
+           class="btn btn-outline-primary {{ !request('filter') ? 'active' : '' }}">
+            All Customers
+        </a>
+        <a href="{{ route('customers.index', ['filter' => 'active']) }}" 
+           class="btn btn-outline-success {{ request('filter') == 'active' ? 'active' : '' }}">
+            Active Only
+        </a>
+        <a href="{{ route('customers.index', ['filter' => 'inactive']) }}" 
+           class="btn btn-outline-warning {{ request('filter') == 'inactive' ? 'active' : '' }}">
+            Inactive Only
+        </a>
+    </div>
+
     <!-- Search Results Summary -->
     @if(request('search'))
         <div class="alert alert-info">
@@ -140,6 +156,7 @@
                                 <th scope="col">
                                     <i class="fas fa-envelope me-1"></i>Email
                                 </th>
+                                <th>Status</th>
                                 <th scope="col" class="text-center" style="width: 120px;">
                                     <i class="fas fa-cog"></i> Actions
                                 </th>
@@ -198,6 +215,7 @@
                                             <span class="text-muted">N/A</span>
                                         @endif
                                     </td>
+                                    <td>{!! $customer->status_badge !!}</td>
                                     <td class="text-center">
                                         <div class="btn-group" role="group">
                                             <a href="{{ route('client.show', $customer->id) }}" 
@@ -214,14 +232,17 @@
                                                 <i class="fas fa-edit me-1"></i>
                                                 <span class="d-none d-md-inline">Edit</span>
                                             </a>
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-outline-danger" 
-                                                    title="Delete Customer"
-                                                    data-bs-toggle="tooltip"
-                                                    onclick="confirmDelete({{ $customer->id }}, '{{ $customer->name }} {{ $customer->surname }}')">
-                                                <i class="fas fa-trash me-1"></i>
-                                                <span class="d-none d-md-inline">Delete</span>
-                                            </button>
+                                            <!-- Debug: {{ route('customers.destroy', $customer) }} -->
+                                            <form action="{{ route('customers.toggle-status', $customer) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" 
+                                                        class="btn btn-outline-{{ $customer->is_active ? 'warning' : 'success' }} btn-sm"
+                                                        title="{{ $customer->is_active ? 'Mark as Inactive' : 'Mark as Active' }}"
+                                                        onclick="return confirm('{{ $customer->is_active ? 'Mark this customer as inactive?' : 'Reactivate this customer?' }}')">
+                                                    <i class="fas fa-{{ $customer->is_active ? 'pause' : 'play' }}"></i>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -393,58 +414,4 @@
     font-size: 0.8rem;
 }
 </style>
-
-<!-- JavaScript for enhanced functionality -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
-
-// Delete confirmation function
-function confirmDelete(customerId, customerName) {
-    if (confirm(`Are you sure you want to delete customer "${customerName}"?\n\nThis action cannot be undone.`)) {
-        // Create and submit a delete form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/client/${customerId}`;
-        
-        // Add CSRF token
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
-        form.appendChild(csrfToken);
-        
-        // Add method override for DELETE
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        form.appendChild(methodField);
-        
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
-// Enhanced row hover effects
-document.querySelectorAll('tbody tr').forEach(row => {
-    row.addEventListener('mouseenter', function() {
-        this.style.backgroundColor = '#f8f9fa';
-        this.style.transform = 'scale(1.01)';
-        this.style.transition = 'all 0.2s ease';
-        this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-    });
-    
-    row.addEventListener('mouseleave', function() {
-        this.style.backgroundColor = '';
-        this.style.transform = '';
-        this.style.boxShadow = '';
-    });
-});
-</script>
 @endsection
