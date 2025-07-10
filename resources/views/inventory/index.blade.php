@@ -233,8 +233,7 @@ function refreshStock() {
 }
 
 function viewItem(itemId) {
-    // You can implement a detailed view modal here
-    console.log('View item:', itemId);
+    window.location.href = `/inventory/${itemId}`;
 }
 
 function editStock(itemId) {

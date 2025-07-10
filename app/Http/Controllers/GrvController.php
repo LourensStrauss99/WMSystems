@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 
 use App\Models\GoodsReceivedVoucher;
 use App\Models\PurchaseOrder;
+use App\Models\PurchaseOrderItem; // Add this missing import
+use App\Models\Inventory;         // Add this missing import
 use App\Models\GrvItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +62,10 @@ class GrvController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Store method called\n", FILE_APPEND);
+        file_put_contents(storage_path('logs/debug.log'), "Request data: " . json_encode($request->all()) . "\n", FILE_APPEND);
+        
+        $validated = $request->validate([
             'purchase_order_id' => 'required|exists:purchase_orders,id',
             'received_date' => 'required|date',
             'received_time' => 'required',
@@ -68,71 +73,135 @@ class GrvController extends Controller
             'vehicle_registration' => 'nullable|string|max:255',
             'driver_name' => 'nullable|string|max:255',
             'delivery_company' => 'nullable|string|max:255',
-            'overall_status' => 'required|in:complete,partial,damaged,rejected',
+            'overall_status' => 'required|string',
+            'quality_check_passed' => 'nullable|boolean',
+            'delivery_note_received' => 'nullable|boolean',
+            'invoice_received' => 'nullable|boolean',
             'general_notes' => 'nullable|string',
             'discrepancies' => 'nullable|string',
-            'quality_check_passed' => 'boolean',
             'quality_notes' => 'nullable|string',
-            'delivery_note_received' => 'boolean',
-            'invoice_received' => 'boolean',
             'items' => 'required|array|min:1',
             'items.*.purchase_order_item_id' => 'required|exists:purchase_order_items,id',
             'items.*.quantity_received' => 'required|integer|min:0',
-            'items.*.quantity_rejected' => 'required|integer|min:0',
-            'items.*.quantity_damaged' => 'required|integer|min:0',
-            'items.*.condition' => 'required|in:good,damaged,defective,expired',
+            'items.*.quantity_rejected' => 'nullable|integer|min:0',
+            'items.*.quantity_damaged' => 'nullable|integer|min:0',
+            'items.*.condition' => 'required|string',
+            'items.*.batch_number' => 'nullable|string',
+            'items.*.expiry_date' => 'nullable|date',
+            'items.*.storage_location' => 'nullable|string',
             'items.*.item_notes' => 'nullable|string',
             'items.*.rejection_reason' => 'nullable|string',
-            'items.*.storage_location' => 'nullable|string|max:255',
-            'items.*.batch_number' => 'nullable|string|max:255',
-            'items.*.expiry_date' => 'nullable|date',
         ]);
 
-        DB::transaction(function() use ($request) {
-            // Create GRV
-            $grv = GoodsReceivedVoucher::create([
-                'grv_number' => GoodsReceivedVoucher::generateGrvNumber(),
-                'purchase_order_id' => $request->purchase_order_id,
-                'received_date' => $request->received_date,
-                'received_time' => $request->received_time,
-                'received_by' => Auth::id(),
-                'delivery_note_number' => $request->delivery_note_number,
-                'vehicle_registration' => $request->vehicle_registration,
-                'driver_name' => $request->driver_name,
-                'delivery_company' => $request->delivery_company,
-                'overall_status' => $request->overall_status,
-                'general_notes' => $request->general_notes,
-                'discrepancies' => $request->discrepancies,
-                'quality_check_passed' => $request->boolean('quality_check_passed'),
-                'quality_notes' => $request->quality_notes,
-                'delivery_note_received' => $request->boolean('delivery_note_received'),
-                'invoice_received' => $request->boolean('invoice_received'),
-            ]);
+        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Validation passed\n", FILE_APPEND);
 
-            // Create GRV items
-            foreach ($request->items as $itemData) {
-                $poItem = \App\Models\PurchaseOrderItem::find($itemData['purchase_order_item_id']);
+        $grv = null;
+
+        try {
+            DB::transaction(function() use ($validated, &$grv) {
+                file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Creating GRV...\n", FILE_APPEND);
                 
-                GrvItem::create([
-                    'grv_id' => $grv->id,
-                    'purchase_order_item_id' => $itemData['purchase_order_item_id'],
-                    'inventory_id' => $poItem->inventory_id,
-                    'quantity_ordered' => $poItem->quantity_ordered,
-                    'quantity_received' => $itemData['quantity_received'],
-                    'quantity_rejected' => $itemData['quantity_rejected'],
-                    'quantity_damaged' => $itemData['quantity_damaged'] ?? 0,
-                    'condition' => $itemData['condition'],
-                    'item_notes' => $itemData['item_notes'] ?? null,
-                    'rejection_reason' => $itemData['rejection_reason'] ?? null,
-                    'storage_location' => $itemData['storage_location'] ?? null,
-                    'batch_number' => $itemData['batch_number'] ?? null,
-                    'expiry_date' => $itemData['expiry_date'] ?? null,
+                // Create GRV
+                $grv = GoodsReceivedVoucher::create([
+                    'grv_number' => $this->generateGrvNumber(),
+                    'purchase_order_id' => $validated['purchase_order_id'],
+                    'received_date' => $validated['received_date'],
+                    'received_time' => $validated['received_time'],
+                    'received_by' => Auth::id(),
+                    'delivery_note_number' => $validated['delivery_note_number'],
+                    'vehicle_registration' => $validated['vehicle_registration'],
+                    'driver_name' => $validated['driver_name'],
+                    'delivery_company' => $validated['delivery_company'],
+                    'overall_status' => $validated['overall_status'],
+                    'general_notes' => $validated['general_notes'],
+                    'discrepancies' => $validated['discrepancies'],
+                    'quality_notes' => $validated['quality_notes'],
+                    'quality_check_passed' => $validated['quality_check_passed'] ?? false,
+                    'delivery_note_received' => $validated['delivery_note_received'] ?? false,
+                    'invoice_received' => $validated['invoice_received'] ?? false,
                 ]);
-            }
-        });
 
-        return redirect()->route('grv.index')
-            ->with('success', 'GRV created successfully! Please proceed with quality check.');
+                file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - GRV created with ID: {$grv->id}\n", FILE_APPEND);
+
+                // Create GRV items
+                foreach ($validated['items'] as $itemData) {
+                    $poItem = PurchaseOrderItem::findOrFail($itemData['purchase_order_item_id']);
+                    
+                    file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Processing PO item: {$poItem->id} - {$poItem->item_name}\n", FILE_APPEND);
+                    
+                    // Find inventory by item code first, then by name
+                    $inventory = Inventory::where('short_code', $poItem->item_code)->first();
+                    
+                    if (!$inventory) {
+                        $inventory = Inventory::where('name', 'LIKE', '%' . $poItem->item_name . '%')->first();
+                    }
+                    
+                    if (!$inventory) {
+                        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Creating new inventory item for: {$poItem->item_name}\n", FILE_APPEND);
+                        
+                        $inventory = Inventory::create([
+                            'name' => $poItem->item_name,
+                            'short_code' => $poItem->item_code,
+                            'description' => $poItem->item_description ?? $poItem->item_name,
+                            'buying_price' => $poItem->unit_price,
+                            'selling_price' => $poItem->unit_price * 1.3,
+                            'nett_price' => $poItem->unit_price,
+                            'sell_price' => $poItem->unit_price * 1.3,
+                            'stock_level' => 0,
+                            'quantity' => 0,
+                            'min_level' => 5,
+                            'min_quantity' => 5,
+                            'supplier' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
+                            'vendor' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
+                        ]);
+                        
+                        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Created inventory item with ID: {$inventory->id}\n", FILE_APPEND);
+                    }
+
+                    // Create GRV item with CORRECT field name
+                    $grvItem = GrvItem::create([
+                        'grv_id' => $grv->id,
+                        'purchase_order_item_id' => $itemData['purchase_order_item_id'],
+                        'inventory_id' => $inventory->id,
+                        'quantity_ordered' => $poItem->quantity_ordered, // ✅ FIXED!
+                        'quantity_received' => $itemData['quantity_received'],
+                        'quantity_rejected' => $itemData['quantity_rejected'] ?? 0,
+                        'quantity_damaged' => $itemData['quantity_damaged'] ?? 0,
+                        'condition' => $itemData['condition'],
+                        'batch_number' => $itemData['batch_number'],
+                        'expiry_date' => $itemData['expiry_date'],
+                        'storage_location' => $itemData['storage_location'],
+                        'notes' => $itemData['item_notes'],
+                        'rejection_reason' => $itemData['rejection_reason'],
+                        'stock_updated' => false,
+                    ]);
+                    
+                    file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Created GRV item with ID: {$grvItem->id}\n", FILE_APPEND);
+                }
+                
+                // Update purchase order status
+                $po = PurchaseOrder::findOrFail($validated['purchase_order_id']);
+                $po->update(['status' => 'received']);
+                
+                file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Updated PO status to 'received'\n", FILE_APPEND);
+            });
+
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Transaction completed successfully\n", FILE_APPEND);
+
+            // ✅ SUCCESS MESSAGE AND REDIRECT
+            if ($grv) {
+                return redirect()->route('grv.show', $grv->id)
+                    ->with('success', "🎉 GRV {$grv->grv_number} created successfully! {$grv->items->count()} items received.");
+            } else {
+                return back()->with('error', '❌ Error: GRV could not be created.');
+            }
+                
+        } catch (\Exception $e) {
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Error: " . $e->getMessage() . "\n", FILE_APPEND);
+            
+            return back()->withInput()
+                ->with('error', "❌ Error creating GRV: " . $e->getMessage());
+        }
     }
 
     /**
@@ -155,56 +224,66 @@ class GrvController extends Controller
      */
     public function approve($id)
     {
-        $grv = GoodsReceivedVoucher::findOrFail($id);
+        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Approve method called for GRV ID: {$id}\n", FILE_APPEND);
         
-        if ($grv->checked_by) {
-            return back()->with('error', 'This GRV has already been approved.');
-        }
-        
-        if (!$grv->quality_check_passed) {
-            return back()->with('error', 'Quality check must pass before approval.');
-        }
-
-        DB::transaction(function() use ($grv) {
-            Log::info("Starting GRV approval process", [
-                'grv_id' => $grv->id,
-                'grv_number' => $grv->grv_number,
-                'po_number' => $grv->purchaseOrder->po_number
-            ]);
+        try {
+            $grv = GoodsReceivedVoucher::with(['items.inventory'])->findOrFail($id);
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - GRV found: {$grv->grv_number}, checked_by: " . ($grv->checked_by ?? 'null') . "\n", FILE_APPEND);
             
             $updatedItems = 0;
             
-            // Update inventory for each item
-            foreach ($grv->items as $item) {
-                Log::info("Processing GRV item", [
-                    'grv_item_id' => $item->id,
-                    'inventory_id' => $item->inventory_id,
-                    'accepted_quantity' => $item->getAcceptedQuantity(),
-                    'stock_updated' => $item->stock_updated
-                ]);
-                
-                if ($item->updateInventoryStock()) {
-                    $updatedItems++;
-                }
-            }
-
-            // Update GRV as checked
-            $grv->update([
-                'checked_by' => Auth::id(),
-            ]);
-
-            // Update purchase order status
-            $grv->purchaseOrder->updateStatusBasedOnItems();
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Processing " . $grv->items->count() . " items\n", FILE_APPEND);
             
-            Log::info("GRV approval completed", [
-                'grv_id' => $grv->id,
-                'grv_number' => $grv->grv_number,
-                'items_updated' => $updatedItems,
-                'po_status' => $grv->purchaseOrder->fresh()->status
-            ]);
-        });
-
-        return back()->with('success', 'GRV approved successfully! Inventory has been updated.');
+            DB::transaction(function() use ($grv, &$updatedItems) {
+                foreach ($grv->items as $item) {
+                    file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Processing item {$item->id}, inventory_id: {$item->inventory_id}, quantity: {$item->getAcceptedQuantity()}\n", FILE_APPEND);
+                    
+                    if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
+                        $inventory = $item->inventory;
+                        if ($inventory) {
+                            $oldStock = $inventory->stock_level;
+                            
+                            // Direct database update - CORRECTED TABLE NAME
+                            $affected = DB::table('inventory')  // Changed from 'inventories' to 'inventory'
+                                ->where('id', $item->inventory_id)
+                                ->update([
+                                    'stock_level' => DB::raw('stock_level + ' . $item->getAcceptedQuantity()),
+                                    'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),
+                                    'last_stock_update' => now(),
+                                    'stock_update_reason' => "GRV Approval: {$grv->grv_number}",
+                                    'updated_at' => now()
+                            ]);
+                        
+                            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Database update result: {$affected} rows affected\n", FILE_APPEND);
+                        
+                            // Mark as updated
+                            $item->stock_updated = true;
+                            $item->save();
+                        
+                            $updatedItems++;
+                        
+                            // Verify the update - CORRECTED TABLE NAME
+                            $newStock = DB::table('inventory')->where('id', $item->inventory_id)->value('stock_level');  // Changed from 'inventories' to 'inventory'
+                            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Stock updated from {$oldStock} to {$newStock}\n", FILE_APPEND);
+                        }
+                    }
+                }
+                
+                // Mark GRV as approved
+                $grv->checked_by = Auth::id();
+                $grv->save();
+                
+                file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - GRV marked as approved\n", FILE_APPEND);
+            });
+            
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Transaction completed successfully, {$updatedItems} items updated\n", FILE_APPEND);
+            
+            return back()->with('success', "GRV approved successfully! {$updatedItems} inventory items updated.");
+            
+        } catch (\Exception $e) {
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Error: " . $e->getMessage() . "\n", FILE_APPEND);
+            return back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -264,5 +343,97 @@ class GrvController extends Controller
                 ];
             })
         ]);
+    }
+
+    /**
+     * Debug GRV approval process
+     */
+    public function debugApproval($id)
+    {
+        $grv = GoodsReceivedVoucher::with(['items.inventory', 'items.purchaseOrderItem'])->findOrFail($id);
+        
+        $debug = [];
+        
+        foreach ($grv->items as $item) {
+            $debug[] = [
+                'grv_item_id' => $item->id,
+                'inventory_id' => $item->inventory_id,
+                'inventory_exists' => $item->inventory ? 'YES' : 'NO',
+                'current_inventory_stock' => $item->inventory ? $item->inventory->stock_level : 'N/A',
+                'quantity_received' => $item->quantity_received,
+                'quantity_rejected' => $item->quantity_rejected,
+                'quantity_damaged' => $item->quantity_damaged,
+                'accepted_quantity' => $item->getAcceptedQuantity(),
+                'stock_updated' => $item->stock_updated ? 'YES' : 'NO',
+                'inventory_short_code' => $item->inventory ? $item->inventory->short_code : 'N/A'
+            ];
+        }
+        
+        return response()->json([
+            'grv_number' => $grv->grv_number,
+            'checked_by' => $grv->checked_by,
+            'items' => $debug
+        ], 200, [], JSON_PRETTY_PRINT);
+    }
+
+    // Add the missing generateGrvNumber method
+    private function generateGrvNumber()
+    {
+        $year = date('Y');
+        $month = date('m');
+        
+        $lastGrv = GoodsReceivedVoucher::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->orderBy('id', 'desc')
+            ->first();
+        
+        $nextNumber = $lastGrv ? (int)substr($lastGrv->grv_number, -4) + 1 : 1;
+        
+        return "GRV-{$year}{$month}-" . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Force update inventory (temporary debug method)
+     */
+    public function forceUpdateInventory($id)
+    {
+        $grv = GoodsReceivedVoucher::with(['items.inventory'])->findOrFail($id);
+        
+        $results = [];
+        
+        foreach ($grv->items as $item) {
+            if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
+                
+                // Direct database update - FIXED TABLE NAME
+                $affected = DB::table('inventory')  // Changed from 'inventories' to 'inventory'
+                    ->where('id', $item->inventory_id)
+                    ->increment('stock_level', $item->getAcceptedQuantity());
+                
+                // Also update quantity field
+                DB::table('inventory')  // Changed from 'inventories' to 'inventory'
+                    ->where('id', $item->inventory_id)
+                    ->update([
+                        'quantity' => DB::raw('stock_level'),
+                        'last_stock_update' => now(),
+                        'stock_update_reason' => "Force update via GRV: {$grv->grv_number}"
+                    ]);
+                
+                // Mark item as updated
+                $item->update(['stock_updated' => true]);
+                
+                $results[] = [
+                    'grv_item_id' => $item->id,
+                    'inventory_id' => $item->inventory_id,
+                    'quantity_added' => $item->getAcceptedQuantity(),
+                    'rows_affected' => $affected,
+                    'new_stock' => $item->inventory->fresh()->stock_level
+                ];
+            }
+        }
+        
+        return response()->json([
+            'message' => 'Force update completed',
+            'results' => $results
+        ], 200, [], JSON_PRETTY_PRINT);
     }
 }

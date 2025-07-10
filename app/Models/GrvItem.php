@@ -58,52 +58,99 @@ class GrvItem extends Model
     // Get accepted quantity (received - rejected - damaged)
     public function getAcceptedQuantity()
     {
-        return $this->quantity_received - $this->quantity_rejected - $this->quantity_damaged;
+        return $this->quantity_received - ($this->quantity_rejected ?? 0) - ($this->quantity_damaged ?? 0);
     }
 
     // Update inventory stock when item is received
     public function updateInventoryStock()
     {
+        Log::info("updateInventoryStock called", [
+            'grv_item_id' => $this->id,
+            'inventory_id' => $this->inventory_id,
+            'stock_updated' => $this->stock_updated,
+            'accepted_quantity' => $this->getAcceptedQuantity()
+        ]);
+
         if ($this->inventory_id && !$this->stock_updated && $this->getAcceptedQuantity() > 0) {
             $inventory = $this->inventory;
             if ($inventory) {
-                // Prepare purchase data for inventory update
-                $purchaseData = [
-                    'goods_received_voucher' => $this->grv->grv_number,
-                    'purchase_date' => $this->grv->received_date,
-                    'purchase_notes' => "Received via GRV {$this->grv->grv_number}, PO {$this->grv->purchaseOrder->po_number}",
-                ];
-                
-                // Add batch number if available
-                if ($this->batch_number) {
-                    $purchaseData['batch_number'] = $this->batch_number;
-                }
-                
-                // Add stock to inventory
-                $result = $inventory->addStock(
-                    $this->getAcceptedQuantity(),
-                    "Stock received via GRV: {$this->grv->grv_number}",
-                    $purchaseData
-                );
-                
-                // Update purchase order item
-                $this->purchaseOrderItem->updateReceivedQuantity($this->getAcceptedQuantity());
-                
-                // Mark as stock updated
-                $this->stock_updated = true;
-                $this->save();
-                
-                Log::info("Inventory updated from GRV", [
-                    'grv_number' => $this->grv->grv_number,
+                Log::info("Updating inventory stock", [
+                    'grv_item_id' => $this->id,
                     'inventory_id' => $this->inventory_id,
-                    'item_name' => $inventory->name,
-                    'quantity_added' => $this->getAcceptedQuantity(),
-                    'result' => $result
+                    'current_stock' => $inventory->stock_level,
+                    'adding_quantity' => $this->getAcceptedQuantity(),
+                    'new_stock_will_be' => $inventory->stock_level + $this->getAcceptedQuantity()
                 ]);
                 
-                return $result;
+                // Update inventory stock directly
+                $oldStock = $inventory->stock_level;
+                $inventory->stock_level += $this->getAcceptedQuantity();
+                $inventory->quantity = $inventory->stock_level; // Update quantity field too
+                $inventory->last_stock_update = now();
+                $inventory->stock_added = $this->getAcceptedQuantity();
+                $inventory->stock_update_reason = "Stock received via GRV: {$this->grv->grv_number}";
+                
+                // Update purchase information
+                $inventory->goods_received_voucher = $this->grv->grv_number;
+                $inventory->purchase_date = $this->grv->received_date;
+                $inventory->purchase_notes = "Received via GRV {$this->grv->grv_number}";
+                
+                // Save inventory
+                if ($inventory->save()) {
+                    Log::info("Inventory saved successfully", [
+                        'inventory_id' => $inventory->id,
+                        'old_stock' => $oldStock,
+                        'new_stock' => $inventory->fresh()->stock_level, // Fresh from DB
+                        'quantity_added' => $this->getAcceptedQuantity()
+                    ]);
+                    
+                    // Update PO item received quantity
+                    $poItem = $this->purchaseOrderItem;
+                    if ($poItem) {
+                        $poItem->quantity_received = ($poItem->quantity_received ?? 0) + $this->getAcceptedQuantity();
+                        $poItem->save();
+                        
+                        Log::info("PO item updated", [
+                            'po_item_id' => $poItem->id,
+                            'new_quantity_received' => $poItem->quantity_received
+                        ]);
+                    }
+                    
+                    // Mark this item as stock updated
+                    $this->stock_updated = true;
+                    $this->save();
+                    
+                    Log::info("GRV item marked as stock updated", [
+                        'grv_item_id' => $this->id,
+                        'stock_updated' => $this->fresh()->stock_updated
+                    ]);
+                    
+                    return true;
+                } else {
+                    Log::error("Failed to save inventory", [
+                        'inventory_id' => $inventory->id,
+                        'validation_errors' => $inventory->getErrors() ?? 'No validation errors'
+                    ]);
+                    return false;
+                }
+            } else {
+                Log::error("Inventory not found", [
+                    'inventory_id' => $this->inventory_id,
+                    'grv_item_id' => $this->id
+                ]);
+                return false;
             }
+        } else {
+            Log::info("Skipping inventory update", [
+                'grv_item_id' => $this->id,
+                'inventory_id' => $this->inventory_id,
+                'stock_updated' => $this->stock_updated,
+                'accepted_quantity' => $this->getAcceptedQuantity(),
+                'reason' => !$this->inventory_id ? 'No inventory_id' : 
+                           ($this->stock_updated ? 'Already updated' : 
+                           ($this->getAcceptedQuantity() <= 0 ? 'No quantity to add' : 'Unknown'))
+            ]);
+            return false;
         }
-        return false;
     }
 }

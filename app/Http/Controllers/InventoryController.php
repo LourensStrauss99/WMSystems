@@ -239,4 +239,12 @@ class InventoryController extends Controller
             return redirect()->back()->with('error', 'Error updating inventory: ' . $e->getMessage())->withInput();
         }
     }
+    /**
+     * Display the specified inventory item
+     */
+    public function show($id)
+    {
+        $item = Inventory::findOrFail($id);
+        return view('inventory.view', compact('item'));
+    }
 }

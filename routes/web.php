@@ -74,6 +74,7 @@ Route::post('/inventory/check-stock', [InventoryController::class, 'checkStock']
 Route::get('/inventory/stock-alerts', [InventoryController::class, 'getLowStockAlerts']);
 Route::get('/inventory/{id}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
 Route::put('/inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');
+Route::get('/inventory/{id}', [InventoryController::class, 'show'])->name('inventory.show');
 
 // Admin panel
 Route::get('/admin-panel', [InventoryController::class, 'adminPanel'])->name('admin.panel');
@@ -417,3 +418,26 @@ Route::resource('customers', CustomerController::class);
 // DELETE customers/{customer} - destroy
 
 Route::patch('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
+
+Route::get('/grv/{id}/debug', [GrvController::class, 'debugApproval'])->name('grv.debug');
+// Add to web.php
+Route::get('/grv/{id}/force-update', [GrvController::class, 'forceUpdateInventory'])->name('grv.force-update');
+
+// Add to web.php
+Route::get('/test-inventory-update', function() {
+    $inventory = App\Models\Inventory::find(1);
+    if ($inventory) {
+        $oldStock = $inventory->stock_level;
+        $inventory->stock_level += 10;
+        $saved = $inventory->save();
+        
+        return response()->json([
+            'inventory_id' => $inventory->id,
+            'old_stock' => $oldStock,
+            'new_stock' => $inventory->fresh()->stock_level,
+            'save_result' => $saved ? 'SUCCESS' : 'FAILED',
+            'inventory_data' => $inventory->toArray()
+        ]);
+    }
+    return response()->json(['error' => 'Inventory not found']);
+});

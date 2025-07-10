@@ -64,11 +64,17 @@ class SupplierController extends Controller
             Supplier::validationMessages()
         );
 
+        // Convert active checkbox to boolean
+        $validated['active'] = $request->has('active') ? true : false;
+        
+        // Ensure credit_limit is numeric
+        $validated['credit_limit'] = $validated['credit_limit'] ?? 0;
+
         try {
             $supplier = Supplier::create($validated);
             
-            return redirect()->route('suppliers.show', $supplier)
-                ->with('success', 'Supplier created successfully!');
+            return redirect()->route('suppliers.index')
+                ->with('success', "Supplier '{$supplier->name}' created successfully!");
                 
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Failed to create supplier: ' . $e->getMessage()])
@@ -81,9 +87,12 @@ class SupplierController extends Controller
      */
     public function show(Supplier $supplier)
     {
-        $supplier->load(['purchaseOrders' => function($query) {
-            $query->orderBy('order_date', 'desc')->limit(10);
-        }]);
+        // Only load purchase orders if the model exists
+        if (class_exists('App\Models\PurchaseOrder')) {
+            $supplier->load(['purchaseOrders' => function($query) {
+                $query->orderBy('order_date', 'desc')->limit(10);
+            }]);
+        }
         
         return view('suppliers.show', compact('supplier'));
     }

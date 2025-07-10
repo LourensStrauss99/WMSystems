@@ -87,7 +87,8 @@ class GoodsReceivedVoucher extends Model
     // Check if GRV can be approved
     public function canBeApproved()
     {
-        return $this->overall_status === 'complete' && $this->quality_check_passed;
+        // Can be approved if not already checked and has items
+        return !$this->checked_by && $this->items->count() > 0;
     }
 
     // Update purchase order status based on received quantities
