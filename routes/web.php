@@ -441,3 +441,6 @@ Route::get('/test-inventory-update', function() {
     }
     return response()->json(['error' => 'Inventory not found']);
 });
+
+// In web.php
+Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');

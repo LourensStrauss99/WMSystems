@@ -40,132 +40,32 @@ class CustomerController extends Controller
     
     public function show($id)
     {
-        $customer = Client::findOrFail($id);
+        $customer = Client::with(['jobcards', 'invoices', 'payments'])->findOrFail($id);
         
-        // Initialize all collections as empty to prevent null errors
-        $workHistory = collect();
-        $invoiceHistory = collect();
-        $paymentHistory = collect();
+        // Get work history
+        $workHistory = $customer->jobcards()->orderBy('created_at', 'desc')->get();
         
-        // Get work history - with null safety
-        try {
-            if (class_exists(Jobcard::class)) {
-                $workHistory = Jobcard::where('client_id', $id)
-                              ->orderBy('created_at', 'desc')
-                              ->take(10)
-                              ->get() ?? collect();
-            }
-        } catch (\Exception $e) {
-            Log::warning("Could not load work history: " . $e->getMessage());
-            $workHistory = collect();
-        }
-
-        // Get invoice history with payment tracking - with null safety
-        try {
-            if (class_exists(Invoice::class)) {
-                $invoiceHistory = Invoice::where('client_id', $id)
-                                ->orderBy('invoice_date', 'desc')
-                                ->get();
-                
-                if (!$invoiceHistory) {
-                    $invoiceHistory = collect();
-                } else {
-                    $invoiceHistory = $invoiceHistory?->map(function($invoice) {
-                        // Only update payment status if method exists
-                        if (method_exists($invoice, 'updatePaymentStatus')) {
-                            try {
-                                $invoice->updatePaymentStatus();
-                            } catch (\Exception $e) {
-                                Log::warning("Could not update payment status for invoice {$invoice->id}: " . $e->getMessage());
-                            }
-                        }
-                        return $invoice;
-                    });
-                }
-            }
-        } catch (\Exception $e) {
-            Log::warning("Could not load invoice history: " . $e->getMessage());
-            $invoiceHistory = collect();
-        }
-
-        // Get payment history - with null safety
-        try {
-            if (class_exists(Payment::class)) {
-                $paymentHistory = Payment::where('client_id', $id)
-                                ->orderBy('payment_date', 'desc')
-                                ->get() ?? collect();
-            }
-        } catch (\Exception $e) {
-            Log::warning("Could not load payment history: " . $e->getMessage());
-            $paymentHistory = collect();
-        }
-
-        // Calculate enhanced payment summary with null safety
-        $paymentSummary = [
-            'total_payments' => $paymentHistory ? $paymentHistory->sum('amount') : 0,
-            'cash_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'cash')->sum('amount') : 0,
-            'card_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'card')->sum('amount') : 0,
-            'eft_payments' => $paymentHistory ? $paymentHistory->where('payment_method', 'eft')->sum('amount') : 0,
-            'recent_payment' => $paymentHistory && $paymentHistory->count() > 0 ? $paymentHistory->first() : null,
-            'this_month_payments' => $paymentHistory ? $paymentHistory->where('payment_date', '>=', now()->startOfMonth())->sum('amount') : 0
+        // Get invoice history
+        $invoiceHistory = $customer->invoices()->orderBy('invoice_date', 'desc')->get();
+        
+        // Get payment history
+        $paymentHistory = $customer->payments()->orderBy('payment_date', 'desc')->get();
+        
+        // Calculate account summary (use dynamic properties)
+        $accountSummary = [
+            'total_jobs' => $customer->total_jobs,
+            'total_invoiced' => $customer->total_invoiced,
+            'outstanding_amount' => $customer->outstanding_amount,
+            'paid_invoices_count' => $customer->paid_invoices_count,
         ];
         
-        // Calculate aging summary with null safety
-        $agingSummary = [
-            'current' => 0,
-            '30_days' => 0,
-            '60_days' => 0,
-            '90_days' => 0,
-            '120_days' => 0,
-        ];
-        
-        // Only calculate aging if we have invoices
-        if ($invoiceHistory && $invoiceHistory->count() > 0) {
-            $agingSummary = [
-                'current' => $invoiceHistory->sum(function($invoice) {
-                    try {
-                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === 'current' 
-                            ? ($invoice->outstanding_amount ?? 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                }),
-                '30_days' => $invoiceHistory->sum(function($invoice) {
-                    try {
-                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '30_days' 
-                            ? ($invoice->outstanding_amount ?? 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                }),
-                '60_days' => $invoiceHistory->sum(function($invoice) {
-                    try {
-                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '60_days' 
-                            ? ($invoice->outstanding_amount ?? 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                }),
-                '90_days' => $invoiceHistory->sum(function($invoice) {
-                    try {
-                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '90_days' 
-                            ? ($invoice->outstanding_amount ?? 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                }),
-                '120_days' => $invoiceHistory->sum(function($invoice) {
-                    try {
-                        return method_exists($invoice, 'getAgeCategory') && $invoice->getAgeCategory() === '120_days' 
-                            ? ($invoice->outstanding_amount ?? 0) : 0;
-                    } catch (\Exception $e) {
-                        return 0;
-                    }
-                }),
-            ];
-        }
-        
-        return view('customer-show', compact('customer', 'workHistory', 'invoiceHistory', 'paymentHistory', 'paymentSummary', 'agingSummary'));
+        return view('customer-show', compact(
+            'customer', 
+            'workHistory', 
+            'invoiceHistory', 
+            'paymentHistory', 
+            'accountSummary'
+        ));
     }
     
     public function create()

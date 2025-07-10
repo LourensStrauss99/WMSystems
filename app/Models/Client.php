@@ -84,7 +84,23 @@ class Client extends Model
      */
     public function payments()
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(Payment::class, 'client_id');
+    }
+
+    /**
+     * Relationship with jobcards
+     */
+    public function jobcards()
+    {
+        return $this->hasMany(Jobcard::class, 'client_id');
+    }
+
+    /**
+     * Relationship with invoices
+     */
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'client_id');
     }
 
     /**
@@ -120,5 +136,26 @@ class Client extends Model
     {
         if (!$this->last_activity) return false;
         return $this->last_activity->lt(now()->subMonths(6));
+    }
+
+    // Dynamic properties for account summary
+    public function getTotalJobsAttribute()
+    {
+        return $this->jobcards()->count();
+    }
+
+    public function getTotalInvoicedAttribute()
+    {
+        return $this->invoices()->sum('amount') ?? 0;
+    }
+
+    public function getOutstandingAmountAttribute()
+    {
+        return $this->invoices()->where('status', '!=', 'paid')->sum('outstanding_amount') ?? 0;
+    }
+
+    public function getPaidInvoicesCountAttribute()
+    {
+        return $this->invoices()->where('status', 'paid')->count();
     }
 }

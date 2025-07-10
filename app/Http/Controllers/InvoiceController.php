@@ -7,6 +7,8 @@ use App\Models\CompanyDetail; // <- CHANGE THIS (not Company)
 use Illuminate\Support\Facades\Mail;
 use App\Mail\InvoiceMailable;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Invoice; // <- ADD THIS
+use Illuminate\Support\Facades\DB; // <- ADD THIS
 
 class InvoiceController extends Controller
 {
@@ -100,6 +102,58 @@ class InvoiceController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error generating PDF: ' . $e->getMessage());
+        }
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'jobcard_id' => 'required|exists:jobcards,id',
+            'due_date' => 'nullable|date',
+        ]);
+
+        try {
+            DB::transaction(function() use ($validated) {
+                $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->findOrFail($validated['jobcard_id']);
+                $company = CompanyDetail::first();
+
+                // Calculate totals (same logic as your PDF generation)
+                $inventoryTotal = $jobcard->inventory->sum(function($item) {
+                    return $item->pivot->quantity * $item->selling_price;
+                });
+
+                $labourHours = $jobcard->employees->sum(function($employee) {
+                    return $employee->pivot->hours_worked ?? 0;
+                });
+
+                $labourTotal = $labourHours * ($company->labour_rate ?? 0);
+                $subtotal = $inventoryTotal + $labourTotal;
+                $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
+                $grandTotal = $subtotal + $vat;
+
+                // ✅ CREATE ACTUAL INVOICE RECORD
+                $invoice = Invoice::create([
+                    'invoice_number' => Invoice::generateInvoiceNumber(),
+                    'client_id' => $jobcard->client_id,
+                    'jobcard_id' => $jobcard->id,
+                    'amount' => $grandTotal,
+                    'invoice_date' => now(),
+                    'due_date' => $validated['due_date'] ?? now()->addDays(30),
+                    'status' => 'unpaid',
+                    'paid_amount' => 0,
+                    'outstanding_amount' => $grandTotal,
+                ]);
+
+                // Update jobcard status
+                $jobcard->update(['status' => 'invoiced']);
+
+                return redirect()->route('invoices.show', $jobcard->id)
+                    ->with('success', "Invoice {$invoice->invoice_number} created successfully!");
+            });
+
+        } catch (\Exception $e) {
+            return back()->withInput()
+                ->with('error', 'Error creating invoice: ' . $e->getMessage());
         }
     }
 }

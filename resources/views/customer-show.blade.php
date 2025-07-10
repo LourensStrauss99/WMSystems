@@ -100,19 +100,19 @@
             <div class="card-content">
                 <div class="summary-stats">
                     <div class="stat-item">
-                        <span class="stat-number">{{ count($workHistory) }}</span>
+                        <span class="stat-number">{{ $customer->total_jobs }}</span>
                         <span class="stat-label">Total Jobs</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">R{{ number_format(collect($invoiceHistory)->sum('amount'), 2) }}</span>
+                        <span class="stat-number">R{{ number_format($customer->total_invoiced, 2) }}</span>
                         <span class="stat-label">Total Invoiced</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">R{{ number_format(collect($invoiceHistory)->where('status', 'unpaid')->sum('amount'), 2) }}</span>
+                        <span class="stat-number">R{{ number_format($customer->outstanding_amount, 2) }}</span>
                         <span class="stat-label">Outstanding</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number">{{ collect($invoiceHistory)->where('status', 'paid')->count() }}</span>
+                        <span class="stat-number">{{ $customer->paid_invoices_count }}</span>
                         <span class="stat-label">Paid Invoices</span>
                     </div>
                 </div>
@@ -120,7 +120,7 @@
                 <!-- Quick Payment Status Overview -->
                 <div class="payment-health">
                     @php
-                        $avgDays = collect($invoiceHistory)->avg(function($invoice) {
+                        $avgDays = $customer->invoices->avg(function($invoice) {
                             return $invoice->payment_date
                                 ? \Carbon\Carbon::parse($invoice->payment_date)->diffInDays($invoice->invoice_date)
                                 : \Carbon\Carbon::now()->diffInDays($invoice->invoice_date);
@@ -129,7 +129,7 @@
                     @endphp
                     <div class="health-indicator {{ $healthColor }}">
                         <span class="health-label">Payment Health</span>
-                        <span class="health-value">{{ number_format($avgDays, 0) }} days avg</span>
+                        <span class="health-value">{{ number_format($avgDays ?? 0, 0) }} days avg</span>
                     </div>
                 </div>
             </div>
