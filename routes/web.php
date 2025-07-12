@@ -444,3 +444,33 @@ Route::get('/test-inventory-update', function() {
 
 // In web.php
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
+Route::post('/master_settings', [MasterSettingsController::class, 'store'])->name('master_settings.store');
+
+// Add this to your web.php routes file
+Route::post('/jobcard/calculate-hours', [JobcardController::class, 'calculateHourCosts'])->name('jobcard.calculate-hours');
+
+// Add this route to your api.php or web.php
+Route::get('/api/company-rates', function() {
+    $company = \App\Models\CompanyDetail::first();
+    
+    if (!$company) {
+        // Return default rates if no company details found
+        return response()->json([
+            'labour_rate' => 750.00,
+            'overtime_multiplier' => 1.50,
+            'weekend_multiplier' => 2.00,
+            'holiday_multiplier' => 2.50,
+            'call_out_rate' => 1000.00,
+            'mileage_rate' => 7.50,
+        ]);
+    }
+    
+    return response()->json([
+        'labour_rate' => floatval($company->labour_rate ?? 750),
+        'overtime_multiplier' => floatval($company->overtime_multiplier ?? 1.5),
+        'weekend_multiplier' => floatval($company->weekend_multiplier ?? 2.0),
+        'holiday_multiplier' => floatval($company->public_holiday_multiplier ?? 2.5),
+        'call_out_rate' => floatval($company->call_out_rate ?? 1000),
+        'mileage_rate' => floatval($company->mileage_rate ?? 7.5),
+    ]);
+});

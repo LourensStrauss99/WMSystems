@@ -471,19 +471,91 @@
                     @endif
 
                     <!-- Labour Section -->
-                    @if($labourHours > 0)
+                    @php
+                        $company = \App\Models\CompanyDetail::first();
+                        
+                        // Calculate enhanced labour costs from jobcard data
+                        $normalHours = floatval($jobcard->normal_hours ?? 0);
+                        $overtimeHours = floatval($jobcard->overtime_hours ?? 0);
+                        $weekendHours = floatval($jobcard->weekend_hours ?? 0);
+                        $holidayHours = floatval($jobcard->public_holiday_hours ?? 0);
+                        $callOutFee = floatval($jobcard->call_out_fee ?? 0);
+                        $mileageKm = floatval($jobcard->mileage_km ?? 0);
+                        $mileageCost = floatval($jobcard->mileage_cost ?? 0);
+                        
+                        // Calculate costs with proper rates
+                        $normalCost = $normalHours * ($company->labour_rate ?? 750);
+                        $overtimeCost = $overtimeHours * (($company->labour_rate ?? 750) * ($company->overtime_multiplier ?? 1.5));
+                        $weekendCost = $weekendHours * (($company->labour_rate ?? 750) * ($company->weekend_multiplier ?? 2.0));
+                        $holidayCost = $holidayHours * (($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5));
+                        
+                        $totalLabourCost = $normalCost + $overtimeCost + $weekendCost + $holidayCost;
+                        $totalWithExtras = $totalLabourCost + $callOutFee + $mileageCost;
+                        $totalHours = $normalHours + $overtimeHours + $weekendHours + $holidayHours;
+                        
+                        // Update totals calculation
+                        $subtotal = $inventoryTotal + $totalWithExtras;
+                        $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
+                        $grandTotal = $subtotal + $vat;
+                    @endphp
+
+                    <!-- Labour Services Section - Enhanced -->
+                    @if($totalHours > 0 || $callOutFee > 0 || $mileageKm > 0)
                         <tr class="section-header">
                             <td colspan="4" class="section-title">Labour Services</td>
                         </tr>
+                        
+                        <!-- Normal Hours -->
+                        @if($normalHours > 0)
                         <tr class="item-row">
                             <td class="item-desc">
-                                <strong>Professional Labour</strong>
-                                <br><span class="text-muted">{{ number_format($labourHours, 2) }} hours @ R{{ number_format($company->labour_rate ?? 0, 2) }}/hour</span>
+                                <strong>Professional Labour - Normal Hours</strong>
+                                <br><span class="text-muted">{{ number_format($normalHours, 1) }} hours @ R{{ number_format($company->labour_rate ?? 750, 2) }}/hour</span>
                             </td>
-                            <td class="qty">{{ number_format($labourHours, 2) }}</td>
-                            <td class="unit-price">R {{ number_format($company->labour_rate ?? 0, 2) }}</td>
-                            <td class="total">R {{ number_format($labourTotal, 2) }}</td>
+                            <td class="qty">{{ number_format($normalHours, 1) }}</td>
+                            <td class="unit-price">R {{ number_format($company->labour_rate ?? 750, 2) }}</td>
+                            <td class="total">R {{ number_format($normalCost, 2) }}</td>
                         </tr>
+                        @endif
+                        
+                        <!-- Holiday Hours -->
+                        @if($holidayHours > 0)
+                        <tr class="item-row">
+                            <td class="item-desc">
+                                <strong>Professional Labour - Public Holiday Hours</strong>
+                                <br><span class="text-muted">{{ number_format($holidayHours, 1) }} hours @ R{{ number_format(($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5), 2) }}/hour</span>
+                            </td>
+                            <td class="qty">{{ number_format($holidayHours, 1) }}</td>
+                            <td class="unit-price">R {{ number_format(($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5), 2) }}</td>
+                            <td class="total">R {{ number_format($holidayCost, 2) }}</td>
+                        </tr>
+                        @endif
+                        
+                        <!-- Call Out Fee -->
+                        @if($callOutFee > 0)
+                        <tr class="item-row">
+                            <td class="item-desc">
+                                <strong>Emergency Call-Out Fee</strong>
+                                <br><span class="text-muted">Emergency service call-out charge</span>
+                            </td>
+                            <td class="qty">1</td>
+                            <td class="unit-price">R {{ number_format($callOutFee, 2) }}</td>
+                            <td class="total">R {{ number_format($callOutFee, 2) }}</td>
+                        </tr>
+                        @endif
+                        
+                        <!-- Mileage/Travel -->
+                        @if($mileageKm > 0)
+                        <tr class="item-row">
+                            <td class="item-desc">
+                                <strong>Travel / Mileage</strong>
+                                <br><span class="text-muted">{{ number_format($mileageKm, 1) }}km @ R{{ number_format($mileageCost / $mileageKm, 2) }}/km</span>
+                            </td>
+                            <td class="qty">{{ number_format($mileageKm, 1) }}</td>
+                            <td class="unit-price">R {{ number_format($mileageCost / $mileageKm, 2) }}</td>
+                            <td class="total">R {{ number_format($mileageCost, 2) }}</td>
+                        </tr>
+                        @endif
                     @endif
 
                     <!-- Totals -->                    

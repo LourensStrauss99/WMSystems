@@ -107,12 +107,12 @@
 
         {{-- Users Statistics Cards --}}
         <div class="row g-3 mb-4">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card text-white bg-primary card-hover">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h5 class="card-title">{{ $users->total() ?? 0 }}</h5>
+                                <h5 class="card-title">{{ $users->total() ?? $users->count() }}</h5>
                                 <p class="card-text">Total Users</p>
                             </div>
                             <div class="align-self-center">
@@ -122,12 +122,12 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card text-white bg-success card-hover">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h5 class="card-title">{{ $users->where('is_active', true)->count() ?? 0 }}</h5>
+                                <h5 class="card-title">{{ $users->where('is_active', true)->count() }}</h5>
                                 <p class="card-text">Active Users</p>
                             </div>
                             <div class="align-self-center">
@@ -137,12 +137,12 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card text-white bg-warning card-hover">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h5 class="card-title">{{ $users->where('admin_level', '>=', 3)->count() ?? 0 }}</h5>
+                                <h5 class="card-title">{{ $users->where('admin_level', '>=', 3)->count() }}</h5>
                                 <p class="card-text">Administrators</p>
                             </div>
                             <div class="align-self-center">
@@ -152,12 +152,12 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="card text-white bg-danger card-hover">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h5 class="card-title">{{ $users->where('is_superuser', true)->count() ?? 0 }}</h5>
+                                <h5 class="card-title">{{ $users->where('is_superuser', true)->count() }}</h5>
                                 <p class="card-text">Super Users</p>
                             </div>
                             <div class="align-self-center">
@@ -167,146 +167,268 @@
                     </div>
                 </div>
             </div>
+            <!-- Employee Cards -->
+            <div class="col-md-2">
+                <div class="card text-white bg-info card-hover">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">{{ $employees->total() ?? $employees->count() }}</h5>
+                                <p class="card-text">Total Employees</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-user-tie fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card text-white bg-secondary card-hover">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">{{ $employees->where('is_active', true)->count() }}</h5>
+                                <p class="card-text">Active Employees</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-user-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        {{-- Users Table --}}
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="fas fa-list me-2"></i>System Users
+       {{-- Current Users/Employees Table --}}
+            <div class="card-body border-bottom">
+                <h5 class="fw-semibold mb-3">
+                    <i class="fas fa-list me-2 text-primary"></i>Current Users/Employees
                 </h5>
-            </div>
-            <div class="card-body p-0">
-                @if(isset($users) && $users->count() > 0)
+                
+                @if((isset($users) && $users->count() > 0) || (isset($employees) && $employees->count() > 0))
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>User</th>
+                                    <th>User/Employee</th>
+                                    <th>Type</th>
                                     <th>Role</th>
                                     <th>Admin Level</th>
                                     <th>Status</th>
-                                    <th>Employee Info</th>
-                                    <th>Created</th>
+                                    <th>Permissions</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($users as $user)
-                                    <tr class="{{ !$user->is_active ? 'table-secondary opacity-75' : '' }}">
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-circle me-3">
-                                                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                </div>
-                                                <div>
-                                                    <div class="fw-semibold d-flex align-items-center">
-                                                        {{ $user->name }}
-                                                        @if($user->is_superuser)
-                                                            <span class="badge bg-danger ms-2">
-                                                                <i class="fas fa-crown me-1"></i>SUPER USER
-                                                            </span>
+                                {{-- Display Users --}}
+                                @if(isset($users))
+                                    @foreach($users as $user)
+                                        <tr class="{{ !$user->is_active ? 'table-secondary opacity-75' : '' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle me-3">
+                                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-semibold d-flex align-items-center">
+                                                            {{ $user->name }}
+                                                            @if($user->is_superuser)
+                                                                <span class="badge bg-danger ms-2">
+                                                                    <i class="fas fa-crown me-1"></i>SUPER USER
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-muted small">{{ $user->email }}</div>
+                                                        @if($user->employee_id)
+                                                            <div class="text-muted smaller">ID: {{ $user->employee_id }}</div>
                                                         @endif
                                                     </div>
-                                                    <div class="text-muted small">{{ $user->email }}</div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span class="status-badge admin-level-{{ min($user->admin_level, 5) }}">
-                                                {{ $user->role_display ?? ucfirst($user->role) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="fw-medium">Level {{ $user->admin_level }}</span>
-                                            <div class="text-muted small">
-                                                @switch($user->admin_level)
-                                                    @case(0) No Admin Rights @break
-                                                    @case(1) Basic Access @break
-                                                    @case(2) Company Settings @break
-                                                    @case(3) User Management @break
-                                                    @case(4) System Admin @break
-                                                    @case(5) Master Admin @break
-                                                    @default Unknown @break
-                                                @endswitch
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($user->is_active)
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle me-1"></i>Active
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-user me-1"></i>User
                                                 </span>
-                                            @else
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle me-1"></i>Inactive
+                                            </td>
+                                            <td>
+                                                <span class="status-badge admin-level-{{ min($user->admin_level, 5) }}">
+                                                    {{ $user->role_display }}
                                                 </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if($user->employee_id)
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">Level {{ $user->admin_level }}</span>
+                                                <div class="text-muted small">{{ $user->admin_level_name }}</div>
+                                            </td>
+                                            <td>
+                                                @if($user->is_active)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check-circle me-1"></i>Active
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times-circle me-1"></i>Inactive
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td>
                                                 <div class="small">
-                                                    <strong>ID:</strong> {{ $user->employee_id }}<br>
-                                                    @if($user->department)
-                                                        <strong>Dept:</strong> {{ $user->department }}<br>
+                                                    @if($user->canAccessCompanySettings())
+                                                        <div class="text-success mb-1">
+                                                            <i class="fas fa-building me-1"></i>Company Settings
+                                                        </div>
                                                     @endif
-                                                    @if($user->position)
-                                                        <strong>Position:</strong> {{ $user->position }}
+                                                    @if($user->canManageUsers())
+                                                        <div class="text-primary mb-1">
+                                                            <i class="fas fa-users me-1"></i>User Management
+                                                        </div>
+                                                    @endif
+                                                    @if($user->canManagePurchaseOrders())
+                                                        <div class="text-info mb-1">
+                                                            <i class="fas fa-file-invoice me-1"></i>Purchase Orders
+                                                        </div>
+                                                    @endif
+                                                    @if($user->canManageInventory())
+                                                        <div class="text-warning">
+                                                            <i class="fas fa-boxes me-1"></i>Inventory
+                                                        </div>
                                                     @endif
                                                 </div>
-                                            @else
-                                                <span class="text-muted">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="small">
-                                                {{ $user->created_at->format('M d, Y') }}<br>
-                                                <span class="text-muted">{{ $user->created_at->format('H:i') }}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div class="btn-group btn-group-sm">
-                                                @if(auth()->user()->canManageUsers())
-                                                    <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    @if($user->id !== auth()->id())
-                                                        <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})">
-                                                            <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    @if(auth()->user()->canManageUsers())
+                                                        <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm" title="Edit User">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        @if($user->id !== auth()->id())
+                                                            <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus({{ $user->id }})" title="Toggle Status">
+                                                                <i class="fas fa-{{ $user->is_active ? 'pause' : 'play' }}"></i>
+                                                            </button>
+                                                            @if(!$user->is_superuser || auth()->user()->is_superuser)
+                                                                <button class="btn btn-outline-danger btn-sm" onclick="deleteUser({{ $user->id }})" title="Delete User">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            @endif
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
+
+                                {{-- Display Employees --}}
+                                @if(isset($employees))
+                                    @foreach($employees as $employee)
+                                        <tr class="{{ !$employee->is_active ? 'table-secondary opacity-75' : '' }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle me-3" style="background: #28a745;">
+                                                        {{ strtoupper(substr($employee->name, 0, 1)) }}
+                                                    </div>
+                                                    <div>
+                                                        <div class="fw-semibold d-flex align-items-center">
+                                                            {{ $employee->name }} {{ $employee->surname }}
+                                                            @if($employee->is_superuser)
+                                                                <span class="badge bg-danger ms-2">
+                                                                    <i class="fas fa-crown me-1"></i>SUPER USER
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                        <div class="text-muted small">{{ $employee->email }}</div>
+                                                        @if($employee->employee_id)
+                                                            <div class="text-muted smaller">ID: {{ $employee->employee_id }}</div>
+                                                        @endif
+                                                        @if($employee->telephone)
+                                                            <div class="text-muted smaller">
+                                                                <i class="fas fa-phone me-1"></i>{{ $employee->telephone }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-user-tie me-1"></i>Employee
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="status-badge admin-level-{{ min($employee->admin_level, 5) }}">
+                                                    {{ $employee->role_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-medium">Level {{ $employee->admin_level }}</span>
+                                                <div class="text-muted small">{{ $employee->admin_level_name }}</div>
+                                            </td>
+                                            <td>
+                                                @if($employee->is_active)
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check-circle me-1"></i>Active
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-times-circle me-1"></i>Inactive
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    @if($employee->canAccessCompanySettings())
+                                                        <div class="text-success mb-1">
+                                                            <i class="fas fa-building me-1"></i>Company Settings
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManageUsers())
+                                                        <div class="text-primary mb-1">
+                                                            <i class="fas fa-users me-1"></i>User Management
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManagePurchaseOrders())
+                                                        <div class="text-info mb-1">
+                                                            <i class="fas fa-file-invoice me-1"></i>Purchase Orders
+                                                        </div>
+                                                    @endif
+                                                    @if($employee->canManageInventory())
+                                                        <div class="text-warning">
+                                                            <i class="fas fa-boxes me-1"></i>Inventory
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    @if(auth()->user()->canManageUsers())
+                                                        <a href="{{ route('employees.edit', $employee) }}" class="btn btn-outline-success btn-sm" title="Edit Employee">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <button class="btn btn-outline-warning btn-sm" onclick="toggleEmployeeStatus({{ $employee->id }})" title="Toggle Status">
+                                                            <i class="fas fa-{{ $employee->is_active ? 'pause' : 'play' }}"></i>
                                                         </button>
-                                                        @if(!$user->is_superuser || auth()->user()->is_superuser)
-                                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteUser({{ $user->id }})">
+                                                        @if(!$employee->is_superuser || auth()->user()->is_superuser)
+                                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteEmployee({{ $employee->id }})" title="Delete Employee">
                                                                 <i class="fas fa-trash"></i>
                                                             </button>
                                                         @endif
                                                     @endif
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @endif
                             </tbody>
                         </table>
                     </div>
-                    
-                    {{-- Pagination --}}
-                    @if($users->hasPages())
-                        <div class="card-footer">
-                            {{ $users->links() }}
-                        </div>
-                    @endif
                 @else
-                    <div class="text-center text-muted py-5">
+                    <div class="text-center text-muted py-4">
                         <i class="fas fa-users fa-3x mb-3"></i>
-                        <h5>No Users Found</h5>
-                        <p>There are no users in the system yet.</p>
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                            <i class="fas fa-user-plus me-1"></i>Add First User
-                        </button>
+                        <h5>No Users or Employees Found</h5>
+                        <p>There are no users or employees in the system yet.</p>
                     </div>
                 @endif
             </div>
-        </div>
-    </div>
+
 
     {{-- Add User Modal --}}
     <div class="modal fade" id="addUserModal" tabindex="-1">
@@ -501,6 +623,36 @@
             }
         }
 
+        // Toggle Employee Status
+        function toggleEmployeeStatus(employeeId) {
+            if (confirm('Are you sure you want to toggle this employee\'s status?')) {
+                fetch(`/employees/${employeeId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', data.message);
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else {
+                        showAlert('danger', data.message || 'Error updating employee status');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'Error updating employee status');
+                });
+            }
+        }
+
         // Delete User
         function deleteUser(userId) {
             if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
@@ -533,6 +685,36 @@
                 .catch(error => {
                     console.error('Error:', error);
                     showAlert('danger', 'Error deleting user');
+                });
+            }
+        }
+
+        // Delete Employee
+        function deleteEmployee(employeeId) {
+            if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+                fetch(`/employees/${employeeId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        showAlert('success', data.message);
+                        setTimeout(() => { location.reload(); }, 1000);
+                    } else {
+                        showAlert('danger', data.message || 'Error deleting employee');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('danger', 'Error deleting employee');
                 });
             }
         }

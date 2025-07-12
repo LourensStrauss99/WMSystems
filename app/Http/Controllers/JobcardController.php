@@ -76,11 +76,19 @@ class JobcardController extends Controller
 
     public function show(Jobcard $jobcard)
     {
-        $jobcard->load(['client', 'employees', 'inventory']);
+        // Load relationships carefully
+        $jobcard->load(['client', 'inventory']);
+        
+        // Only load employees if they exist
+        if ($jobcard->employees()->exists()) {
+            $jobcard->load('employees');
+        }
+        
+        // Add missing variables that the blade template expects
         $employees = Employee::all();
         $inventory = Inventory::all();
         $clients = Client::all();
-
+        
         return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients'));
     }
 
@@ -95,7 +103,11 @@ class JobcardController extends Controller
     {
         DB::transaction(function () use ($request) {
             $jobcard = Jobcard::create($request->only([
-                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 'status', 'work_done', 'time_spent'
+                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 
+                'status', 'work_done', 'time_spent',
+                // Add the new hour fields
+                'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
+                'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
             ]));
 
             // Sync employees (with optional hours)
@@ -132,7 +144,7 @@ class JobcardController extends Controller
         $jobcard->load(['client', 'employees', 'inventory']);
         $employees = Employee::all();
         $inventory = Inventory::all();
-        $clients = Client::all(); // <-- Use imported Client class
+        $clients = Client::all();
 
         return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients'));
     }
@@ -140,26 +152,37 @@ class JobcardController extends Controller
     public function update(Request $request, Jobcard $jobcard)
     {
         DB::transaction(function () use ($request, $jobcard) {
+            // Update jobcard basic fields
             $jobcard->update($request->only([
-                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 'status', 'work_done', 'time_spent'
+                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 
+                'status', 'work_done', 'time_spent', 'progress_note',
+                'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
+                'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
             ]));
 
-            // Sync employees (with optional hours)
-            if ($request->has('employee_hours')) {
+            // Handle employees with hours AND hour types
+            if ($request->has('employees')) {
                 $syncData = [];
-                foreach ($request->employee_hours as $employeeId => $hours) {
-                    $syncData[$employeeId] = ['hours_worked' => $hours];
+                foreach ($request->employees as $employeeId) {
+                    $hours = $request->employee_hours[$employeeId] ?? 0;
+                    $hourType = $request->employee_hour_types[$employeeId] ?? 'normal';
+                    
+                    $syncData[$employeeId] = [
+                        'hours_worked' => $hours,
+                        'hour_type' => $hourType  // Add this to pivot table
+                    ];
                 }
                 $jobcard->employees()->sync($syncData);
-            } elseif ($request->has('employees')) {
-                $jobcard->employees()->sync($request->employees);
             }
 
-            // Sync inventory (with quantities) and update stock
-            if ($request->has('inventory_qty')) {
+            // Handle inventory
+            if ($request->has('inventory_items')) {
                 $syncData = [];
-                foreach ($request->inventory_qty as $itemId => $qty) {
+                foreach ($request->inventory_items as $index => $itemId) {
+                    $qty = $request->inventory_qty[$itemId] ?? 1;
                     $syncData[$itemId] = ['quantity' => $qty];
+                    
+                    // Update stock levels
                     $inventory = Inventory::find($itemId);
                     if ($inventory) {
                         $inventory->stock_level = max(0, $inventory->stock_level - $qty);
@@ -170,7 +193,7 @@ class JobcardController extends Controller
             }
         });
 
-        return redirect()->route('jobcard.show', $jobcard->id)->with('success', 'Jobcard updated!');
+        return redirect()->route('jobcard.show', $jobcard->id)->with('success', 'Jobcard updated successfully!');
     }
 
     public function submitForInvoice(Jobcard $jobcard)
@@ -234,5 +257,43 @@ class JobcardController extends Controller
         $pdf->setOptions(['dpi' => 150, 'defaultFont' => 'sans-serif']);
         
         return $pdf->download('jobcard-' . $jobcard->jobcard_number . '.pdf');
+    }
+
+    public function calculateHourCosts(Request $request)
+    {
+        $company = \App\Models\CompanyDetail::first();
+        
+        $normalHours = floatval($request->normal_hours ?? 0);
+        $overtimeHours = floatval($request->overtime_hours ?? 0);
+        $weekendHours = floatval($request->weekend_hours ?? 0);
+        $holidayHours = floatval($request->public_holiday_hours ?? 0);
+        $callOutFee = floatval($request->call_out_fee ?? 0);
+        $mileageKm = floatval($request->mileage_km ?? 0);
+        
+        $normalCost = $normalHours * $company->labour_rate;
+        $overtimeCost = $overtimeHours * ($company->labour_rate * $company->overtime_multiplier);
+        $weekendCost = $weekendHours * ($company->labour_rate * $company->weekend_multiplier);
+        $holidayCost = $holidayHours * ($company->labour_rate * $company->public_holiday_multiplier);
+        $mileageCost = $mileageKm * $company->mileage_rate;
+        
+        $totalLabour = $normalCost + $overtimeCost + $weekendCost + $holidayCost;
+        $totalWithExtras = $totalLabour + $callOutFee + $mileageCost;
+        
+        return response()->json([
+            'normal_cost' => number_format($normalCost, 2),
+            'overtime_cost' => number_format($overtimeCost, 2),
+            'weekend_cost' => number_format($weekendCost, 2),
+            'holiday_cost' => number_format($holidayCost, 2),
+            'mileage_cost' => number_format($mileageCost, 2),
+            'total_labour' => number_format($totalLabour, 2),
+            'total_with_extras' => number_format($totalWithExtras, 2),
+            'rates' => [
+                'labour_rate' => number_format($company->labour_rate, 2),
+                'overtime_rate' => number_format($company->labour_rate * $company->overtime_multiplier, 2),
+                'weekend_rate' => number_format($company->labour_rate * $company->weekend_multiplier, 2),
+                'holiday_rate' => number_format($company->labour_rate * $company->public_holiday_multiplier, 2),
+                'mileage_rate' => number_format($company->mileage_rate, 2),
+            ]
+        ]);
     }
 }

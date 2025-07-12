@@ -1,6 +1,9 @@
 <aside class="sidebar">
     <div class="logo">Workflow-Management-Control</div>
     <nav class="sidebar-tabs">
+        <!-- ✅ ADD DASHBOARD LINK -->
+        <a href="/dashboard" class="sidebar-tab {{ request()->is('dashboard*') ? 'active' : '' }}">Dashboard</a>
+        
         <a href="/customers" class="sidebar-tab {{ request()->is('customers*') ? 'active' : '' }}">Customers</a>
         <a href="/client" class="sidebar-tab {{ request()->is('client*') ? 'active' : '' }}">Orders</a>
         <a href="/jobcard" class="sidebar-tab {{ request()->is('jobcard*') ? 'active' : '' }}">Jobcard</a>
@@ -10,6 +13,7 @@
         <a href="/invoice" class="sidebar-tab {{ request()->is('invoice*') ? 'active' : '' }}">Invoices</a>
         <a href="/inventory" class="sidebar-tab {{ request()->is('inventory*') ? 'active' : '' }}">Inventory</a>
         <a href="/settings" class="sidebar-tab {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
+        
         {{-- Approvals link, visible only to users with approval permissions --}}
         @if(auth()->check() && method_exists(auth()->user(), 'canApprove') && auth()->user()->canApprove())
             <a href="{{ route('approvals.index') }}" class="sidebar-tab">

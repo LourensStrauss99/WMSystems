@@ -53,34 +53,34 @@ class ReportController extends Controller
             $current->addDay();
         }
         
-        // Get active artisans for this month
-        $artisans = Employee::where('role', 'artisan')
-                           ->where('is_active', true)
-                           ->where('created_at', '<=', $endDate)
-                           ->count();
+        // FIX: Get ALL active employees for this month (not just artisans)
+        $employees = Employee::where('is_active', true)
+                        ->where('created_at', '<=', $endDate)
+                        ->count();
         
-        // Calculate available hours (8 hours per day per artisan)
-        $availableHours = $workingDays * 8 * $artisans;
+        // Calculate available hours (8 hours per day per employee)
+        $availableHours = $workingDays * 8 * $employees;
         
-        // Get booked hours from jobcards
+        // FIX: Get booked hours from ALL employees (remove artisan filter)
         $bookedHours = DB::table('employee_jobcard')
-                        ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
-                        ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
-                        ->where('employees.role', 'artisan')
-                        ->whereYear('jobcards.created_at', $startDate->year)
-                        ->whereMonth('jobcards.created_at', $startDate->month)
-                        ->sum('employee_jobcard.hours_worked');
-        
-        // Calculate overtime, weekend, and holiday hours
-        $overtimeHours = $this->getOvertimeHours($startDate, $endDate);
-        $weekendHours = $this->getWeekendHours($startDate, $endDate);
-        $holidayHours = $this->getHolidayHours($startDate, $endDate);
+                    ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+                    ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+                    ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id') // Only invoiced
+                    ->where('employees.is_active', true) // Only active employees
+                    ->whereDate('invoices.invoice_date', '>=', $startDate)
+                    ->whereDate('invoices.invoice_date', '<=', $endDate)
+                    ->sum('employee_jobcard.hours_worked');
+    
+        // Calculate overtime, weekend, and holiday hours (from invoiced jobs only)
+        $overtimeHours = $this->getOvertimeHours($startDate, $endDate, true);
+        $weekendHours = $this->getWeekendHours($startDate, $endDate, true);
+        $holidayHours = $this->getHolidayHours($startDate, $endDate, true);
         
         $utilizationRate = $availableHours > 0 ? round(($bookedHours / $availableHours) * 100, 2) : 0;
         
         return [
             'working_days' => $workingDays,
-            'artisan_count' => $artisans,
+            'artisan_count' => $employees, // Rename this to employee_count
             'available_hours' => $availableHours,
             'booked_hours' => $bookedHours,
             'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours,
@@ -88,7 +88,7 @@ class ReportController extends Controller
             'weekend_hours' => $weekendHours,
             'holiday_hours' => $holidayHours,
             'utilization_rate' => $utilizationRate,
-            'hours_per_employee' => $artisans > 0 ? round($bookedHours / $artisans, 2) : 0,
+            'hours_per_employee' => $employees > 0 ? round($bookedHours / $employees, 2) : 0,
         ];
     }
 
@@ -107,30 +107,32 @@ class ReportController extends Controller
             $current->addDay();
         }
         
-        // Get average artisan count for the year
-        $artisans = Employee::where('role', 'artisan')
-                           ->where('is_active', true)
-                           ->where('created_at', '<=', $endDate)
-                           ->count();
+        // FIX: Get ALL active employees for the year (not just artisans)
+        $employees = Employee::where('is_active', true)
+                        ->where('created_at', '<=', $endDate)
+                        ->count();
+    
+        $availableHours = $workingDays * 8 * $employees;
         
-        $availableHours = $workingDays * 8 * $artisans;
-        
+        // FIX: Get booked hours from ALL employees (remove artisan filter)
         $bookedHours = DB::table('employee_jobcard')
-                        ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
-                        ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
-                        ->where('employees.role', 'artisan')
-                        ->whereYear('jobcards.created_at', $year)
-                        ->sum('employee_jobcard.hours_worked');
-        
-        $overtimeHours = $this->getOvertimeHours($startDate, $endDate);
-        $weekendHours = $this->getWeekendHours($startDate, $endDate);
-        $holidayHours = $this->getHolidayHours($startDate, $endDate);
+                    ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+                    ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+                    ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id') // Only invoiced
+                    ->where('employees.is_active', true) // Only active employees
+                    ->whereDate('invoices.invoice_date', '>=', $startDate)
+                    ->whereDate('invoices.invoice_date', '<=', $endDate)
+                    ->sum('employee_jobcard.hours_worked');
+    
+        $overtimeHours = $this->getOvertimeHours($startDate, $endDate, true);
+        $weekendHours = $this->getWeekendHours($startDate, $endDate, true);
+        $holidayHours = $this->getHolidayHours($startDate, $endDate, true);
         
         $utilizationRate = $availableHours > 0 ? round(($bookedHours / $availableHours) * 100, 2) : 0;
         
         return [
             'working_days' => $workingDays,
-            'artisan_count' => $artisans,
+            'artisan_count' => $employees, // Rename this to employee_count
             'available_hours' => $availableHours,
             'booked_hours' => $bookedHours,
             'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours,
@@ -138,7 +140,7 @@ class ReportController extends Controller
             'weekend_hours' => $weekendHours,
             'holiday_hours' => $holidayHours,
             'utilization_rate' => $utilizationRate,
-            'hours_per_employee' => $artisans > 0 ? round($bookedHours / $artisans, 2) : 0,
+            'hours_per_employee' => $employees > 0 ? round($bookedHours / $employees, 2) : 0,
         ];
     }
 
@@ -148,73 +150,70 @@ class ReportController extends Controller
         $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
         $company = Company::getSettings();
         
-        // Get jobcards for the month
-        $jobcards = Jobcard::whereYear('created_at', $startDate->year)
-                          ->whereMonth('created_at', $startDate->month)
+        // GET ACTUAL INVOICES INSTEAD OF CALCULATING FROM JOBCARDS
+        $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
+                          ->whereDate('invoice_date', '<=', $endDate)
+                          ->with(['jobcard.inventory', 'jobcard.employees'])
                           ->get();
         
-        // Calculate hours revenue
-        $normalHours = 0;
-        $overtimeHours = 0;
-        $weekendHours = 0;
-        $holidayHours = 0;
-        $calloutHours = 0;
+        $totalRevenue = $invoices->sum('amount');
         
-        foreach ($jobcards as $jobcard) {
-            $hours = $jobcard->employees()->sum('employee_jobcard.hours_worked');
+        // Calculate hours breakdown from actual invoices
+        $hoursRevenue = 0;
+        $inventoryRevenue = 0;
+        $inventoryCost = 0;
+        
+        foreach ($invoices as $invoice) {
+            $jobcard = $invoice->jobcard;
             
-            // Determine hour type based on jobcard date/time
-            if ($this->isHoliday($jobcard->created_at)) {
-                $holidayHours += $hours;
-            } elseif ($this->isWeekend($jobcard->created_at)) {
-                $weekendHours += $hours;
-            } elseif ($this->isOvertime($jobcard)) {
-                $overtimeHours += $hours;
-            } elseif ($jobcard->is_callout) {
-                $calloutHours += $hours;
-            } else {
-                $normalHours += $hours;
-            }
+            // Calculate inventory portion
+            $invTotal = $jobcard->inventory->sum(function($item) {
+                return $item->pivot->quantity * $item->selling_price;
+            });
+            $invCost = $jobcard->inventory->sum(function($item) {
+                return $item->pivot->quantity * $item->buying_price;
+            });
+            
+            $inventoryRevenue += $invTotal;
+            $inventoryCost += $invCost;
+            
+            // Calculate labour portion
+            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
+            $labourTotal = $labourHours * $company->standard_labour_rate;
+            $hoursRevenue += $labourTotal;
         }
         
-        $hoursRevenue = [
-            'normal' => $normalHours * $company->standard_labour_rate,
-            'overtime' => $overtimeHours * $company->calculateHourlyRate('overtime'),
-            'weekend' => $weekendHours * $company->calculateHourlyRate('weekend'),
-            'holiday' => $holidayHours * $company->calculateHourlyRate('holiday'),
-            'callout' => $calloutHours * $company->calculateHourlyRate('callout'),
-        ];
+        $inventoryProfit = $inventoryRevenue - $inventoryCost;
+        $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
         
-        $totalHoursRevenue = array_sum($hoursRevenue);
-        
-        // Calculate inventory revenue and profit
-        $inventoryData = $this->getInventoryRevenue($startDate, $endDate);
-        
-        // Calculate totals
-        $subtotal = $totalHoursRevenue + $inventoryData['revenue'];
+        // Calculate VAT (it's included in invoice amount)
+        $subtotal = $hoursRevenue + $inventoryRevenue;
         $vatAmount = $subtotal * ($company->vat_percentage / 100);
-        $totalIncVat = $subtotal + $vatAmount;
-        $netProfit = $totalHoursRevenue + $inventoryData['profit']; // Hours revenue + inventory profit (no VAT deduction as it's pass-through)
+        $netProfit = $hoursRevenue + $inventoryProfit;
         
         return [
-            'hours_revenue' => $totalHoursRevenue,
-            'hours_breakdown' => $hoursRevenue,
-            'hours_detail' => [
-                'normal' => $normalHours,
-                'overtime' => $overtimeHours,
-                'weekend' => $weekendHours,
-                'holiday' => $holidayHours,
-                'callout' => $calloutHours,
-            ],
-            'inventory_revenue' => $inventoryData['revenue'],
-            'inventory_cost' => $inventoryData['cost'],
-            'inventory_profit' => $inventoryData['profit'],
-            'inventory_margin' => $inventoryData['margin'],
+            'hours_revenue' => $hoursRevenue,
+            'inventory_revenue' => $inventoryRevenue,
+            'inventory_cost' => $inventoryCost,
+            'inventory_profit' => $inventoryProfit,
+            'inventory_margin' => $inventoryMargin,
             'subtotal' => $subtotal,
             'vat_amount' => $vatAmount,
-            'total_inc_vat' => $totalIncVat,
+            'total_inc_vat' => $totalRevenue,
             'net_profit' => $netProfit,
             'profit_margin' => $subtotal > 0 ? round(($netProfit / $subtotal) * 100, 2) : 0,
+            // Add hour breakdowns if needed
+            'hours_breakdown' => [
+                'normal' => $hoursRevenue, // You can break this down further if needed
+                'overtime' => 0,
+                'weekend' => 0,
+            ],
+            'hours_detail' => [
+                'normal' => $hoursRevenue / ($company->standard_labour_rate ?: 1),
+                'overtime' => 0,
+                'weekend' => 0,
+                'holiday' => 0,
+            ],
         ];
     }
 
@@ -261,8 +260,73 @@ class ReportController extends Controller
     {
         $startDate = Carbon::createFromFormat('Y', $year)->startOfYear();
         $endDate = Carbon::createFromFormat('Y', $year)->endOfYear();
+        $company = Company::getSettings();
         
-        return $this->getMonthlyRevenueBreakdown($startDate->format('Y-m'));
+        // GET ALL INVOICES FOR THE YEAR
+        $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
+                          ->whereDate('invoice_date', '<=', $endDate)
+                          ->with(['jobcard.inventory', 'jobcard.employees'])
+                          ->get();
+        
+        $totalRevenue = $invoices->sum('amount');
+        
+        // Calculate breakdown from actual invoices
+        $hoursRevenue = 0;
+        $inventoryRevenue = 0;
+        $inventoryCost = 0;
+        
+        foreach ($invoices as $invoice) {
+            $jobcard = $invoice->jobcard;
+            
+            if (!$jobcard) continue; // Skip if no jobcard
+            
+            // Calculate inventory portion
+            $invTotal = $jobcard->inventory->sum(function($item) {
+                return $item->pivot->quantity * $item->selling_price;
+            });
+            $invCost = $jobcard->inventory->sum(function($item) {
+                return $item->pivot->quantity * $item->buying_price;
+            });
+            
+            $inventoryRevenue += $invTotal;
+            $inventoryCost += $invCost;
+            
+            // Calculate labour portion
+            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
+            $labourTotal = $labourHours * $company->standard_labour_rate;
+            $hoursRevenue += $labourTotal;
+        }
+        
+        $inventoryProfit = $inventoryRevenue - $inventoryCost;
+        $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
+        
+        $subtotal = $hoursRevenue + $inventoryRevenue;
+        $vatAmount = $subtotal * ($company->vat_percentage / 100);
+        $netProfit = $hoursRevenue + $inventoryProfit;
+        
+        return [
+            'hours_revenue' => $hoursRevenue,
+            'inventory_revenue' => $inventoryRevenue,
+            'inventory_cost' => $inventoryCost,
+            'inventory_profit' => $inventoryProfit,
+            'inventory_margin' => $inventoryMargin,
+            'subtotal' => $subtotal,
+            'vat_amount' => $vatAmount,
+            'total_inc_vat' => $totalRevenue,
+            'net_profit' => $netProfit,
+            'profit_margin' => $subtotal > 0 ? round(($netProfit / $subtotal) * 100, 2) : 0,
+            'hours_breakdown' => [
+                'normal' => $hoursRevenue,
+                'overtime' => 0,
+                'weekend' => 0,
+            ],
+            'hours_detail' => [
+                'normal' => $hoursRevenue / ($company->standard_labour_rate ?: 1),
+                'overtime' => 0,
+                'weekend' => 0,
+                'holiday' => 0,
+            ],
+        ];
     }
 
     private function getAvailableMonths()
@@ -282,45 +346,7 @@ class ReportController extends Controller
         return array_reverse($months);
     }
 
-    private function getEmployeeStats($month, $viewMode)
-    {
-        $startDate = $viewMode === 'ytd' 
-            ? Carbon::createFromFormat('Y-m', $month)->startOfYear()
-            : Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-        
-        $endDate = $viewMode === 'ytd' 
-            ? Carbon::createFromFormat('Y-m', $month)->endOfYear()
-            : Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-        
-        return Employee::where('role', 'artisan')
-                  ->where('is_active', true)
-                  ->get()
-                  ->map(function($employee) use ($startDate, $endDate) {
-                      // Get total hours worked by this employee in the period
-                      $totalHours = DB::table('employee_jobcard')
-                                     ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
-                                     ->where('employee_jobcard.employee_id', $employee->id)
-                                     ->whereDate('jobcards.created_at', '>=', $startDate)
-                                     ->whereDate('jobcards.created_at', '<=', $endDate)
-                                     ->sum('employee_jobcard.hours_worked');
-                      
-                      // Get jobcard count for this employee in the period
-                      $jobcardCount = DB::table('employee_jobcard')
-                                       ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
-                                       ->where('employee_jobcard.employee_id', $employee->id)
-                                       ->whereDate('jobcards.created_at', '>=', $startDate)
-                                       ->whereDate('jobcards.created_at', '<=', $endDate)
-                                       ->distinct('jobcards.id')
-                                       ->count('jobcards.id');
 
-                      return [
-                          'name' => $employee->name . ' ' . $employee->surname,
-                          'total_hours' => $totalHours,
-                          'jobcard_count' => $jobcardCount,
-                          'avg_hours_per_jobcard' => $jobcardCount > 0 ? round($totalHours / $jobcardCount, 2) : 0,
-                      ];
-                  });
-    }
 
     // Helper methods for hour type determination
     private function isHoliday($date)
@@ -342,21 +368,40 @@ class ReportController extends Controller
         return false;
     }
     
-    private function getOvertimeHours($startDate, $endDate)
+    private function getOvertimeHours($startDate, $endDate, $invoicedOnly = false)
     {
-        // Calculate overtime hours for the period
+        // For now, return 0 - you can implement overtime logic later
         return 0;
     }
     
-    private function getWeekendHours($startDate, $endDate)
+    private function getWeekendHours($startDate, $endDate, $invoicedOnly = false)
     {
-        // Calculate weekend hours for the period
-        return 0;
+        if (!$invoicedOnly) {
+            return 0; // Implement your weekend logic here
+        }
+        
+        // FIX: Get weekend hours from ALL employees (not just artisans)
+        $weekendHours = DB::table('employee_jobcard')
+                 ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+                 ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+                 ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+                 ->where('employees.is_active', true) // Remove role filter
+                 ->whereDate('invoices.invoice_date', '>=', $startDate)
+                 ->whereDate('invoices.invoice_date', '<=', $endDate)
+                 ->where(function($query) {
+                     // Add logic to identify weekend work
+                     // This is a placeholder - adjust based on your business logic
+                     $query->whereRaw('DAYOFWEEK(jobcards.created_at) IN (1, 7)'); // Sunday = 1, Saturday = 7
+                 })
+                 ->sum('employee_jobcard.hours_worked');
+
+        return $weekendHours ?? 0;
     }
     
-    private function getHolidayHours($startDate, $endDate)
+    private function getHolidayHours($startDate, $endDate, $invoicedOnly = false)
     {
-        // Calculate holiday hours for the period
+        // For now, return 0 - you can implement holiday logic later
+        // You would need a holidays table or holiday detection logic
         return 0;
     }
 
@@ -370,4 +415,82 @@ class ReportController extends Controller
     {
         return $this->getYTDHoursReport($year);
     }
+    
+    private function getEmployeeStats($selectedMonth, $viewMode)
+    {
+        // Parse the date parameters correctly
+        if ($viewMode === 'monthly') {
+            $startDate = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+            $endDate = Carbon::createFromFormat('Y-m', $selectedMonth)->endOfMonth();
+        } else {
+            // For YTD, extract year from month parameter
+            $year = Carbon::createFromFormat('Y-m', $selectedMonth)->year;
+            $startDate = Carbon::createFromFormat('Y', $year)->startOfYear();
+            $endDate = Carbon::createFromFormat('Y', $year)->endOfYear();
+        }
+
+        // FIX: Get jobcards that have invoices - correct relationship direction
+        $jobcards = Jobcard::whereExists(function($query) use ($startDate, $endDate) {
+            $query->select(DB::raw(1))
+                  ->from('invoices')
+                  ->whereColumn('invoices.jobcard_id', 'jobcards.id')
+                  ->whereDate('invoices.invoice_date', '>=', $startDate)
+                  ->whereDate('invoices.invoice_date', '<=', $endDate);
+        })->with('employees')->get();
+
+        $employeeStats = [];
+        
+        foreach ($jobcards as $jobcard) {
+            foreach ($jobcard->employees as $employee) {
+                $employeeName = $employee->full_name ?? ($employee->name . ' ' . $employee->surname);
+                $hours = $employee->pivot->hours_worked ?? 0;
+                
+                if (!isset($employeeStats[$employee->id])) {
+                    $employeeStats[$employee->id] = [
+                        'name' => $employeeName,
+                        'total_hours' => 0,
+                        'jobcard_count' => 0,
+                    ];
+                }
+                
+                $employeeStats[$employee->id]['total_hours'] += $hours;
+                $employeeStats[$employee->id]['jobcard_count']++;
+            }
+        }
+        
+        // Calculate averages and format
+        $stats = [];
+        foreach ($employeeStats as $stat) {
+            if ($stat['total_hours'] > 0) {
+                $stats[] = [
+                    'name' => $stat['name'],
+                    'total_hours' => $stat['total_hours'],
+                    'jobcard_count' => $stat['jobcard_count'],
+                    'avg_hours_per_jobcard' => $stat['jobcard_count'] > 0 ? round($stat['total_hours'] / $stat['jobcard_count'], 2) : 0,
+                ];
+            }
+        }
+        
+        return collect($stats)->sortByDesc('total_hours')->values()->all();
+    }
+
+    // Add this method to get role breakdown
+    private function getEmployeeRoleBreakdown($startDate, $endDate)
+    {
+        return DB::table('employee_jobcard')
+                ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+                ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+                ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+                ->where('employees.is_active', true)
+                ->whereDate('invoices.invoice_date', '>=', $startDate)
+                ->whereDate('invoices.invoice_date', '<=', $endDate)
+                ->groupBy('employees.role')
+                ->select(
+                    'employees.role',
+                    DB::raw('SUM(employee_jobcard.hours_worked) as total_hours'),
+                    DB::raw('COUNT(DISTINCT employees.id) as employee_count')
+                )
+                ->get();
+    }
 }
+

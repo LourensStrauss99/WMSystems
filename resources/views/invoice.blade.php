@@ -117,15 +117,34 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($jobcards as $jobcard)
                         @php
-                            // Calculate totals for display
-                            $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                                return $item->pivot->quantity * $item->selling_price;
-                            });
-                            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
-                            $labourTotal = $labourHours * ($company->labour_rate ?? 0);
-                            $subtotal = $inventoryTotal + $labourTotal;
-                            $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
-                            $grandTotal = $subtotal + $vat;
+                            // Get the ACTUAL invoice for this jobcard
+                            $invoice = $jobcard->invoice;
+                            
+                            if ($invoice) {
+                                // Use the invoice amount directly
+                                $grandTotal = $invoice->amount;
+                                $itemCount = $jobcard->inventory->count();
+                            } else {
+                                // Fallback calculation if no invoice exists
+                                $inventoryTotal = $jobcard->inventory->sum(function($item) {
+                                    return $item->pivot->quantity * $item->selling_price;
+                                });
+                                
+                                // Calculate labour costs from jobcard enhanced data
+                                $company = \App\Models\CompanyDetail::first();
+                                $totalLabourCost = floatval($jobcard->total_labour_cost ?? 0);
+                                
+                                // If no enhanced data, fall back to old calculation
+                                if ($totalLabourCost == 0) {
+                                    $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
+                                    $totalLabourCost = $labourHours * ($company->labour_rate ?? 750);
+                                }
+                                
+                                $subtotal = $inventoryTotal + $totalLabourCost;
+                                $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
+                                $grandTotal = $subtotal + $vat;
+                                $itemCount = $jobcard->inventory->count() + ($totalLabourCost > 0 ? 1 : 0);
+                            }
                         @endphp
                         <tr class="hover:bg-gray-50 transition-colors cursor-pointer invoice-row" onclick="viewInvoice({{ $jobcard->id }})">
                             <!-- Invoice Number -->
@@ -167,7 +186,7 @@
                             <!-- Amount -->
                             <td class="px-4 py-4 whitespace-nowrap text-right w-24">
                                 <div class="text-sm font-medium text-gray-900">R {{ number_format($grandTotal, 2) }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobcard->inventory->count() }} items</div>
+                                <div class="text-xs text-gray-500">{{ $itemCount }} items</div>
                             </td>
                             
                             <!-- Actions -->

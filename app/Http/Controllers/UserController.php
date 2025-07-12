@@ -23,11 +23,9 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::orderBy('admin_level', 'desc')
-                    ->orderBy('created_at', 'desc')
-                    ->paginate(15);
-        
-        return view('admin.users.index', compact('users'));
+        $users = \App\Models\User::paginate(15);
+        $employees = \App\Models\Employee::paginate(15);
+        return view('admin.users.index', compact('users', 'employees'));
     }
 
     public function store(Request $request)

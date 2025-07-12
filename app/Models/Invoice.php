@@ -4,6 +4,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
+
 class Invoice extends Model
 {
     protected $fillable = [
@@ -115,6 +116,17 @@ class Invoice extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class, 'invoice_jobcard_number', 'invoice_number');
+    }
+
+
+    public function getTotalAmountAttribute()
+    {
+        return $this->amount; // If amount already includes VAT
+    
+        // OR if you need to calculate it:
+        // $subtotal = $this->subtotal;
+        // $vat = $subtotal * ($this->vat_percentage / 100);
+        // return $subtotal + $vat;
     }
 
     public static function generateInvoiceNumber()

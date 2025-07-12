@@ -13,7 +13,7 @@
             <p class="text-muted">Update jobcard details and manage resources</p>
         </div>
         <div class="col-md-4 text-end">
-            <div class="btn-group" role="group">
+             <div class="btn-group" role="group">
                 <a href="{{ route('jobcard.pdf', $jobcard->id) }}" class="btn btn-danger text-white" target="_blank">
                     <i class="fas fa-file-pdf me-2"></i>Export PDF
                 </a>
@@ -95,16 +95,16 @@
                     </div>
                 </div>
 
-                <!-- Employees Card -->
+                <!-- Enhanced Employees Card with Integrated Hour Types -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-header bg-light">
                         <h5 class="card-title mb-0">
-                            <i class="fas fa-users text-success me-2"></i>Assigned Employees
+                            <i class="fas fa-users text-success me-2"></i>Assigned Employees & Hours
                         </h5>
                     </div>
                     <div class="card-body">
                         <div class="row g-2 mb-3">
-                            <div class="col-md-5">
+                            <div class="col-md-4">
                                 <label class="form-label fw-bold text-muted">Employee</label>
                                 <select id="employee_select" class="form-control">
                                     <option value="">Select Employee</option>
@@ -113,32 +113,113 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-bold text-muted">Hours Worked</label>
                                 <input type="number" id="employee_hours_input" class="form-control" 
                                        min="0" step="0.5" placeholder="Hours">
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">Hour Type</label>
+                                <select id="hour_type_select" class="form-control">
+                                    <option value="normal">Normal (R<span class="normal-rate">750</span>/hr)</option>
+                                    <option value="overtime">Overtime (R<span class="overtime-rate">1,125</span>/hr)</option>
+                                    <option value="weekend">Weekend (R<span class="weekend-rate">1,500</span>/hr)</option>
+                                    <option value="holiday">Holiday (R<span class="holiday-rate">1,875</span>/hr)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label fw-bold text-muted">&nbsp;</label>
-                                <button type="button" class="btn btn-success text-white d-block" onclick="addEmployee()">
-                                    <i class="fas fa-plus me-2"></i>Add Employee
+                                <button type="button" class="btn btn-success text-white d-block w-100" onclick="addEmployee()">
+                                    <i class="fas fa-plus me-1"></i>Add
                                 </button>
                             </div>
                         </div>
 
+                        <!-- Call Out & Mileage Section (moved here for better flow) -->
+                        <div class="row g-3 mb-3 border-top pt-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Call Out Fee</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <input type="number" name="call_out_fee" id="call_out_fee" class="form-control" 
+                                           min="0" step="0.01" value="{{ old('call_out_fee', $jobcard->call_out_fee ?? 0) }}" 
+                                           onchange="calculateTotalCosts()">
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="setStandardCallOut()">
+                                    <i class="fas fa-phone me-1"></i>Standard (R1,000)
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Mileage (km)</label>
+                                <input type="number" name="mileage_km" id="mileage_km" class="form-control" 
+                                       min="0" step="0.1" value="{{ old('mileage_km', $jobcard->mileage_km ?? 0) }}" 
+                                       onchange="calculateTotalCosts()">
+                                <small class="text-muted">Rate: R<span id="mileage_rate">7.50</span>/km</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Mileage Cost</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <input type="number" name="mileage_cost" id="mileage_cost" class="form-control" 
+                                           readonly value="{{ old('mileage_cost', $jobcard->mileage_cost ?? 0) }}">
+                                </div>
+                                <small class="text-muted">Auto-calculated</small>
+                            </div>
+                        </div>
+
                         <div class="border rounded p-3 bg-light">
-                            <h6 class="text-muted mb-2">
-                                <i class="fas fa-list me-2"></i>Current Employees
-                            </h6>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-muted mb-0">
+                                    <i class="fas fa-list me-2"></i>Current Employees & Hours
+                                </h6>
+                                <div class="text-end">
+                                    <small class="text-muted">Total Labour Cost: </small>
+                                    <strong class="text-success">R<span id="display_total_labour_cost">0.00</span></strong>
+                                </div>
+                            </div>
                             <ul id="employee_list" class="list-unstyled mb-0">
                                 @forelse($jobcard->employees as $employee)
-                                    <li data-id="{{ $employee->id }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                    @php
+                                        $hourType = $employee->pivot->hour_type ?? 'normal';
+                                        $hours = $employee->pivot->hours_worked ?? 0;
+                                        $company = \App\Models\CompanyDetail::first();
+                                        
+                                        // Calculate rate based on hour type
+                                        $baseRate = $company->labour_rate ?? 750;
+                                        switch($hourType) {
+                                            case 'overtime':
+                                                $rate = $baseRate * ($company->overtime_multiplier ?? 1.5);
+                                                $badgeClass = 'bg-warning text-dark';
+                                                $label = 'Overtime';
+                                                break;
+                                            case 'weekend':
+                                                $rate = $baseRate * ($company->weekend_multiplier ?? 2.0);
+                                                $badgeClass = 'bg-primary';
+                                                $label = 'Weekend';
+                                                break;
+                                            case 'holiday':
+                                                $rate = $baseRate * ($company->public_holiday_multiplier ?? 2.5);
+                                                $badgeClass = 'bg-danger';
+                                                $label = 'Holiday';
+                                                break;
+                                            default:
+                                                $rate = $baseRate;
+                                                $badgeClass = 'bg-secondary';
+                                                $label = 'Normal';
+                                        }
+                                        $cost = $hours * $rate;
+                                    @endphp
+                                    <li data-id="{{ $employee->id }}" data-hours="{{ $hours }}" data-type="{{ $hourType }}" 
+                                        class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                         <div>
                                             <strong>{{ $employee->name }}</strong>
-                                            <span class="badge bg-info ms-2">{{ $employee->pivot->hours_worked ?? 0 }} hours</span>
+                                            <span class="badge bg-info ms-2">{{ $hours }} hrs</span>
+                                            <span class="badge {{ $badgeClass }} ms-1">{{ $label }}</span>
+                                            <small class="text-muted ms-2">R{{ number_format($cost, 2) }}</small>
                                         </div>
                                         <input type="hidden" name="employees[]" value="{{ $employee->id }}">
-                                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $employee->pivot->hours_worked ?? 0 }}">
+                                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $hours }}">
+                                        <input type="hidden" name="employee_hour_types[{{ $employee->id }}]" value="{{ $hourType }}">
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -148,6 +229,13 @@
                                 @endforelse
                             </ul>
                         </div>
+
+                        <!-- Hidden fields for hour totals (for form submission) -->
+                        <input type="hidden" name="normal_hours" id="hidden_normal_hours" value="{{ old('normal_hours', $jobcard->normal_hours ?? 0) }}">
+                        <input type="hidden" name="overtime_hours" id="hidden_overtime_hours" value="{{ old('overtime_hours', $jobcard->overtime_hours ?? 0) }}">
+                        <input type="hidden" name="weekend_hours" id="hidden_weekend_hours" value="{{ old('weekend_hours', $jobcard->weekend_hours ?? 0) }}">
+                        <input type="hidden" name="public_holiday_hours" id="hidden_public_holiday_hours" value="{{ old('public_holiday_hours', $jobcard->public_holiday_hours ?? 0) }}">
+                        <input type="hidden" name="total_labour_cost" id="hidden_total_labour_cost" value="{{ old('total_labour_cost', $jobcard->total_labour_cost ?? 0) }}">
                     </div>
                 </div>
 
@@ -214,8 +302,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
+                
             <!-- Sidebar -->
             <div class="col-lg-4">
                 <!-- Status Card -->
@@ -284,13 +371,24 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 <script>
+// Enhanced hour calculation functions
+let companyRates = {
+    labour_rate: 750.00,
+    overtime_multiplier: 1.50,
+    weekend_multiplier: 2.00,
+    holiday_multiplier: 2.50,
+    call_out_rate: 1000.00,
+    mileage_rate: 7.50
+};
+
 function addEmployee() {
     let select = document.getElementById('employee_select');
-    let hours = document.getElementById('employee_hours_input').value;
+    let hours = parseFloat(document.getElementById('employee_hours_input').value) || 0;
+    let hourType = document.getElementById('hour_type_select').value;
     let id = select.value;
     let name = select.options[select.selectedIndex].text;
 
-    if (!id || !hours || hours < 0) {
+    if (!id || hours <= 0) {
         alert('Please select an employee and enter valid hours');
         return;
     }
@@ -307,16 +405,46 @@ function addEmployee() {
         noEmployeesMsg.remove();
     }
 
+    // Calculate cost for this employee
+    let rate = companyRates.labour_rate;
+    let hourTypeLabel = 'Normal';
+    let badgeClass = 'bg-secondary';
+    
+    switch(hourType) {
+        case 'overtime':
+            rate = companyRates.labour_rate * companyRates.overtime_multiplier;
+            hourTypeLabel = 'Overtime';
+            badgeClass = 'bg-warning text-dark';
+            break;
+        case 'weekend':
+            rate = companyRates.labour_rate * companyRates.weekend_multiplier;
+            hourTypeLabel = 'Weekend';
+            badgeClass = 'bg-primary';
+            break;
+        case 'holiday':
+            rate = companyRates.labour_rate * companyRates.holiday_multiplier;
+            hourTypeLabel = 'Holiday';
+            badgeClass = 'bg-danger';
+            break;
+    }
+    
+    const cost = hours * rate;
+
     let li = document.createElement('li');
     li.setAttribute('data-id', id);
+    li.setAttribute('data-hours', hours);
+    li.setAttribute('data-type', hourType);
     li.className = 'd-flex justify-content-between align-items-center py-2 border-bottom';
     li.innerHTML = `
         <div>
             <strong>${name}</strong>
-            <span class="badge bg-info ms-2">${hours} hours</span>
+            <span class="badge bg-info ms-2">${hours} hrs</span>
+            <span class="badge ${badgeClass} ms-1">${hourTypeLabel}</span>
+            <small class="text-muted ms-2">R${cost.toFixed(2)}</small>
         </div>
         <input type="hidden" name="employees[]" value="${id}">
         <input type="hidden" name="employee_hours[${id}]" value="${hours}">
+        <input type="hidden" name="employee_hour_types[${id}]" value="${hourType}">
         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
             <i class="fas fa-times"></i>
         </button>`;
@@ -325,7 +453,9 @@ function addEmployee() {
     // Reset form
     select.value = '';
     document.getElementById('employee_hours_input').value = '';
+    document.getElementById('hour_type_select').value = 'normal';
     
+    updateHourTotals();
     updateSummary();
 }
 
@@ -338,9 +468,151 @@ function removeEmployee(btn) {
         list.innerHTML = '<li class="text-muted">No employees assigned yet</li>';
     }
     
+    updateHourTotals();
     updateSummary();
 }
 
+function updateHourTotals() {
+    let normalHours = 0, overtimeHours = 0, weekendHours = 0, holidayHours = 0;
+    let totalLabourCost = 0;
+    
+    // Calculate from employee assignments
+    document.querySelectorAll('#employee_list li[data-id]').forEach(function(li) {
+        const hours = parseFloat(li.getAttribute('data-hours')) || 0;
+        const type = li.getAttribute('data-type') || 'normal';
+        let rate = companyRates.labour_rate;
+        
+        switch(type) {
+            case 'normal':
+                normalHours += hours;
+                rate = companyRates.labour_rate;
+                break;
+            case 'overtime':
+                overtimeHours += hours;
+                rate = companyRates.labour_rate * companyRates.overtime_multiplier;
+                break;
+            case 'weekend':
+                weekendHours += hours;
+                rate = companyRates.labour_rate * companyRates.weekend_multiplier;
+                break;
+            case 'holiday':
+                holidayHours += hours;
+                rate = companyRates.labour_rate * companyRates.holiday_multiplier;
+                break;
+        }
+        
+        totalLabourCost += hours * rate;
+    });
+    
+    // Add call out fee and mileage
+    const callOutFee = parseFloat(document.getElementById('call_out_fee').value) || 0;
+    const mileageKm = parseFloat(document.getElementById('mileage_km').value) || 0;
+    const mileageCost = mileageKm * companyRates.mileage_rate;
+    
+    totalLabourCost += callOutFee + mileageCost;
+    
+    // Update hidden fields (ONLY these ones should exist)
+    document.getElementById('hidden_normal_hours').value = normalHours.toFixed(2);
+    document.getElementById('hidden_overtime_hours').value = overtimeHours.toFixed(2);
+    document.getElementById('hidden_weekend_hours').value = weekendHours.toFixed(2);
+    document.getElementById('hidden_public_holiday_hours').value = holidayHours.toFixed(2);
+    document.getElementById('hidden_total_labour_cost').value = totalLabourCost.toFixed(2);
+    
+    // Update mileage cost field
+    document.getElementById('mileage_cost').value = mileageCost.toFixed(2);
+    
+    // Update display
+    document.getElementById('display_total_labour_cost').textContent = totalLabourCost.toFixed(2);
+}
+
+// Add this function to your JavaScript section
+function recalculateFromExisting() {
+    // Recalculate totals from existing employee data on page load
+    let normalHours = 0, overtimeHours = 0, weekendHours = 0, holidayHours = 0;
+    let totalLabourCost = 0;
+    
+    document.querySelectorAll('#employee_list li[data-id]').forEach(function(li) {
+        const hours = parseFloat(li.getAttribute('data-hours')) || 0;
+        const type = li.getAttribute('data-type') || 'normal';
+        let rate = companyRates.labour_rate;
+        
+        switch(type) {
+            case 'normal':
+                normalHours += hours;
+                rate = companyRates.labour_rate;
+                break;
+            case 'overtime':
+                overtimeHours += hours;
+                rate = companyRates.labour_rate * companyRates.overtime_multiplier;
+                break;
+            case 'weekend':
+                weekendHours += hours;
+                rate = companyRates.labour_rate * companyRates.weekend_multiplier;
+                break;
+            case 'holiday':
+                holidayHours += hours;
+                rate = companyRates.labour_rate * companyRates.holiday_multiplier;
+                break;
+        }
+        
+        totalLabourCost += hours * rate;
+    });
+    
+    // Add call out fee and mileage from existing values
+    const callOutFee = parseFloat(document.getElementById('call_out_fee').value) || 0;
+    const mileageKm = parseFloat(document.getElementById('mileage_km').value) || 0;
+    const mileageCost = mileageKm * companyRates.mileage_rate;
+    
+    totalLabourCost += callOutFee + mileageCost;
+    
+    // Update hidden fields
+    document.getElementById('hidden_normal_hours').value = normalHours.toFixed(2);
+    document.getElementById('hidden_overtime_hours').value = overtimeHours.toFixed(2);
+    document.getElementById('hidden_weekend_hours').value = weekendHours.toFixed(2);
+    document.getElementById('hidden_public_holiday_hours').value = holidayHours.toFixed(2);
+    document.getElementById('hidden_total_labour_cost').value = totalLabourCost.toFixed(2);
+    
+    // Update mileage cost field
+    document.getElementById('mileage_cost').value = mileageCost.toFixed(2);
+    
+    // Update display
+    document.getElementById('display_total_labour_cost').textContent = totalLabourCost.toFixed(2);
+}
+
+function calculateTotalCosts() {
+    updateHourTotals();
+}
+
+function setStandardCallOut() {
+    document.getElementById('call_out_fee').value = companyRates.call_out_rate;
+    updateHourTotals();
+}
+
+function updateSummary() {
+    // Update employee count
+    const employeeCount = document.querySelectorAll('#employee_list li[data-id]').length;
+    if (document.getElementById('employee_count')) {
+        document.getElementById('employee_count').textContent = employeeCount;
+    }
+    
+    // Update inventory count  
+    const inventoryCount = document.querySelectorAll('#inventory_list li[data-id]').length;
+    if (document.getElementById('inventory_count')) {
+        document.getElementById('inventory_count').textContent = inventoryCount;
+    }
+    
+    // Update total hours from employee assignments
+    let totalHours = 0;
+    document.querySelectorAll('#employee_list li[data-id]').forEach(function(li) {
+        totalHours += parseFloat(li.getAttribute('data-hours')) || 0;
+    });
+    
+    if (document.getElementById('total_hours')) {
+        document.getElementById('total_hours').textContent = totalHours.toFixed(1);
+    }
+}
+
+// Inventory functions
 function addInventoryToJobcard() {
     let select = document.getElementById('inventory_select');
     let qty = document.getElementById('inventory_quantity').value;
@@ -383,8 +655,6 @@ function addInventoryToJobcard() {
     select.value = '';
     document.getElementById('inventory_quantity').value = 1;
     
-    // Remove any existing alerts
-    removeAlerts();
     updateSummary();
 }
 
@@ -400,175 +670,55 @@ function removeInventory(btn) {
     updateSummary();
 }
 
-function updateSummary() {
-    // Update employee count
-    const employeeCount = document.querySelectorAll('#employee_list li[data-id]').length;
-    document.getElementById('employee_count').textContent = employeeCount;
-    
-    // Update inventory count
-    const inventoryCount = document.querySelectorAll('#inventory_list li[data-id]').length;
-    document.getElementById('inventory_count').textContent = inventoryCount;
-    
-    // Update total hours
-    let totalHours = 0;
-    document.querySelectorAll('#employee_list input[name^="employee_hours"]').forEach(input => {
-        totalHours += parseFloat(input.value) || 0;
-    });
-    document.getElementById('total_hours').textContent = totalHours;
-}
-
-// Real-time stock checking when adding inventory
-document.getElementById('add_inventory').addEventListener('click', function(e) {
-    e.preventDefault();
-    
-    const itemId = document.getElementById('inventory_select').value;
-    const quantity = parseInt(document.getElementById('inventory_quantity').value) || 1;
-    
-    if (!itemId) {
-        alert('Please select an inventory item');
-        return;
-    }
-    
-    // Check stock availability first
-    checkStockAvailability(itemId, quantity, function(stockData) {
-        if (stockData.available) {
-            // Stock is available, proceed with adding
-            addInventoryToJobcard();
-        } else {
-            // Stock not available, show error
-            showStockError(stockData);
-        }
-    });
-});
-
-function checkStockAvailability(itemId, quantity, callback) {
-    fetch('/inventory/check-stock', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify({
-            item_id: itemId,
-            quantity: quantity
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        callback(data);
-    })
-    .catch(error => {
-        console.error('Error checking stock:', error);
-        alert('Error checking stock availability. Please try again.');
-    });
-}
-
-function showStockError(stockData) {
-    // Get the short code from the selected option
-    const selectedOption = document.querySelector('#inventory_select option:checked');
-    const shortCode = selectedOption ? selectedOption.getAttribute('data-code') : 'N/A';
-    
-    const alertHtml = `
-        <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
-            <strong><i class="fas fa-exclamation-triangle me-2"></i>Insufficient Stock!</strong><br>
-            <strong>Code:</strong> [${shortCode}]<br>
-            <strong>Item:</strong> ${stockData.item_name}<br>
-            <strong>Available:</strong> ${stockData.current_stock}<br>
-            <strong>Requested:</strong> ${stockData.requested_quantity}<br>
-            <strong>Message:</strong> ${stockData.message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="removeAlerts()"></button>
-        </div>
-    `;
-    
-    // Show the alert in the inventory card body
-    const inventoryCard = document.querySelector('#inventory_select').closest('.card-body');
-    inventoryCard.insertAdjacentHTML('afterbegin', alertHtml);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(function() {
-        removeAlerts();
-    }, 5000);
-}
-
-function showStockWarning(stockData) {
-    if (stockData.warning) {
-        const alertHtml = `
-            <div class="alert alert-warning alert-dismissible fade show mt-3" role="alert">
-                <strong><i class="fas fa-exclamation-triangle me-2"></i>Stock Warning!</strong><br>
-                ${stockData.warning}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="removeAlerts()"></button>
-            </div>
-        `;
-        
-        const inventoryCard = document.querySelector('#inventory_select').closest('.card-body');
-        inventoryCard.insertAdjacentHTML('afterbegin', alertHtml);
-        
-        setTimeout(function() {
-            removeAlerts();
-        }, 5000);
-    }
-}
-
-function removeAlerts() {
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(alert => {
-        alert.style.display = 'none';
-        alert.remove();
-    });
-}
-
-// Check stock when quantity changes
-document.getElementById('inventory_quantity').addEventListener('input', function() {
-    const itemId = document.getElementById('inventory_select').value;
-    const quantity = parseInt(this.value) || 1;
-    
-    if (itemId && quantity > 0) {
-        checkStockAvailability(itemId, quantity, function(stockData) {
-            // Remove previous alerts
-            removeAlerts();
-            
-            if (!stockData.available) {
-                document.getElementById('add_inventory').disabled = true;
-                showStockError(stockData);
-            } else {
-                document.getElementById('add_inventory').disabled = false;
-                if (stockData.warning) {
-                    showStockWarning(stockData);
-                }
-            }
-        });
-    }
-});
-
-// Check stock when item is selected
-document.getElementById('inventory_select').addEventListener('change', function() {
-    const itemId = this.value;
-    const quantity = parseInt(document.getElementById('inventory_quantity').value) || 1;
-    
-    // Remove previous alerts
-    removeAlerts();
-    
-    if (itemId) {
-        checkStockAvailability(itemId, quantity, function(stockData) {
-            if (!stockData.available) {
-                document.getElementById('add_inventory').disabled = true;
-                showStockError(stockData);
-            } else {
-                document.getElementById('add_inventory').disabled = false;
-                if (stockData.warning) {
-                    showStockWarning(stockData);
-                }
-            }
-        });
-    } else {
-        document.getElementById('add_inventory').disabled = false;
-    }
-});
-
-// Initialize summary on page load
+// Load company rates and initialize
 document.addEventListener('DOMContentLoaded', function() {
+    // Fetch actual rates from your company settings
+    fetch('/api/company-rates')
+        .then(response => response.json())
+        .then(data => {
+            companyRates = data;
+            updateRateDisplays();
+            recalculateFromExisting(); // Use this instead of updateHourTotals
+        })
+        .catch(error => {
+            console.log('Using default rates');
+            updateRateDisplays();
+            recalculateFromExisting(); // Use this instead of updateHourTotals
+        });
+    
+    // Add inventory button event listener
+    if (document.getElementById('add_inventory')) {
+        document.getElementById('add_inventory').addEventListener('click', addInventoryToJobcard);
+    }
+    
     updateSummary();
 });
+
+function updateRateDisplays() {
+    // Update rate displays in the hour type select
+    const normalRateSpan = document.querySelector('.normal-rate');
+    const overtimeRateSpan = document.querySelector('.overtime-rate');
+    const weekendRateSpan = document.querySelector('.weekend-rate');
+    const holidayRateSpan = document.querySelector('.holiday-rate');
+    const mileageRateSpan = document.getElementById('mileage_rate');
+    
+    if (normalRateSpan) normalRateSpan.textContent = companyRates.labour_rate.toFixed(0);
+    if (overtimeRateSpan) overtimeRateSpan.textContent = (companyRates.labour_rate * companyRates.overtime_multiplier).toFixed(0);
+    if (weekendRateSpan) weekendRateSpan.textContent = (companyRates.labour_rate * companyRates.weekend_multiplier).toFixed(0);
+    if (holidayRateSpan) holidayRateSpan.textContent = (companyRates.labour_rate * companyRates.holiday_multiplier).toFixed(0);
+    if (mileageRateSpan) mileageRateSpan.textContent = companyRates.mileage_rate.toFixed(2);
+    
+    // Update option labels
+    const hourTypeSelect = document.getElementById('hour_type_select');
+    if (hourTypeSelect) {
+        hourTypeSelect.innerHTML = `
+            <option value="normal">Normal (R${companyRates.labour_rate.toFixed(0)}/hr)</option>
+            <option value="overtime">Overtime (R${(companyRates.labour_rate * companyRates.overtime_multiplier).toFixed(0)}/hr)</option>
+            <option value="weekend">Weekend (R${(companyRates.labour_rate * companyRates.weekend_multiplier).toFixed(0)}/hr)</option>
+            <option value="holiday">Holiday (R${(companyRates.labour_rate * companyRates.holiday_multiplier).toFixed(0)}/hr)</option>
+        `;
+    }
+}
 </script>
 @endsection
 

@@ -281,6 +281,14 @@
             </div>
         </div>
     </div>
+
+    
+
+    {{-- Update your hours utilization display --}}
+    <div class="text-center">
+        <div class="text-2xl font-bold text-blue-600">{{ $monthlyHours['artisan_count'] ?? 0 }}</div>
+        <div class="text-xs text-gray-500">Total Employees</div>
+    </div>
 </div>
 
 <script>

@@ -28,35 +28,46 @@ class MasterSettingsController extends Controller
         return view('master-settings', compact('users', 'employees', 'inventory'));
     }
 
-    public function storeEmployee(Request $request)
+    public function store(Request $request)
     {
-        // Validate the request
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'role' => 'required|string',
-            'admin_level' => 'nullable|integer|between:0,5',
-            'employee_id' => 'nullable|string|max:50',
-            'department' => 'nullable|string|max:100',
-            'position' => 'nullable|string|max:100',
-        ]);
+        // You can branch logic based on account_type if needed
+        if ($request->account_type === 'employee') {
+            // Validate and create employee
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'surname' => 'required|string|max:255',
+                'email' => 'required|email|unique:employees,email',
+                'department' => 'nullable|string|max:100',
+                'position' => 'nullable|string|max:100',
+                'employee_id' => 'required|string|max:50|unique:employees,employee_id',
+                'telephone' => 'nullable|string|max:20',
+                'password' => 'required|string|confirmed|min:8',
+            ]);
+            $validated['password'] = \Hash::make($validated['password']);
+            $validated['created_by'] = auth()->id();
+            \App\Models\Employee::create($validated);
 
-        // Create the user
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make('password'), // Default password
-            'role' => $validated['role'],
-            'admin_level' => $validated['admin_level'] ?? 0,
-            'employee_id' => $validated['employee_id'],
-            'department' => $validated['department'],
-            'position' => $validated['position'],
-            'is_active' => true,
-            'created_by' => auth()->id(),
-        ]);
+            return redirect()->route('master.settings')->with('success', 'Employee created successfully!');
+        } else {
+            // Validate and create user
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email',
+                'role' => 'required|string',
+                'admin_level' => 'nullable|integer|between:0,5',
+                'user_id' => 'required|string|max:50|unique:users,user_id',
+                'department' => 'nullable|string|max:100',
+                'position' => 'nullable|string|max:100',
+                'telephone' => 'nullable|string|max:20',
+                'password' => 'required|string|confirmed|min:8',
+            ]);
+            $validated['password'] = \Hash::make($validated['password']);
+            $validated['created_by'] = auth()->id();
+            $validated['is_active'] = true;
+            \App\Models\User::create($validated);
 
-        return redirect()->route('master.settings')
-            ->with('success', 'User created successfully! Default password is "password".');
+            return redirect()->route('master.settings')->with('success', 'User created successfully!');
+        }
     }
 
     public function updateUser(Request $request, $id)

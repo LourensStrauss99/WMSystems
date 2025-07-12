@@ -9,8 +9,15 @@ class Jobcard extends Model
 {
     use HasFactory;
 
-    // Add fillable or guarded properties as needed
     protected $guarded = [];
+
+    // Add these to your fillable/guarded
+    protected $fillable = [
+        'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 
+        'special_request', 'status', 'work_done', 'time_spent', 'progress_note',
+        'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
+        'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
+    ];
 
     public function client()
     {
@@ -19,7 +26,9 @@ class Jobcard extends Model
 
     public function employees()
     {
-        return $this->belongsToMany(Employee::class)->withPivot('hours_worked');
+        return $this->belongsToMany(Employee::class)
+           ->withPivot('hours_worked', 'hour_type')  // Include hour_type
+           ->withTimestamps();
     }
 
     public function inventory()
@@ -31,13 +40,33 @@ class Jobcard extends Model
     
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->hasOne(Invoice::class);
+    }
+    
+    public function calculateLabourCost()
+    {
+        $company = \App\Models\CompanyDetail::first();
+        
+        $normalCost = $this->normal_hours * $company->labour_rate;
+        $overtimeCost = $this->overtime_hours * ($company->labour_rate * $company->overtime_multiplier);
+        $weekendCost = $this->weekend_hours * ($company->labour_rate * $company->weekend_multiplier);
+        $holidayCost = $this->public_holiday_hours * ($company->labour_rate * $company->public_holiday_multiplier);
+        
+        $totalLabour = $normalCost + $overtimeCost + $weekendCost + $holidayCost;
+        $totalWithCallOut = $totalLabour + $this->call_out_fee + $this->mileage_cost;
+        
+        return $totalWithCallOut;
     }
     
     public function calculateGrandTotal()
     {
-        // Example: sum of inventory items * their selling_price
-        return $this->inventory->get()->sum(fn($item) => $item->pivot->quantity * $item->selling_price);
+        $inventoryTotal = $this->inventory->sum(function($item) {
+            return $item->pivot->quantity * $item->selling_price;
+        });
+        
+        $labourTotal = $this->calculateLabourCost();
+        
+        return $inventoryTotal + $labourTotal;
     }
 }
 
