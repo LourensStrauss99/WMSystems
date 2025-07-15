@@ -26,9 +26,14 @@ class Jobcard extends Model
 
     public function employees()
     {
-        return $this->belongsToMany(Employee::class)
-           ->withPivot('hours_worked', 'hour_type')  // Include hour_type
-           ->withTimestamps();
+        return $this->belongsToMany(Employee::class, 'employee_jobcard')
+                    ->withPivot([
+                        'hours_worked', 
+                        'hour_type',     // Add this
+                        'hourly_rate',   // Add this  
+                        'total_cost'     // Add this
+                    ])
+                    ->withTimestamps();
     }
 
     public function inventory()
@@ -67,6 +72,27 @@ class Jobcard extends Model
         $labourTotal = $this->calculateLabourCost();
         
         return $inventoryTotal + $labourTotal;
+    }
+
+    // Add helper method to calculate total labor costs
+    public function calculateLaborCosts()
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        
+        $costs = [
+            'normal_cost' => $this->normal_hours * ($companyDetails->labour_rate ?? 450),
+            'overtime_cost' => $this->overtime_hours * ($companyDetails->labour_rate ?? 450) * ($companyDetails->overtime_multiplier ?? 1.5),
+            'weekend_cost' => $this->weekend_hours * ($companyDetails->labour_rate ?? 450) * ($companyDetails->weekend_multiplier ?? 2.0),
+            'holiday_cost' => $this->public_holiday_hours * ($companyDetails->labour_rate ?? 450) * ($companyDetails->public_holiday_multiplier ?? 2.5),
+            'call_out_cost' => $this->call_out_fee,
+            'mileage_cost' => $this->mileage_cost,
+        ];
+        
+        $totalCost = array_sum($costs);
+        
+        $this->update(['total_labour_cost' => $totalCost]);
+        
+        return $costs;
     }
 }
 

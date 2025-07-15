@@ -10,35 +10,32 @@ class CompanyDetail extends Model
     use HasFactory;
 
     protected $fillable = [
-        // Business rates and settings
+        // Rates and business settings
         'labour_rate',
-        'vat_percent',
-        'markup_percentage',
-        'discount_threshold',
-        'default_payment_terms',
-        'late_payment_fee_percent',
-        'quote_validity_days',
-        'po_auto_approval_limit',
-        'warranty_period_months',
         'call_out_rate',
         'overtime_multiplier',
         'weekend_multiplier',
         'public_holiday_multiplier',
         'mileage_rate',
+        'vat_percent',
+        'markup_percentage',
+        'discount_threshold',
+        'default_payment_terms',
+        'late_payment_fee',
+        'late_payment_fee_percent',
+        'quote_validity_days',
+        'warranty_period_months',
         'minimum_invoice_amount',
-        'hourly_rate_categories',
-        'business_sectors',
+        'po_auto_approval_limit',
         
         // Company information
         'company_name',
+        'trading_name',
         'company_reg_number',
         'vat_reg_number',
-        'trading_name',
         'paye_number',
         'uif_number',
-        'workmans_comp_number',
         'bee_level',
-        'cipc_status',
         
         // Contact details
         'company_telephone',
@@ -51,7 +48,8 @@ class CompanyDetail extends Model
         'company_website',
         'company_logo',
         
-        // Address
+        // Address information
+        'address',
         'physical_address',
         'postal_address',
         'city',
@@ -59,7 +57,7 @@ class CompanyDetail extends Model
         'postal_code',
         'country',
         
-        // Banking
+        // Banking information
         'bank_name',
         'account_holder',
         'account_number',
@@ -67,9 +65,9 @@ class CompanyDetail extends Model
         'branch_name',
         'swift_code',
         'account_type',
-        'reference_format',
         
         // Document settings
+        'reference_format',
         'invoice_terms',
         'invoice_footer',
         'quote_terms',
@@ -79,7 +77,9 @@ class CompanyDetail extends Model
         'company_description',
         'letterhead_template',
         
-        // Industry specific
+        // JSON fields
+        'hourly_rate_categories',
+        'business_sectors',
         'certification_numbers',
         'insurance_details',
         'safety_certifications',
@@ -87,20 +87,21 @@ class CompanyDetail extends Model
 
     protected $casts = [
         'labour_rate' => 'decimal:2',
-        'vat_percent' => 'decimal:2',
-        'markup_percentage' => 'decimal:2',
-        'discount_threshold' => 'decimal:2',
-        'late_payment_fee_percent' => 'decimal:2',
-        'po_auto_approval_limit' => 'decimal:2',
         'call_out_rate' => 'decimal:2',
         'overtime_multiplier' => 'decimal:2',
         'weekend_multiplier' => 'decimal:2',
         'public_holiday_multiplier' => 'decimal:2',
         'mileage_rate' => 'decimal:2',
+        'vat_percent' => 'decimal:2',
+        'markup_percentage' => 'decimal:2',
+        'discount_threshold' => 'decimal:2',
+        'late_payment_fee' => 'decimal:2',
+        'late_payment_fee_percent' => 'decimal:2',
         'minimum_invoice_amount' => 'decimal:2',
-        'warranty_period_months' => 'integer',
+        'po_auto_approval_limit' => 'decimal:2',
         'default_payment_terms' => 'integer',
         'quote_validity_days' => 'integer',
+        'warranty_period_months' => 'integer',
         'hourly_rate_categories' => 'array',
         'business_sectors' => 'array',
         'certification_numbers' => 'array',
@@ -117,20 +118,23 @@ class CompanyDetail extends Model
     // Create default company details with industry standards
     public static function createDefault()
     {
-        return static::create([
+        return self::create([
             'company_name' => 'Your Company Name',
-            'vat_percent' => 15.00,
-            'labour_rate' => 450.00, // Industry average
+            'trading_name' => 'Your Trading Name',
+            'vat_percent' => 15,
+            'labour_rate' => 450.00,
             'call_out_rate' => 850.00,
             'overtime_multiplier' => 1.5,
             'weekend_multiplier' => 2.0,
             'public_holiday_multiplier' => 2.5,
-            'mileage_rate' => 3.50, // AA rate
-            'markup_percentage' => 25.00, // Industry standard
+            'mileage_rate' => 3.50,
+            'markup_percentage' => 25,
+            'discount_threshold' => 10,
             'default_payment_terms' => 30,
+            'late_payment_fee' => 100.00,
+            'late_payment_fee_percent' => 2.0,
             'quote_validity_days' => 30,
             'warranty_period_months' => 12,
-            'late_payment_fee_percent' => 2.00,
             'minimum_invoice_amount' => 500.00,
             'country' => 'South Africa',
             'province' => 'Gauteng',
@@ -139,20 +143,25 @@ class CompanyDetail extends Model
             'quote_terms' => 'This quotation is valid for 30 days from date of issue. Prices exclude VAT unless otherwise stated.',
             'po_terms' => 'All goods remain the property of the supplier until payment is received in full.',
             'warranty_terms' => 'Standard 12-month warranty applies to all workmanship. Parts warranty as per manufacturer specifications.',
-            'hourly_rate_categories' => [
-                'standard' => ['name' => 'Standard Labour', 'rate' => 450.00],
-                'skilled' => ['name' => 'Skilled Technician', 'rate' => 650.00],
-                'specialist' => ['name' => 'Specialist/Engineer', 'rate' => 850.00],
-                'management' => ['name' => 'Project Management', 'rate' => 1200.00],
-                'apprentice' => ['name' => 'Apprentice', 'rate' => 250.00],
-            ],
-            'business_sectors' => [
+            'hourly_rate_categories' => json_encode([
+                'standard' => ['name' => 'Standard Labour', 'rate' => 450],
+                'skilled' => ['name' => 'Skilled Technician', 'rate' => 650],
+                'specialist' => ['name' => 'Specialist/Engineer', 'rate' => 850],
+                'management' => ['name' => 'Project Management', 'rate' => 1200],
+                'apprentice' => ['name' => 'Apprentice', 'rate' => 250],
+                'overtime' => ['name' => 'Overtime Rate', 'rate' => 675], // 450 * 1.5
+                'weekend' => ['name' => 'Weekend Rate', 'rate' => 900],   // 450 * 2.0
+                'holiday' => ['name' => 'Holiday Rate', 'rate' => 1125],  // 450 * 2.5
+                'callout' => ['name' => 'Call Out Rate', 'rate' => 850],
+                'travel' => ['name' => 'Travel Rate', 'rate' => 450],
+            ]),
+            'business_sectors' => json_encode([
                 'Industrial Maintenance',
-                'Electrical Installation',
+                'Electrical Installation', 
                 'Mechanical Repairs',
                 'Project Management',
                 'Consulting Services'
-            ]
+            ]),
         ]);
     }
 

@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->string('payment_reference')->nullable()->unique()->after('email');
-            $table->text('notes')->nullable()->after('payment_reference');
+        Schema::table('purchase_orders', function (Blueprint $table) {
+            $table->decimal('subtotal', 12, 2)->default(0)->after('total_amount');
+            $table->decimal('vat_percent', 5, 2)->default(15)->after('vat_amount');
         });
     }
 
@@ -22,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('clients', function (Blueprint $table) {
-            $table->dropColumn(['payment_reference', 'notes']);
+        Schema::table('purchase_orders', function (Blueprint $table) {
+            $table->dropColumn(['subtotal', 'vat_percent']);
         });
     }
 };

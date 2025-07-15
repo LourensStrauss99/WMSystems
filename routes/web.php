@@ -474,3 +474,13 @@ Route::get('/api/company-rates', function() {
         'mileage_rate' => floatval($company->mileage_rate ?? 7.5),
     ]);
 });
+
+// Remove duplicates and use clean routes:
+Route::middleware(['auth'])->group(function () {
+    Route::get('/grv', [GrvController::class, 'index'])->name('grv.index');
+    Route::get('/grv/create', [GrvController::class, 'create'])->name('grv.create');
+    Route::post('/grv', [GrvController::class, 'store'])->name('grv.store');
+    Route::get('/grv/{id}', [GrvController::class, 'show'])->name('grv.show');
+    
+    // Other GRV routes...
+});

@@ -143,7 +143,7 @@
                     
                     <td><strong>{{ $item->short_code }}</strong></td>
                     
-                    <td>{{ $item->name }}</td>
+                    <td>{{ $item->description }}</td>
                     
                     <td>{{ $item->short_description }}</td>
                     
@@ -151,14 +151,14 @@
                     
                     <td>
                         <span class="stock-level {{ $item->isAtMinLevel() ? 'text-danger' : 'text-success' }}">
-                            {{ $item->stock_level }}
+                            {{ $item->quantity }}
                         </span>
                         @if($item->isAtMinLevel())
                             <small class="text-danger d-block">⚠️ Below Min Level</small>
                         @endif
                     </td>
                     
-                    <td>{{ $item->min_level }}</td>
+                    <td>{{ $item->min_quantity }}</td>
                     
                     <td>R{{ number_format($item->selling_price, 2) }}</td>
                     

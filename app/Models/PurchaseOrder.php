@@ -16,27 +16,31 @@ class PurchaseOrder extends Model
 
     protected $fillable = [
         'po_number',
+        'status',
         'supplier_name',
         'supplier_contact',
         'supplier_email',
         'supplier_phone',
         'supplier_address',
+        'order_date',
+        'expected_delivery_date',
         'actual_delivery_date',
+        'total_amount',          // Use this instead of subtotal
+        'vat_amount',
+        'grand_total',
+        'created_by',
         'approved_by',
         'approved_at',
+        'notes',
         'terms_conditions',
         'payment_terms',
         'supplier_id',
-        'vat_amount',
-        'grand_total',
-        'status',
-        'order_date',
         'submitted_for_approval_at',
         'submitted_by',
         'rejected_at',
-        'rejected_by',
         'rejection_reason',
         'rejection_history',
+        'rejected_by',
         'sent_at',
         'sent_by',
         'amended_by',
@@ -45,6 +49,7 @@ class PurchaseOrder extends Model
 
     protected $casts = [
         'order_date' => 'date',
+        'expected_delivery_date' => 'date',
         'actual_delivery_date' => 'date',
         'submitted_for_approval_at' => 'datetime',
         'approved_at' => 'datetime',
@@ -282,5 +287,56 @@ class PurchaseOrder extends Model
     public function grvs()
     {
         return $this->hasMany(GoodsReceivedVoucher::class);
+    }
+
+    /**
+     * Get the user who created this purchase order
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the user who approved this PO
+     */
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    // Add these helper methods for backwards compatibility:
+    public function getSubtotalAttribute()
+    {
+        return $this->total_amount;  // Alias for subtotal
+    }
+
+    public function getVatPercentAttribute()
+    {
+        // Calculate VAT percentage from amounts
+        if ($this->total_amount > 0) {
+            return ($this->vat_amount / $this->total_amount) * 100;
+        }
+        return 15; // Default VAT percent
+    }
+
+    public function calculateTotals()
+    {
+        $subtotal = $this->items->sum(function($item) {
+            return $item->quantity_ordered * $item->unit_price;
+        });
+        
+        $companyDetails = \App\Models\CompanyDetail::first();
+        $vatPercent = $companyDetails ? $companyDetails->vat_percent : 15;
+        $vatAmount = $subtotal * ($vatPercent / 100);
+        $grandTotal = $subtotal + $vatAmount;
+        
+        $this->update([
+            'total_amount' => $subtotal,
+            'vat_amount' => $vatAmount,
+            'grand_total' => $grandTotal,
+        ]);
+        
+        return $this;
     }
 }

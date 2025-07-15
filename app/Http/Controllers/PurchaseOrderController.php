@@ -45,7 +45,7 @@ class PurchaseOrderController extends Controller
             ->get();
         
         // Get all inventory items (adjust the query based on your needs)
-        $inventory = Inventory::orderBy('name')->get();
+        $inventory = Inventory::orderBy('description')->get();
         
         return view('purchase-orders.create', compact('suppliers', 'inventory'));
     }
@@ -71,24 +71,39 @@ class PurchaseOrderController extends Controller
             // Get supplier information
             $supplier = Supplier::findOrFail($validated['supplier_id']);
             
+            // Generate PO number
+            $poNumber = $this->generatePONumber();
+            
             // Calculate totals
             $subtotal = 0;
             foreach ($validated['items'] as $item) {
                 $subtotal += $item['quantity_ordered'] * $item['unit_price'];
             }
             
-            $vatAmount = $subtotal * 0.15;
+            $companyDetails = \App\Models\CompanyDetail::first();
+            $vatPercent = $companyDetails ? $companyDetails->vat_percent : 15;
+            $vatAmount = $subtotal * ($vatPercent / 100);
             $grandTotal = $subtotal + $vatAmount;
-
-            // Create Purchase Order
+            
+            // Create purchase order with CORRECT column names
             $purchaseOrder = PurchaseOrder::create([
-                'po_number' => $this->generatePONumber(),
+                'po_number' => $poNumber,
                 'supplier_id' => $validated['supplier_id'],
                 'supplier_name' => $supplier->name,
+                'supplier_contact' => $supplier->contact_person ?? '',
+                'supplier_email' => $supplier->email ?? '',
+                'supplier_phone' => $supplier->phone ?? '',
+                'supplier_address' => $supplier->address ?? '',
                 'order_date' => $validated['order_date'],
+                'expected_delivery_date' => $validated['expected_delivery_date'] ?? null,
+                'notes' => $validated['notes'] ?? null,
                 'status' => 'draft',
+                'total_amount' => $subtotal,        // Use total_amount instead of subtotal
                 'vat_amount' => $vatAmount,
                 'grand_total' => $grandTotal,
+                'created_by' => auth()->id(),
+                'terms_conditions' => '',
+                'payment_terms' => $companyDetails ? $companyDetails->default_payment_terms : 30,
             ]);
 
             // Create Purchase Order Items
@@ -137,7 +152,7 @@ class PurchaseOrderController extends Controller
         }
         
         $suppliers = Supplier::where('active', true)->orderBy('name')->get();
-        $inventory = Inventory::orderBy('name')->get(); // Remove the active filter
+        $inventory = Inventory::orderBy('description')->get(); // Remove the active filter
         
         // Load existing items for pre-population
         $purchaseOrder->load(['supplier', 'items']);

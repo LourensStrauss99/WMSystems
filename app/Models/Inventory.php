@@ -13,33 +13,30 @@ class Inventory extends Model
     protected $table = 'inventory';
 
     protected $fillable = [
+        // Core fields
         'description',
-        'name',
-        'code', // Add this
-        'item_code', // Add this  
         'short_code',
-        'short_description',
         'vendor',
-        'supplier',
-        'goods_received_voucher',
+        
+        // Pricing
+        'nett_price',
+        'sell_price',
+        
+        // Stock
+        'quantity',
+        'min_quantity',
+        
+        // Purchase tracking
         'invoice_number',
         'receipt_number',
         'purchase_date',
         'purchase_order_number',
         'purchase_notes',
+        
+        // Stock management
         'last_stock_update',
         'stock_added',
         'stock_update_reason',
-        'nett_price',
-        'buying_price',
-        'sell_price',
-        'selling_price',
-        'unit_price', // Add this
-        'price', // Add this
-        'quantity',
-        'stock_level',
-        'min_quantity',
-        'min_level',
     ];
 
     protected $casts = [
@@ -61,7 +58,7 @@ class Inventory extends Model
      */
     public function isAtMinLevel()
     {
-        return $this->stock_level <= $this->min_level;
+        return $this->quantity <= $this->min_quantity;  // Changed from stock_level/min_level
     }
 
     /**
@@ -69,7 +66,7 @@ class Inventory extends Model
      */
     public function isCriticallyLow()
     {
-        return $this->stock_level < ($this->min_level * 0.5);
+        return $this->quantity < ($this->min_quantity * 0.5);  // Changed columns
     }
 
     /**
@@ -77,7 +74,7 @@ class Inventory extends Model
      */
     public function isOutOfStock()
     {
-        return $this->stock_level == 0;
+        return $this->quantity == 0;  // Changed from stock_level
     }
 
     /**
@@ -85,7 +82,7 @@ class Inventory extends Model
      */
     public function hasStock($requestedQuantity)
     {
-        return $this->stock_level >= $requestedQuantity;
+        return $this->quantity >= $requestedQuantity;  // Changed from stock_level
     }
 
     /**
@@ -93,7 +90,7 @@ class Inventory extends Model
      */
     public function getAvailableStock($requestedQuantity = 0)
     {
-        return max(0, $this->stock_level - $requestedQuantity);
+        return max(0, $this->quantity - $requestedQuantity);  // Changed from stock_level
     }
 
     /**
@@ -101,7 +98,7 @@ class Inventory extends Model
      */
     public function getStockStatus()
     {
-        if ($this->stock_level == 0) {
+        if ($this->quantity == 0) {
             return [
                 'status' => 'Out of Stock',
                 'icon' => '❌',
@@ -134,7 +131,7 @@ class Inventory extends Model
     public function reduceStock($quantity)
     {
         if ($this->hasStock($quantity)) {
-            $this->stock_level -= $quantity;
+            $this->quantity -= $quantity;  // Changed from stock_level
             $this->save();
             return true;
         }
@@ -198,5 +195,24 @@ class Inventory extends Model
     public function grvItems()
     {
         return $this->hasMany(\App\Models\GrvItem::class);
+    }
+
+    public function updateSellingPrice()
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        $markupPercent = $companyDetails ? $companyDetails->markup_percentage : 25;
+        
+        $this->sell_price = $this->nett_price * (1 + ($markupPercent / 100));
+        $this->save();
+        
+        return $this->sell_price;
+    }
+
+    public function getCalculatedSellingPrice()
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        $markupPercent = $companyDetails ? $companyDetails->markup_percentage : 25;
+        
+        return $this->nett_price * (1 + ($markupPercent / 100));
     }
 }

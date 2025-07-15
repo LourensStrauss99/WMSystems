@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('purchase_orders', function (Blueprint $table) {
-            if (!Schema::hasColumn('purchase_orders', 'order_date')) {
-                $table->date('order_date')->nullable();
-            }
+            $table->unsignedBigInteger('created_by')->nullable()->change();
         });
     }
 
@@ -24,9 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('purchase_orders', function (Blueprint $table) {
-            if (Schema::hasColumn('purchase_orders', 'order_date')) {
-                $table->dropColumn('order_date');
-            }
+            $table->unsignedBigInteger('created_by')->nullable(false)->change();
         });
     }
 };

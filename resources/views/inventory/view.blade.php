@@ -10,7 +10,7 @@
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
                     <li class="breadcrumb-item"><a href="/inventory">Inventory</a></li>
-                    <li class="breadcrumb-item active">{{ $item->name }}</li>
+                    <li class="breadcrumb-item active">{{ $item->description }}</li>
                 </ol>
             </nav>
 
@@ -19,7 +19,7 @@
                 <div class="card-header bg-primary text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">
-                            <i class="fas fa-box me-2"></i>{{ $item->name }}
+                            <i class="fas fa-box me-2"></i>{{ $item->description }}
                         </h4>
                         <div>
                             @php $stockStatus = $item->getStockStatus(); @endphp
@@ -51,16 +51,6 @@
                             </div>
                             
                             <div class="row mb-3">
-                                <div class="col-4"><strong>Description:</strong></div>
-                                <div class="col-8">{{ $item->description ?? 'N/A' }}</div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-4"><strong>Short Description:</strong></div>
-                                <div class="col-8">{{ $item->short_description ?? 'N/A' }}</div>
-                            </div>
-                            
-                            <div class="row mb-3">
                                 <div class="col-4"><strong>Supplier:</strong></div>
                                 <div class="col-8">{{ $item->supplier ?? 'N/A' }}</div>
                             </div>
@@ -82,7 +72,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h6 class="mb-1">Current Stock Level</h6>
-                                        <h3 class="mb-0">{{ $item->stock_level }}</h3>
+                                        <h3 class="mb-0">{{ $item->quantity }}</h3>
                                     </div>
                                     <div class="text-end">
                                         <div>{{ $stockStatus['icon'] }}</div>
@@ -94,7 +84,7 @@
                             <div class="row mb-3">
                                 <div class="col-6"><strong>Minimum Level:</strong></div>
                                 <div class="col-6">
-                                    <span class="badge bg-warning">{{ $item->min_level }}</span>
+                                    <span class="badge bg-warning">{{ $item->min_quantity }}</span>
                                 </div>
                             </div>
                             

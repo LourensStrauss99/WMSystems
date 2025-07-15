@@ -23,7 +23,7 @@ class MasterSettingsController extends Controller
                             ->orderBy('created_at', 'desc')
                             ->get();
 
-        $inventory = Inventory::orderBy('name', 'asc')->get();
+        $inventory = Inventory::orderBy('description', 'asc')->get();
 
         return view('master-settings', compact('users', 'employees', 'inventory'));
     }

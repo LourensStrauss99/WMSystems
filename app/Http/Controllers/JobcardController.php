@@ -181,11 +181,11 @@ class JobcardController extends Controller
                 foreach ($request->inventory_items as $index => $itemId) {
                     $qty = $request->inventory_qty[$itemId] ?? 1;
                     $syncData[$itemId] = ['quantity' => $qty];
-                    
+
                     // Update stock levels
                     $inventory = Inventory::find($itemId);
                     if ($inventory) {
-                        $inventory->stock_level = max(0, $inventory->stock_level - $qty);
+                        $inventory->quantity = max(0, $inventory->quantity - $qty); // <-- FIXED COLUMN NAME
                         $inventory->save();
                     }
                 }
@@ -295,5 +295,31 @@ class JobcardController extends Controller
                 'mileage_rate' => number_format($company->mileage_rate, 2),
             ]
         ]);
+    }
+
+    // When attaching an employee to a jobcard:
+    public function attachEmployee(Request $request, Jobcard $jobcard)
+    {
+        $validated = $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'hours_worked' => 'required|numeric|min:0',
+            'hour_type' => 'required|in:normal,overtime,weekend,public_holiday,call_out',
+        ]);
+        
+        $employee = Employee::find($validated['employee_id']);
+        $hourlyRate = $employee->getHourlyRate($validated['hour_type']);
+        $totalCost = $validated['hours_worked'] * $hourlyRate;
+        
+        $jobcard->employees()->attach($validated['employee_id'], [
+            'hours_worked' => $validated['hours_worked'],
+            'hour_type' => $validated['hour_type'],
+            'hourly_rate' => $hourlyRate,
+            'total_cost' => $totalCost,
+        ]);
+        
+        // Recalculate jobcard totals
+        $jobcard->calculateLaborCosts();
+        
+        return redirect()->back()->with('success', 'Employee added to jobcard successfully!');
     }
 }

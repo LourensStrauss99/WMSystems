@@ -16,13 +16,13 @@ class InventoryController extends Controller
         if ($request->has('filter')) {
             switch ($request->get('filter')) {
                 case 'low_stock':
-                    $query->whereRaw('stock_level <= min_level');
+                    $query->whereRaw('quantity <= min_quantity');
                     break;
                 case 'critical':
-                    $query->whereRaw('stock_level < (min_level * 0.5)');
+                    $query->whereRaw('quantity < (min_quantity * 0.5)');
                     break;
                 case 'out_of_stock':
-                    $query->where('stock_level', 0);
+                    $query->where('quantity', 0);
                     break;
                 case 'all':
                 default:
@@ -35,13 +35,13 @@ class InventoryController extends Controller
         if ($request->has('stock_filter') && $request->get('stock_filter') !== '') {
             switch ($request->get('stock_filter')) {
                 case 'low':
-                    $query->whereRaw('stock_level <= min_level');
+                    $query->whereRaw('quantity <= min_quantity');
                     break;
                 case 'critical':
-                    $query->whereRaw('stock_level < (min_level * 0.5)');
+                    $query->whereRaw('quantity < (min_quantity * 0.5)');
                     break;
                 case 'out_of_stock':
-                    $query->where('stock_level', 0);
+                    $query->where('quantity', 0);
                     break;
             }
         }
@@ -50,23 +50,22 @@ class InventoryController extends Controller
         if ($request->has('search') && $request->get('search') !== '') {
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
+                $q->where('description', 'LIKE', "%{$search}%")
                   ->orWhere('short_code', 'LIKE', "%{$search}%")
-                  ->orWhere('short_description', 'LIKE', "%{$search}%")
                   ->orWhere('description', 'LIKE', "%{$search}%")
-                  ->orWhere('supplier', 'LIKE', "%{$search}%");
+                  ->orWhere('vendor', 'LIKE', "%{$search}%");
             });
         }
 
         // Get filtered items
-        $items = $query->orderBy('name')->get();
+        $items = $query->orderBy('description')->get();
 
         // Get summary statistics (always show full stats)
         $stats = [
             'total_items' => Inventory::count(),
-            'low_stock_items' => Inventory::whereRaw('stock_level <= min_level')->count(),
-            'critical_items' => Inventory::whereRaw('stock_level < (min_level * 0.5)')->count(),
-            'out_of_stock' => Inventory::where('stock_level', 0)->count(),
+            'low_stock_items' => Inventory::whereRaw('quantity <= min_quantity')->count(),
+            'critical_items' => Inventory::whereRaw('quantity < (min_quantity * 0.5)')->count(),
+            'out_of_stock' => Inventory::where('quantity', 0)->count(),
         ];
 
         return view('inventory.index', compact('items', 'stats'));
@@ -90,21 +89,21 @@ class InventoryController extends Controller
             ]);
         }
         
-        // Check if we have enough stock
-        $available = $item->stock_level >= $requestedQuantity;
+        // Check if we have enough stock - Use correct column names
+        $available = $item->quantity >= $requestedQuantity;  // Changed from 'stock_level'
         
         return response()->json([
             'available' => $available,
-            'current_stock' => $item->stock_level,
+            'current_stock' => $item->quantity,              // Changed from 'stock_level'
             'requested_quantity' => $requestedQuantity,
-            'remaining_after' => max(0, $item->stock_level - $requestedQuantity),
-            'is_min_level' => $item->stock_level <= $item->min_level,
-            'item_name' => $item->name,
+            'remaining_after' => max(0, $item->quantity - $requestedQuantity), // Changed column
+            'is_min_level' => $item->quantity <= $item->min_quantity,          // Changed columns
+            'item_name' => $item->description,               // Changed from 'name'
             'message' => $available 
-                ? "✅ Available: {$item->stock_level} in stock"
-                : "❌ Out of Stock: Only {$item->stock_level} available, you requested {$requestedQuantity}",
-            'warning' => ($item->stock_level - $requestedQuantity) <= $item->min_level && $available
-                ? "⚠️ This will bring stock below minimum level ({$item->min_level})"
+                ? "✅ Available: {$item->quantity} in stock"
+                : "❌ Out of Stock: Only {$item->quantity} available, you requested {$requestedQuantity}",
+            'warning' => ($item->quantity - $requestedQuantity) <= $item->min_quantity && $available
+                ? "⚠️ This will bring stock below minimum level ({$item->min_quantity})"
                 : null
         ]);
     }
@@ -168,6 +167,15 @@ class InventoryController extends Controller
         $data['stock_added'] = $data['stock_level'];
         $data['last_stock_update'] = $data['purchase_date'] ?? now()->toDateString();
 
+        // Get company markup percentage
+        $companyDetails = \App\Models\CompanyDetail::first();
+        $markupPercent = $companyDetails ? $companyDetails->markup_percentage : 25;
+    
+        // Calculate selling price if not provided
+        if (empty($data['sell_price']) && !empty($data['nett_price'])) {
+            $data['sell_price'] = $data['nett_price'] * (1 + ($markupPercent / 100));
+        }
+
         try {
             $item = Inventory::create($data);
             
@@ -175,19 +183,18 @@ class InventoryController extends Controller
             if ($request->input('is_replenishment') && $request->input('original_item_id')) {
                 $originalItem = Inventory::find($request->input('original_item_id'));
                 if ($originalItem) {
-                    $originalItem->stock_level += $data['stock_level'];
-                    $originalItem->quantity = $originalItem->stock_level;
+                    $originalItem->quantity += $data['stock_level'];           // Use quantity, not stock_level
                     $originalItem->last_stock_update = now()->toDateString();
                     $originalItem->stock_added = $data['stock_level'];
                     $originalItem->stock_update_reason = 'Stock replenished - linked to ' . $item->short_code;
                     $originalItem->save();
                     
-                    $successMessage = "Stock replenishment successful! Added {$data['stock_level']} units to '{$originalItem->name}'. New total stock: {$originalItem->stock_level}. Replenishment record: {$item->short_code}";
+                    $successMessage = "Stock replenishment successful! Added {$data['stock_level']} units to '{$originalItem->description}'. New total stock: {$originalItem->quantity}. Replenishment record: {$item->short_code}";
                 } else {
                     $successMessage = "New inventory item added (original item not found for replenishment): {$item->short_code}";
                 }
             } else {
-                $successMessage = "New inventory item '{$item->name}' added successfully! Stock: {$item->stock_level}, Code: {$item->short_code}";
+                $successMessage = "New inventory item '{$item->description}' added successfully! Stock: {$item->quantity}, Code: {$item->short_code}";
             }
             
             return redirect()->back()->with('success', $successMessage);
@@ -199,7 +206,7 @@ class InventoryController extends Controller
 
     public function adminPanel()
     {
-        $items = Inventory::orderBy('name')->get();
+        $items = Inventory::orderBy('description')->get();
         return view('master-settings', compact('items')); // Changed from 'admin-panel'
     }
 

@@ -18,6 +18,7 @@ class GrvController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+        // Remove any other middleware that might be redirecting
     }
 
     /**
@@ -37,23 +38,28 @@ class GrvController extends Controller
      */
     public function create(Request $request)
     {
+        // Add debug logging
+        Log::info('GRV Create accessed', [
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'user' => auth()->id(),
+            'request_data' => $request->all()
+        ]);
+        
         $purchaseOrderId = $request->get('purchase_order_id');
         $purchaseOrder = null;
         
         if ($purchaseOrderId) {
-            $purchaseOrder = PurchaseOrder::with(['supplier', 'items'])->findOrFail($purchaseOrderId);
-            
-            if (!$purchaseOrder->canCreateGrv()) {
-                return redirect()->route('grv.index')
-                    ->with('error', 'Cannot create GRV for this purchase order status.');
-            }
+            $purchaseOrder = PurchaseOrder::with(['supplier', 'items'])->find($purchaseOrderId);
         }
 
+        // Get available POs for selection
         $availablePOs = PurchaseOrder::with('supplier')
-            ->whereIn('status', ['sent', 'approved', 'partially_received'])
+            ->whereIn('status', ['sent', 'approved', 'partially_received', 'pending_approval']) // Add more statuses
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // ✅ ALWAYS return the view - don't redirect
         return view('grv.create', compact('purchaseOrder', 'availablePOs'));
     }
 
@@ -133,29 +139,35 @@ class GrvController extends Controller
                     $inventory = Inventory::where('short_code', $poItem->item_code)->first();
                     
                     if (!$inventory) {
-                        $inventory = Inventory::where('name', 'LIKE', '%' . $poItem->item_name . '%')->first();
+                        $inventory = Inventory::where('description', 'LIKE', '%' . $poItem->item_name . '%')->first();
                     }
                     
                     if (!$inventory) {
                         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Creating new inventory item for: {$poItem->item_name}\n", FILE_APPEND);
                         
                         $inventory = Inventory::create([
-                            'name' => $poItem->item_name,
-                            'short_code' => $poItem->item_code,
-                            'description' => $poItem->item_description ?? $poItem->item_name,
-                            'buying_price' => $poItem->unit_price,
-                            'selling_price' => $poItem->unit_price * 1.3,
-                            'nett_price' => $poItem->unit_price,
-                            'sell_price' => $poItem->unit_price * 1.3,
-                            'stock_level' => 0,
-                            'quantity' => 0,
-                            'min_level' => 5,
-                            'min_quantity' => 5,
-                            'supplier' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
+                            'description' => $poItem->item_name,
+                            'short_code' => $poItem->item_code ?: 'AUTO-' . time(),
                             'vendor' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
+                            'nett_price' => $poItem->unit_price,
+                            'sell_price' => $poItem->unit_price * 1.3, // 30% markup
+                            'quantity' => 0, // Will be updated when stock is received
+                            'min_quantity' => 5, // Default minimum
+                            'invoice_number' => null,
+                            'receipt_number' => null,
+                            'purchase_date' => now(),
+                            'purchase_order_number' => $grv->purchaseOrder->po_number,
+                            'purchase_notes' => "Created from GRV #{$grv->id}",
+                            'last_stock_update' => now(),
+                            'stock_added' => 0,
+                            'stock_update_reason' => 'Initial creation from GRV',
                         ]);
                         
-                        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Created inventory item with ID: {$inventory->id}\n", FILE_APPEND);
+                        Log::info("Created new inventory item", [
+                            'id' => $inventory->id,
+                            'description' => $inventory->description,
+                            'short_code' => $inventory->short_code
+                        ]);
                     }
 
                     // Create GRV item with CORRECT field name
@@ -241,29 +253,28 @@ class GrvController extends Controller
                     if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
                         $inventory = $item->inventory;
                         if ($inventory) {
-                            $oldStock = $inventory->stock_level;
+                            $oldStock = $inventory->quantity; // Use correct column name
                             
-                            // Direct database update - CORRECTED TABLE NAME
-                            $affected = DB::table('inventory')  // Changed from 'inventories' to 'inventory'
+                            // Complete database update with correct syntax
+                            $affected = DB::table('inventory')
                                 ->where('id', $item->inventory_id)
                                 ->update([
-                                    'stock_level' => DB::raw('stock_level + ' . $item->getAcceptedQuantity()),
-                                    'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),
+                                    'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),  // Make sure this uses 'quantity'
                                     'last_stock_update' => now(),
-                                    'stock_update_reason' => "GRV Approval: {$grv->grv_number}",
-                                    'updated_at' => now()
-                            ]);
-                        
+                                    'stock_added' => $item->getAcceptedQuantity(),
+                                    'stock_update_reason' => "GRV #{$grv->grv_number} - Stock received",
+                                ]);
+                    
                             file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Database update result: {$affected} rows affected\n", FILE_APPEND);
-                        
+                    
                             // Mark as updated
                             $item->stock_updated = true;
                             $item->save();
                         
                             $updatedItems++;
                         
-                            // Verify the update - CORRECTED TABLE NAME
-                            $newStock = DB::table('inventory')->where('id', $item->inventory_id)->value('stock_level');  // Changed from 'inventories' to 'inventory'
+                            // Verify the update
+                            $newStock = DB::table('inventory')->where('id', $item->inventory_id)->value('quantity');
                             file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Stock updated from {$oldStock} to {$newStock}\n", FILE_APPEND);
                         }
                     }
@@ -405,16 +416,12 @@ class GrvController extends Controller
             if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
                 
                 // Direct database update - FIXED TABLE NAME
-                $affected = DB::table('inventory')  // Changed from 'inventories' to 'inventory'
-                    ->where('id', $item->inventory_id)
-                    ->increment('stock_level', $item->getAcceptedQuantity());
-                
-                // Also update quantity field
-                DB::table('inventory')  // Changed from 'inventories' to 'inventory'
+                $affected = DB::table('inventory')
                     ->where('id', $item->inventory_id)
                     ->update([
-                        'quantity' => DB::raw('stock_level'),
+                        'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),
                         'last_stock_update' => now(),
+                        'stock_added' => $item->getAcceptedQuantity(),
                         'stock_update_reason' => "Force update via GRV: {$grv->grv_number}"
                     ]);
                 

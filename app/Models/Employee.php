@@ -41,11 +41,16 @@ class Employee extends Authenticatable
         'admin_level' => 'integer',
     ];
 
-    // Add the relationship with jobcards
+    // Update the jobcards relationship
     public function jobcards()
     {
         return $this->belongsToMany(Jobcard::class, 'employee_jobcard')
-                    ->withPivot('hours_worked')
+                    ->withPivot([
+                        'hours_worked', 
+                        'hour_type',
+                        'hourly_rate',
+                        'total_cost'
+                    ])
                     ->withTimestamps();
     }
 
@@ -120,5 +125,23 @@ class Employee extends Authenticatable
     public function getFullNameAttribute()
     {
         return trim($this->name . ' ' . $this->surname);
+    }
+
+    /**
+     * Get employee's hourly rate by type
+     */
+    public function getHourlyRate($hourType = 'normal')
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        $baseRate = $companyDetails->labour_rate ?? 450;
+        
+        return match($hourType) {
+            'normal' => $baseRate,
+            'overtime' => $baseRate * ($companyDetails->overtime_multiplier ?? 1.5),
+            'weekend' => $baseRate * ($companyDetails->weekend_multiplier ?? 2.0),
+            'public_holiday' => $baseRate * ($companyDetails->public_holiday_multiplier ?? 2.5),
+            'call_out' => $companyDetails->call_out_rate ?? 850,
+            default => $baseRate,
+        };
     }
 }
