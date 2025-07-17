@@ -6,6 +6,8 @@ use App\Models\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Mail\StatementMailable;
+use Illuminate\Support\Facades\Mail;
 
 class CustomerController extends Controller
 {
@@ -196,6 +198,27 @@ class CustomerController extends Controller
         
         return redirect()->route('customers.index')
                        ->with('success', "Customer '{$customerName}' has been {$status}.");
+    }
+
+    public function sendStatement($customerId)
+    {
+        $customer = \App\Models\Client::with(['invoices.jobcard'])->findOrFail($customerId);
+        $company = \App\Models\CompanyDetail::first();
+        // You can add more logic to filter invoices/payments as needed
+        Mail::to($customer->email)
+            ->send(new StatementMailable($customer, $company));
+        return response()->json(['success' => true]);
+    }
+
+    public function downloadStatement($customerId)
+    {
+        $customer = \App\Models\Client::with(['invoices.jobcard'])->findOrFail($customerId);
+        $company = \App\Models\CompanyDetail::first();
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('emails.statement', [
+            'customer' => $customer,
+            'company' => $company
+        ]);
+        return $pdf->download('statement.pdf');
     }
 }
 

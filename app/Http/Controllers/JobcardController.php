@@ -88,8 +88,15 @@ class JobcardController extends Controller
         $employees = Employee::all();
         $inventory = Inventory::all();
         $clients = Client::all();
-        
-        return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients'));
+        // Add assignedInventory for blade
+        $assignedInventory = $jobcard->inventory->map(function($item) {
+            return [
+                'id' => $item->id,
+                'quantity' => $item->pivot->quantity ?? 1,
+                'name' => $item->name ?? $item->description
+            ];
+        })->toArray();
+        return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
     }
 
     public function create()
@@ -145,8 +152,15 @@ class JobcardController extends Controller
         $employees = Employee::all();
         $inventory = Inventory::all();
         $clients = Client::all();
-
-        return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients'));
+        // Add assignedInventory for blade
+        $assignedInventory = $jobcard->inventory->map(function($item) {
+            return [
+                'id' => $item->id,
+                'quantity' => $item->pivot->quantity ?? 1,
+                'name' => $item->name ?? $item->description
+            ];
+        })->toArray();
+        return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
     }
 
     public function update(Request $request, Jobcard $jobcard)
@@ -175,21 +189,24 @@ class JobcardController extends Controller
                 $jobcard->employees()->sync($syncData);
             }
 
-            // Handle inventory
+            // Handle inventory - support both old and new formats
             if ($request->has('inventory_items')) {
                 $syncData = [];
-                foreach ($request->inventory_items as $index => $itemId) {
+                foreach ($request->inventory_items as $itemId) {
                     $qty = $request->inventory_qty[$itemId] ?? 1;
                     $syncData[$itemId] = ['quantity' => $qty];
-
-                    // Update stock levels
-                    $inventory = Inventory::find($itemId);
-                    if ($inventory) {
-                        $inventory->quantity = max(0, $inventory->quantity - $qty); // <-- FIXED COLUMN NAME
-                        $inventory->save();
-                    }
                 }
                 $jobcard->inventory()->sync($syncData);
+            } elseif ($request->has('inventory_data')) {
+                // Handle JSON inventory data from Livewire
+                $inventoryData = json_decode($request->inventory_data, true);
+                if (is_array($inventoryData)) {
+                    $syncData = [];
+                    foreach ($inventoryData as $item) {
+                        $syncData[$item['id']] = ['quantity' => $item['quantity']];
+                    }
+                    $jobcard->inventory()->sync($syncData);
+                }
             }
         });
 

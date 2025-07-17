@@ -3,612 +3,261 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Invoice {{ $jobcard->jobcard_number }}</title>
     <style>
-        /* PDF-Optimized Styles - Fix Width Issues */
-        @page {
-            margin: 10mm;
-            size: A4 portrait;
-        }
-
-        * {
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            background: #f4f6fa;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
-
-        body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 11px;
-            line-height: 1.3;
-            color: #333;
-            background: white;
-            width: 100%;
-        }
-
         .invoice-container {
-            width: 100%;
-            max-width: 190mm; /* FIXED: Ensure it fits A4 width */
-            margin: 0 auto;
-            background: white;
-            padding: 5mm;
+            max-width: 700px;
+            margin: 20px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+            padding: 40px 32px 32px 32px;
         }
-
-        /* Header Layout - FIXED WIDTH MANAGEMENT */
-        .invoice-header {
-            width: 100%;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #007bff;
-            overflow: hidden;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #1976d2;
+            padding-bottom: 18px;
         }
-
-        .header-left {
-            float: left;
-            width: 58%; /* REDUCED from 60% */
-        }
-
-        .header-right {
-            float: right;
-            width: 40%; /* KEEP 40% */
-            padding-left: 15px; /* REDUCED padding */
-        }
-
         .company-info {
-            width: 100%;
-            overflow: hidden;
+            font-size: 1.1em;
         }
-
         .company-logo {
-            float: left;
-            width: 80px; /* FIXED WIDTH */
-            margin-right: 10px;
+            height: 60px;
         }
-
-        .company-logo img {
-            max-width: 70px; /* SMALLER */
-            max-height: 60px; /* SMALLER */
-            display: block;
+        .invoice-title {
+            color: #1976d2;
+            font-size: 2em;
+            font-weight: 700;
+            margin: 0;
         }
-
-        .company-details {
-            margin-left: 90px; /* Account for logo width + margin */
+        .section {
+            margin-top: 32px;
         }
-
-        .company-name {
-            font-size: 20px; /* SMALLER */
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 8px;
-            line-height: 1.1;
-        }
-
-        .company-address, .company-contact {
-            font-size: 10px; /* SMALLER */
-            color: #666;
-            margin-bottom: 4px;
-            line-height: 1.3;
-        }
-
-        /* Banking Details - Right Side FIXED */
-        .banking-details-header {
-            background: #f8f9fa;
-            padding: 12px; /* REDUCED */
-            border-radius: 6px;
-            border-left: 3px solid #007bff;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .banking-details-header h3 {
-            color: #007bff;
-            margin-bottom: 10px;
-            font-size: 12px;
+        .section-title {
+            font-size: 1.1em;
             font-weight: 600;
-        }
-
-        .banking-details-header .bank-info {
-            font-size: 9px; /* SMALLER */
-            line-height: 1.3;
-        }
-
-        .bank-row {
-            margin-bottom: 3px;
-            word-break: break-word;
-        }
-
-        .bank-row strong {
-            color: #333;
-            font-weight: 600;
-        }
-
-        /* Clear float fix */
-        .clearfix::after {
-            content: "";
-            display: table;
-            clear: both;
-        }
-
-        /* Invoice Details Header - FIXED */
-        .invoice-details-header {
-            width: 100%;
-            margin-bottom: 20px;
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .client-details {
-            float: left;
-            width: 48%;
-            padding-right: 15px;
-        }
-
-        .invoice-meta {
-            float: right;
-            width: 48%;
-            text-align: right;
-        }
-
-        .client-details h3, .invoice-meta h3 {
-            color: #007bff;
-            margin-bottom: 10px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .client-info {
-            font-size: 10px;
-            line-height: 1.4;
-        }
-
-        .invoice-number {
-            font-size: 16px;
-            font-weight: bold;
-            color: #007bff;
+            color: #1976d2;
             margin-bottom: 8px;
         }
-
-        .invoice-date, .due-date {
-            margin-bottom: 6px;
-            font-size: 10px;
-        }
-
-        /* Work Done Section */
-        .work-done-section {
-            margin-bottom: 20px;
-            background: #e8f4fd;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 3px solid #007bff;
-        }
-
-        .work-done-section h3 {
-            color: #007bff;
-            margin-bottom: 10px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .work-description {
-            font-size: 10px;
-            line-height: 1.4;
-            color: #444;
-        }
-
-        /* Invoice Table - FIXED */
-        .invoice-table-section {
-            margin-bottom: 20px;
-        }
-
-        .invoice-table-section h3 {
-            color: #007bff;
-            margin-bottom: 15px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .invoice-table {
+        .details-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
-            font-size: 10px;
-            table-layout: fixed; /* FIXED: Prevent table overflow */
+            margin-top: 12px;
         }
-
-        .invoice-table thead tr {
-            background: #007bff;
-            color: white;
-        }
-
-        .invoice-table th {
-            padding: 8px 4px; /* REDUCED padding */
+        .details-table th, .details-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e3e8ee;
             text-align: left;
+        }
+        .details-table th {
+            background: #f4f8fb;
             font-weight: 600;
-            border: 1px solid #dee2e6;
-            font-size: 10px;
+            color: #1976d2;
         }
-
-        .invoice-table th.qty, 
-        .invoice-table th.unit-price, 
-        .invoice-table th.total,
-        .invoice-table td.qty, 
-        .invoice-table td.unit-price, 
-        .invoice-table td.total {
-            text-align: right;
-            width: 15%; /* ADJUSTED */
+        .details-table tr:nth-child(even) td {
+            background: #fafbfc;
         }
-
-        .invoice-table th.item-desc,
-        .invoice-table td.item-desc {
-            width: 55%; /* ADJUSTED */
+        .total-row td {
+            font-weight: 700;
+            background: #1976d2;
+            color: #fff;
+            font-size: 1.1em;
         }
-
-        .invoice-table td {
-            padding: 8px 4px; /* REDUCED padding */
-            border: 1px solid #dee2e6;
-            vertical-align: top;
-            font-size: 10px;
-            word-wrap: break-word;
+        .summary {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 32px;
         }
-
-        .item-row:nth-child(even) {
-            background: #f8f9fa;
+        .summary-box {
+            background: #f4f8fb;
+            border-radius: 8px;
+            padding: 18px 20px;
+            width: 48%;
+            font-size: 0.98em;
         }
-
-        .section-header td {
-            background: #e9ecef !important;
-            font-weight: bold;
-            color: #495057;
-            padding: 6px 4px;
-            font-size: 10px;
-        }
-
-        .subtotal-row, .vat-row {
-            background: #f8f9fa;
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 12px;
+            font-size: 0.95em;
             font-weight: 600;
+            color: #fff;
+            background: #43a047;
+            margin-left: 8px;
         }
-
-        .total-row {
-            background: #007bff;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .subtotal-label, .vat-label, .total-label {
-            text-align: right;
-            padding: 8px 4px;
-        }
-
-        .subtotal-amount, .vat-amount, .total-amount {
-            text-align: right;
-            padding: 8px 4px;
-        }
-
-        .totals-spacer {
-            border: none;
-            padding: 6px;
-        }
-
-        /* Payment Information Section - FIXED */
-        .payment-info-section {
-            width: 100%;
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-
-        .banking-details-footer, .payment-terms {
-            float: left;
-            width: 48%; /* REDUCED from 50% */
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            box-sizing: border-box;
-        }
-
-        .banking-details-footer {
-            margin-right: 4%; /* 2% on each side = 4% gap */
-        }
-
-        .banking-details-footer h3, .payment-terms h3 {
-            color: #007bff;
-            margin-bottom: 10px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .bank-info-footer, .terms-content {
-            font-size: 10px;
-            line-height: 1.4;
-        }
-
-        /* Footer */
-        .invoice-footer {
+        .badge.unpaid { background: #e53935; }
+        .badge.paid { background: #43a047; }
+        .badge.overdue { background: #fbc02d; color: #222; }
+        .footer {
             text-align: center;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-style: italic;
-            color: #666;
-            font-size: 10px;
-        }
-
-        /* Utility Classes */
-        .text-muted {
-            color: #666 !important;
-            font-size: 9px;
+            color: #aaa;
+            font-size: 0.95em;
+            margin-top: 32px;
         }
     </style>
 </head>
 <body>
-    <div class="invoice-container">
-        <!-- Invoice Header - FIXED LAYOUT -->
-        <div class="invoice-header clearfix">
-            <div class="header-left">
-                <div class="company-info clearfix">
-                    <div class="company-logo">
-                        @if(!empty($company->company_logo))
-                            <img src="{{ public_path('storage/' . $company->company_logo) }}" alt="{{ $company->company_name }}">
-                        @else
-                            <img src="{{ public_path('silogo.jpg') }}" alt="Company Logo">
-                        @endif
-                    </div>
-                    <div class="company-details">
-                        <div class="company-name">{{ $company->company_name }}</div>
-                        <div class="company-address">
-                            {{ $company->address }}<br>
-                            {{ $company->city }}, {{ $company->province }} {{ $company->postal_code }}<br>
-                            {{ $company->country }}
-                        </div>
-                        <div class="company-contact">
-                            Tel: {{ $company->company_telephone }}<br>
-                            Email: {{ $company->company_email }}
-                            @if($company->company_website)
-                                <br>Web: {{ $company->company_website }}
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="header-right">
-                <div class="banking-details-header">
-                    <h3>Banking Details</h3>
-                    <div class="bank-info">
-                        <div class="bank-row"><strong>Bank:</strong> {{ $company->bank_name }}</div>
-                        <div class="bank-row"><strong>Account Holder:</strong> {{ $company->account_holder }}</div>
-                        <div class="bank-row"><strong>Account Number:</strong> {{ $company->account_number }}</div>
-                        <div class="bank-row"><strong>Branch Code:</strong> {{ $company->branch_code }}</div>
-                        @if($company->swift_code)
-                            <div class="bank-row"><strong>SWIFT/BIC:</strong> {{ $company->swift_code }}</div>
-                        @endif
-                    </div>
-                </div>
+<div class="invoice-container">
+    <div class="header">
+        <div>
+            @if(isset($company) && $company->logo)
+                <img src="{{ public_path($company->logo) }}" alt="Company Logo" class="company-logo"><br>
+            @endif
+            <div class="company-info">
+                <strong>{{ $company->name ?? 'Company Name' }}</strong><br>
+                {{ $company->address ?? '' }}<br>
+                {{ $company->city ?? '' }}<br>
+                {{ $company->country ?? '' }}<br>
+                {{ $company->telephone ?? '' }} | {{ $company->email ?? '' }}
             </div>
         </div>
-
-        <!-- Invoice Details Header - FIXED -->
-        <div class="invoice-details-header clearfix">
-            <div class="client-details">
-                <h3>Invoice To:</h3>
-                <div class="client-info">
-                    <strong>{{ $jobcard->client->name }}</strong><br>
-                    @if($jobcard->client->address)
-                        {{ $jobcard->client->address }}<br>
-                    @endif
-                    @if($jobcard->client->email)
-                        Email: {{ $jobcard->client->email }}<br>
-                    @endif
-                    @if($jobcard->client->telephone)
-                        Tel: {{ $jobcard->client->telephone }}
-                    @endif
-                </div>
+        <div style="text-align:right;">
+            <div class="invoice-title">INVOICE</div>
+            <div>
+                <span style="color:#888;">Status:</span>
+                @php
+                    $badgeClass = 'unpaid';
+                    if(isset($invoice) && $invoice->status === 'paid') $badgeClass = 'paid';
+                    elseif(isset($invoice) && $invoice->status === 'overdue') $badgeClass = 'overdue';
+                @endphp
+                <span class="badge {{ $badgeClass }}">{{ ucfirst($invoice->status ?? 'Unpaid') }}</span>
             </div>
-            <div class="invoice-meta">
-                <div class="invoice-number">
-                    Invoice #: {{ $jobcard->jobcard_number }}
-                </div>
-                <div class="invoice-date">
-                    <strong>Date:</strong> {{ $jobcard->job_date ?? $jobcard->created_at->format('Y-m-d') }}
-                </div>
-                <div class="due-date">
-                    <strong>Due Date:</strong> {{ $jobcard->created_at->addDays(30)->format('Y-m-d') }}
-                </div>
+            <div style="margin-top:8px;">
+                <strong>Invoice #:</strong> {{ $jobcard->jobcard_number }}<br>
+                <strong>Date:</strong> {{ $invoice->invoice_date ?? $jobcard->job_date }}<br>
+                <strong>Due:</strong> {{ $invoice->due_date ?? '' }}
             </div>
         </div>
-
-        <!-- Work Done Section -->
-        @if(!empty($jobcard->work_done))
-            <div class="work-done-section">
-                <h3>Work Description</h3>
-                <div class="work-description">
-                    {{ $jobcard->work_done }}
-                </div>
-            </div>
-        @endif
-
-        <!-- Invoice Items Table - FIXED -->
-        <div class="invoice-table-section">
-            <h3>Invoice Details</h3>
-            
-            <table class="invoice-table">
-                <thead>
-                    <tr>
-                        <th class="item-desc">Item / Description</th>
-                        <th class="qty">Qty</th>
-                        <th class="unit-price">Unit Price</th>
-                        <th class="total">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Inventory Items -->
-                    @foreach($jobcard->inventory as $item)
-                        @php
-                            $lineTotal = $item->pivot->quantity * $item->selling_price;
-                        @endphp
-                        <tr class="item-row">
-                            <td class="item-desc">
-                                <strong>{{ $item->name }}</strong>
-                                @if($item->short_description)
-                                    <br><span class="text-muted">{{ $item->short_description }}</span>
-                                @endif
-                            </td>
-                            <td class="qty">{{ $item->pivot->quantity }}</td>
-                            <td class="unit-price">R {{ number_format($item->selling_price, 2) }}</td>
-                            <td class="total">R {{ number_format($lineTotal, 2) }}</td>
-                        </tr>
-                    @endforeach
-                    
-                    @if($inventoryTotal > 0)
-                        <tr class="subtotal-row">
-                            <td colspan="3" class="subtotal-label">Inventory Subtotal</td>
-                            <td class="subtotal-amount">R {{ number_format($inventoryTotal, 2) }}</td>
-                        </tr>
-                    @endif
-
-                    <!-- Labour Section -->
-                    @php
-                        $company = \App\Models\CompanyDetail::first();
-                        
-                        // Calculate enhanced labour costs from jobcard data
-                        $normalHours = floatval($jobcard->normal_hours ?? 0);
-                        $overtimeHours = floatval($jobcard->overtime_hours ?? 0);
-                        $weekendHours = floatval($jobcard->weekend_hours ?? 0);
-                        $holidayHours = floatval($jobcard->public_holiday_hours ?? 0);
-                        $callOutFee = floatval($jobcard->call_out_fee ?? 0);
-                        $mileageKm = floatval($jobcard->mileage_km ?? 0);
-                        $mileageCost = floatval($jobcard->mileage_cost ?? 0);
-                        
-                        // Calculate costs with proper rates
-                        $normalCost = $normalHours * ($company->labour_rate ?? 750);
-                        $overtimeCost = $overtimeHours * (($company->labour_rate ?? 750) * ($company->overtime_multiplier ?? 1.5));
-                        $weekendCost = $weekendHours * (($company->labour_rate ?? 750) * ($company->weekend_multiplier ?? 2.0));
-                        $holidayCost = $holidayHours * (($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5));
-                        
-                        $totalLabourCost = $normalCost + $overtimeCost + $weekendCost + $holidayCost;
-                        $totalWithExtras = $totalLabourCost + $callOutFee + $mileageCost;
-                        $totalHours = $normalHours + $overtimeHours + $weekendHours + $holidayHours;
-                        
-                        // Update totals calculation
-                        $subtotal = $inventoryTotal + $totalWithExtras;
-                        $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
-                        $grandTotal = $subtotal + $vat;
-                    @endphp
-
-                    <!-- Labour Services Section - Enhanced -->
-                    @if($totalHours > 0 || $callOutFee > 0 || $mileageKm > 0)
-                        <tr class="section-header">
-                            <td colspan="4" class="section-title">Labour Services</td>
-                        </tr>
-                        
-                        <!-- Normal Hours -->
-                        @if($normalHours > 0)
-                        <tr class="item-row">
-                            <td class="item-desc">
-                                <strong>Professional Labour - Normal Hours</strong>
-                                <br><span class="text-muted">{{ number_format($normalHours, 1) }} hours @ R{{ number_format($company->labour_rate ?? 750, 2) }}/hour</span>
-                            </td>
-                            <td class="qty">{{ number_format($normalHours, 1) }}</td>
-                            <td class="unit-price">R {{ number_format($company->labour_rate ?? 750, 2) }}</td>
-                            <td class="total">R {{ number_format($normalCost, 2) }}</td>
-                        </tr>
-                        @endif
-                        
-                        <!-- Holiday Hours -->
-                        @if($holidayHours > 0)
-                        <tr class="item-row">
-                            <td class="item-desc">
-                                <strong>Professional Labour - Public Holiday Hours</strong>
-                                <br><span class="text-muted">{{ number_format($holidayHours, 1) }} hours @ R{{ number_format(($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5), 2) }}/hour</span>
-                            </td>
-                            <td class="qty">{{ number_format($holidayHours, 1) }}</td>
-                            <td class="unit-price">R {{ number_format(($company->labour_rate ?? 750) * ($company->public_holiday_multiplier ?? 2.5), 2) }}</td>
-                            <td class="total">R {{ number_format($holidayCost, 2) }}</td>
-                        </tr>
-                        @endif
-                        
-                        <!-- Call Out Fee -->
-                        @if($callOutFee > 0)
-                        <tr class="item-row">
-                            <td class="item-desc">
-                                <strong>Emergency Call-Out Fee</strong>
-                                <br><span class="text-muted">Emergency service call-out charge</span>
-                            </td>
-                            <td class="qty">1</td>
-                            <td class="unit-price">R {{ number_format($callOutFee, 2) }}</td>
-                            <td class="total">R {{ number_format($callOutFee, 2) }}</td>
-                        </tr>
-                        @endif
-                        
-                        <!-- Mileage/Travel -->
-                        @if($mileageKm > 0)
-                        <tr class="item-row">
-                            <td class="item-desc">
-                                <strong>Travel / Mileage</strong>
-                                <br><span class="text-muted">{{ number_format($mileageKm, 1) }}km @ R{{ number_format($mileageCost / $mileageKm, 2) }}/km</span>
-                            </td>
-                            <td class="qty">{{ number_format($mileageKm, 1) }}</td>
-                            <td class="unit-price">R {{ number_format($mileageCost / $mileageKm, 2) }}</td>
-                            <td class="total">R {{ number_format($mileageCost, 2) }}</td>
-                        </tr>
-                        @endif
-                    @endif
-
-                    <!-- Totals -->                    
-                    <tr class="totals-section">
-                        <td colspan="4" class="totals-spacer"></td>
-                    </tr>
-                    <tr class="subtotal-row">
-                        <td colspan="3" class="subtotal-label">Subtotal:</td>
-                        <td class="subtotal-amount">R {{ number_format($subtotal, 2) }}</td>
-                    </tr>
-                    <tr class="vat-row">
-                        <td colspan="3" class="vat-label">VAT ({{ $company->vat_percent ?? 15 }}%):</td>
-                        <td class="vat-amount">R {{ number_format($vat, 2) }}</td>
-                    </tr>
-                    <tr class="total-row">
-                        <td colspan="3" class="total-label">Total Amount Due:</td>
-                        <td class="total-amount">R {{ number_format($grandTotal, 2) }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Payment Information Section - FIXED -->
-        <div class="payment-info-section clearfix">
-            <div class="banking-details-footer">
-                <h3>Banking Details</h3>
-                <div class="bank-info-footer">
-                    <div class="bank-row"><strong>Bank:</strong> {{ $company->bank_name }}</div>
-                    <div class="bank-row"><strong>Account Holder:</strong> {{ $company->account_holder }}</div>
-                    <div class="bank-row"><strong>Account Number:</strong> {{ $company->account_number }}</div>
-                    <div class="bank-row"><strong>Branch Code:</strong> {{ $company->branch_code }}</div>
-                    @if($company->swift_code)
-                        <div class="bank-row"><strong>SWIFT/BIC:</strong> {{ $company->swift_code }}</div>
-                    @endif
-                </div>
-            </div>
-            
-            <div class="payment-terms">
-                <h3>Payment Terms</h3>
-                <div class="terms-content">
-                    {{ $company->invoice_terms ?? 'Payment due within 30 days of invoice date. Thank you for your business!' }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer Notes -->
-        @if($company->invoice_footer)
-            <div class="invoice-footer">
-                <div class="footer-content">
-                    {{ $company->invoice_footer }}
-                </div>
-            </div>
-        @endif
     </div>
+
+    <div class="section">
+        <div class="section-title">Billed To</div>
+        <div>
+            {{ $jobcard->client->name ?? '' }}<br>
+            {{ $jobcard->client->address ?? '' }}<br>
+            {{ $jobcard->client->email ?? '' }}<br>
+            {{ $jobcard->client->telephone ?? '' }}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Invoice Details</div>
+        <table class="details-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{-- Inventory Items --}}
+                @foreach($jobcard->inventory as $item)
+                    <tr>
+                        <td>{{ $item->description ?? $item->name }}</td>
+                        <td>{{ $item->pivot->quantity ?? 0 }}</td>
+                        <td>{{ number_format($item->selling_price ?? $item->sell_price ?? 0, 2) }}</td>
+                        <td>{{ number_format(($item->pivot->quantity ?? 0) * ($item->selling_price ?? $item->sell_price ?? 0), 2) }}</td>
+                    </tr>
+                @endforeach
+                @if($jobcard->inventory->count())
+                <tr>
+                    <td colspan="3" style="text-align:right;">Inventory Subtotal</td>
+                    <td>{{ number_format($inventoryTotal ?? $jobcard->getInventoryTotal(), 2) }}</td>
+                </tr>
+                @endif
+                {{-- Labour Services --}}
+                @php
+                    $company = $company ?? \App\Models\CompanyDetail::first();
+                    $labourRows = [];
+                    foreach($jobcard->employees as $employee) {
+                        $type = $employee->pivot->hour_type ?? 'normal';
+                        $hours = $employee->pivot->hours_worked ?? 0;
+                        $rate = $company->labour_rate ?? 750;
+                        $label = 'Professional Labour';
+                        if($type === 'overtime') { $rate *= ($company->overtime_multiplier ?? 1.5); $label = 'Overtime Labour'; }
+                        elseif($type === 'weekend') { $rate *= ($company->weekend_multiplier ?? 2.0); $label = 'Weekend Labour'; }
+                        elseif($type === 'holiday') { $rate *= ($company->public_holiday_multiplier ?? 2.5); $label = 'Holiday Labour'; }
+                        $labourRows[] = [ 'label' => $label, 'hours' => $hours, 'rate' => $rate, 'total' => $hours * $rate ];
+                    }
+                @endphp
+                @foreach($labourRows as $row)
+                    @if($row['hours'] > 0)
+                    <tr>
+                        <td>{{ $row['label'] }}</td>
+                        <td>{{ $row['hours'] }}</td>
+                        <td>{{ number_format($row['rate'], 2) }}</td>
+                        <td>{{ number_format($row['total'], 2) }}</td>
+                    </tr>
+                    @endif
+                @endforeach
+                @if($jobcard->call_out_fee > 0)
+                <tr>
+                    <td>Emergency Call Out Fee</td>
+                    <td>1</td>
+                    <td>{{ number_format($jobcard->call_out_fee, 2) }}</td>
+                    <td>{{ number_format($jobcard->call_out_fee, 2) }}</td>
+                </tr>
+                @endif
+                @if($jobcard->mileage_km > 0)
+                <tr>
+                    <td>Total / Mileage</td>
+                    <td>{{ $jobcard->mileage_km }}</td>
+                    <td>{{ number_format($company->mileage_rate ?? 7.50, 2) }}</td>
+                    <td>{{ number_format($jobcard->mileage_cost, 2) }}</td>
+                </tr>
+                @endif
+                <tr>
+                    <td colspan="3" style="text-align:right;">Labour Services Subtotal</td>
+                    <td>{{ number_format($jobcard->total_labour_cost ?? 0, 2) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align:right;">Subtotal</td>
+                    <td>{{ number_format(($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0), 2) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align:right;">VAT ({{ $company->vat_percent ?? 15 }}%)</td>
+                    <td>{{ number_format($vat ?? ((($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0)) * (($company->vat_percent ?? 15)/100)), 2) }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3" style="text-align:right;">Total Amount Due</td>
+                    <td>{{ number_format($grandTotal ?? ((($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0)) * (1 + ($company->vat_percent ?? 15)/100)), 2) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="summary">
+        <div class="summary-box">
+            <strong>Banking Details</strong><br>
+            Bank: {{ $company->bank_name ?? 'Capitec Bank' }}<br>
+            Account Holder: {{ $company->bank_account_holder ?? 'L. Strauss' }}<br>
+            Account Number: {{ $company->bank_account_number ?? '1590012345' }}<br>
+            Branch Code: {{ $company->bank_branch_code ?? '470010' }}<br>
+            SWIFT: {{ $company->bank_swift ?? 'CABLZAJJ' }}
+        </div>
+        <div class="summary-box">
+            <strong>Payment Terms</strong><br>
+            Please pay within 30 days of invoice date.<br>
+            Late payments are subject to a 2.5% per month charge.<br>
+            <br>
+            <strong>Notes:</strong><br>
+            Thank you for your business!
+        </div>
+    </div>
+
+    <div class="footer">
+        This is a system-generated invoice. If you have any questions, contact us at {{ $company->email ?? 'info@yourcompany.co.za' }}.
+    </div>
+</div>
 </body>
 </html>

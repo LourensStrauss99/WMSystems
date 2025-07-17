@@ -125,11 +125,23 @@
                                 ? \Carbon\Carbon::parse($invoice->payment_date)->diffInDays($invoice->invoice_date)
                                 : \Carbon\Carbon::now()->diffInDays($invoice->invoice_date);
                         });
-                        $healthColor = $avgDays <= 30 ? 'good' : ($avgDays <= 60 ? 'warning' : 'poor');
+                        $healthPercent = min(100, max(0, 100 - ($avgDays ?? 0)));
+                        $barColor = $healthPercent >= 80 ? '#43a047' : ($healthPercent >= 50 ? '#fbc02d' : '#e53935');
+                        $healthStatusText = $healthPercent >= 80 ? 'Good' : ($healthPercent >= 50 ? 'Average' : 'Poor');
                     @endphp
-                    <div class="health-indicator {{ $healthColor }}">
-                        <span class="health-label">Payment Health</span>
-                        <span class="health-value">{{ number_format($avgDays ?? 0, 0) }} days avg</span>
+                    <div class="flex flex-col items-center mt-4">
+                        <span class="font-semibold text-gray-700 mb-1">Payment Health</span>
+                        <div class="w-full max-w-xs bg-gray-200 rounded-full h-5 flex items-center">
+                            <div style="width: {{ $healthPercent }}%; background: {{ $barColor }};"
+                                 class="h-5 rounded-full flex items-center justify-center transition-all duration-500">
+                                <span class="text-xs font-bold text-white ml-2">
+                                    {{ $healthPercent }}%
+                                </span>
+                            </div>
+                        </div>
+                        <span class="text-xs mt-1 text-gray-500">
+                            {{ $healthStatusText ?? '' }}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -171,7 +183,7 @@
                                     @endif
                                 </div>
                                 <div class="work-actions">
-                                    <button class="mini-btn" onclick="viewJobcard({{ $jobcard->id }})">👁️ View</button>
+                                    <a href="{{ route('jobcard.show', $jobcard->id) }}" target="_blank" class="mini-btn" title="View Jobcard">👁️ View</a>
                                     @if(($jobcard->status ?? 'completed') !== 'invoiced')
                                         <button class="mini-btn" onclick="editJobcard({{ $jobcard->id }})">✏️ Edit</button>
                                     @endif
@@ -196,7 +208,8 @@
                 <div class="card-actions">
                     <button class="card-btn" onclick="toggleView()" id="view-toggle">📊 Payments</button>
                     <button class="card-btn" onclick="exportStatement()">📄 Export</button>
-                    <button class="card-btn" onclick="sendStatement()">📧 Statement</button>
+                    <button class="card-btn download-statement-btn" data-customer-id="{{ $customer->id }}" title="Download Statement">⬇️ Download Statement</button>
+                    <button class="card-btn send-statement-btn" data-customer-id="{{ $customer->id }}" title="Send Statement">📧 Email Statement</button>
                 </div>
             </div>
             <div class="card-content">
@@ -248,7 +261,7 @@
                                     @endphp
                                     <tr class="invoice-row">
                                         <td>
-                                            <a href="#" class="invoice-link" onclick="viewInvoice('{{ $invoice->invoice_number }}')">
+                                            <a href="{{ route('invoice.show', $invoice->jobcard_id) }}" target="_blank" class="invoice-link" title="View Invoice">
                                                 {{ $invoice->invoice_number }}
                                             </a>
                                         </td>
@@ -271,10 +284,11 @@
                                         </td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="mini-btn" onclick="viewInvoice('{{ $invoice->invoice_number }}')" title="View">👁️</button>
-                                                @if(strtolower($invoice->status) === 'unpaid')
+                                                <a href="{{ route('invoice.show', $invoice->jobcard_id) }}" target="_blank" class="mini-btn" title="View Invoice">🧾</a>
+                                                @if(strtolower($invoice->status) === 'unpaid' || strtolower($invoice->status) === 'overdue')
                                                     <button class="mini-btn payment" onclick="recordPayment('{{ $invoice->invoice_number }}')" title="Record Payment">💳</button>
-                                                    <button class="mini-btn email" onclick="emailInvoice('{{ $invoice->invoice_number }}')" title="Email Invoice">📧</button>
+                                                    <button class="mini-btn email-invoice-btn" data-invoice-id="{{ $invoice->id }}" title="Email Invoice">📧</button>
+                                                    <button class="mini-btn send-reminder-btn" data-invoice-id="{{ $invoice->id }}" title="Send Reminder">🔔</button>
                                                 @endif
                                             </div>
                                         </td>
@@ -531,7 +545,8 @@
                                         @if($overdueAmount > 0)
                                             <button class="balance-btn urgent" onclick="sendReminder()">⚠️ Send Reminder</button>
                                         @else
-                                            <button class="balance-btn" onclick="sendStatement()">📧 Send Statement</button>
+                                            <button class="balance-btn download-statement-btn" data-customer-id="{{ $customer->id }}" title="Download Statement">⬇️ Download Statement</button>
+                                            <button class="balance-btn send-statement-btn" data-customer-id="{{ $customer->id }}" title="Send Statement">📧 Email Statement</button>
                                         @endif
                                     </div>
                                 @endif
@@ -741,13 +756,88 @@ function exportStatement() {
     alert('Export statement functionality - to be implemented');
 }
 
-function sendStatement() {
-    alert('Send statement functionality - to be implemented');
+function sendReminder() {
+    // Find the active invoice row and get invoice id
+    var activeRow = document.querySelector('.invoice-row .send-reminder-btn');
+    if (!activeRow) {
+        alert('No invoice selected for reminder.');
+        return;
+    }
+    var invoiceId = activeRow.getAttribute('data-invoice-id');
+    if (!invoiceId) {
+        alert('Invoice ID not found.');
+        return;
+    }
+    activeRow.disabled = true;
+    activeRow.textContent = '⏳';
+    fetch('/invoice/' + invoiceId + '/reminder', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        activeRow.disabled = false;
+        activeRow.textContent = '🔔 Send Reminder';
+        if (data.success) {
+            alert('Reminder sent successfully!');
+        } else {
+            alert(data.message || 'Failed to send reminder.');
+        }
+    })
+    .catch(error => {
+        activeRow.disabled = false;
+        activeRow.textContent = '🔔 Send Reminder';
+        alert('Error sending reminder.');
+    });
 }
 
-function sendReminder() {
-    alert('Send payment reminder functionality - to be implemented');
-}
+// Download Statement and Email Statement handlers
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.download-statement-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const customerId = btn.getAttribute('data-customer-id');
+            if (customerId) {
+                window.open(`/customer/${customerId}/statement/download`, '_blank');
+            }
+        });
+    });
+    document.querySelectorAll('.send-statement-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const customerId = btn.getAttribute('data-customer-id');
+            if (customerId) {
+                btn.disabled = true;
+                btn.textContent = 'Sending...';
+                fetch(`/customer/${customerId}/statement`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.textContent = '📧 Email Statement';
+                    if (data.success) {
+                        alert('Statement emailed successfully');
+                    } else {
+                        alert(data.message || 'Failed to send statement');
+                    }
+                })
+                .catch(error => {
+                    btn.disabled = false;
+                    btn.textContent = '📧 Email Statement';
+                    alert('Error sending statement');
+                });
+            }
+        });
+    });
+});
 </script>
 
 <style>
@@ -2018,3 +2108,84 @@ function sendReminder() {
 }
 </style>
 @endsection
+@push('scripts')
+<script>
+function showToast(msg, type) {
+    var color = type === 'success' ? '#43a047' : '#e53935';
+    var toast = $('<div></div>').css({
+        position: 'fixed', bottom: '30px', right: '30px', background: color, color: '#fff', padding: '16px 28px', borderRadius: '8px', zIndex: 9999, fontWeight: 600, fontSize: '1.1em', boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+    }).text(msg);
+    $('body').append(toast);
+    setTimeout(function() { toast.fadeOut(400, function() { $(this).remove(); }); }, 3000);
+}
+
+// Email Invoice AJAX
+$(document).on('click', '.email-invoice-btn', function() {
+    var btn = $(this);
+    var invoiceId = btn.data('invoice-id');
+    btn.prop('disabled', true).text('⏳');
+    $.ajax({
+        url: '/invoice/' + invoiceId + '/email',
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function(res) {
+            btn.text('📧');
+            showToast('Invoice emailed successfully!', 'success');
+        },
+        error: function() {
+            btn.text('📧');
+            showToast('Failed to email invoice.', 'error');
+        },
+        complete: function() { btn.prop('disabled', false); }
+    });
+});
+
+// Send Reminder AJAX
+$(document).on('click', '.send-reminder-btn', function() {
+    var btn = $(this);
+    var invoiceId = btn.data('invoice-id');
+    btn.prop('disabled', true).text('⏳');
+    $.ajax({
+        url: '/invoice/' + invoiceId + '/reminder',
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function(res) {
+            btn.text('🔔');
+            showToast('Reminder sent successfully!', 'success');
+        },
+        error: function() {
+            btn.text('🔔');
+            showToast('Failed to send reminder.', 'error');
+        },
+        complete: function() { btn.prop('disabled', false); }
+    });
+});
+
+// Send Statement AJAX
+$(document).on('click', '.send-statement-btn', function() {
+    var btn = $(this);
+    var customerId = btn.data('customer-id');
+    btn.prop('disabled', true).text('⏳');
+    $.ajax({
+        url: '/customer/' + customerId + '/statement',
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function(res) {
+            btn.text('📧');
+            showToast('Statement sent successfully!', 'success');
+        },
+        error: function() {
+            btn.text('📧');
+            showToast('Failed to send statement.', 'error');
+        },
+        complete: function() { btn.prop('disabled', false); }
+    });
+});
+
+// Download Statement
+$(document).on('click', '.download-statement-btn', function() {
+    var customerId = $(this).data('customer-id');
+    window.open('/customer/' + customerId + '/statement/download', '_blank');
+});
+</script>
+@endpush

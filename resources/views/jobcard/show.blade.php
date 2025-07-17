@@ -147,6 +147,18 @@
                             </button>
                         </div>
                     </form>
+
+                    <!-- Existing Inventory List for Reference -->
+                    <div class="mt-4">
+                        <h5>Existing Inventory in Job Card</h5>
+                        <ul class="list-group">
+                            @foreach($jobcard->inventory as $item)
+                                <li class="list-group-item">
+                                    {{ $item->description ?? $item->name }} (Qty: {{ $item->pivot->quantity }})
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

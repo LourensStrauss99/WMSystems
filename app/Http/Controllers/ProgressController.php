@@ -19,6 +19,12 @@ class ProgressController extends Controller
     public function show($id)
     {
         $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
+        
+        // Ensure inventory is properly loaded with pivot data
+        $jobcard->load(['inventory' => function($query) {
+            $query->withPivot('quantity');
+        }]);
+        
         return view('progress_show', compact('jobcard'));
     }
     public function ajaxShow($id)
@@ -37,20 +43,27 @@ class ProgressController extends Controller
         if ($request->action === 'invoice') {
             // Prevent duplicate invoices
             if (!$jobcard->invoice_number) {
-                // Calculate inventory total
+                // Calculate inventory total using selling_price
                 $inventoryTotal = 0;
                 foreach ($jobcard->inventory as $item) {
-                    $inventoryTotal += ($item->pivot->quantity * $item->selling_price);
+                    $quantity = $item->pivot->quantity ?? 0;
+                    $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+                    $inventoryTotal += ($quantity * $sellingPrice);
                 }
 
-                // Calculate labour total
-                $labourHours = $jobcard->employees->pluck('pivot.hours_worked')->sum();
+                // Calculate labour total using enhanced jobcard data
                 $company = \App\Models\CompanyDetail::first();
-                $labourTotal = $labourHours * ($company->labour_rate ?? 0);
+                $totalLabourCost = floatval($jobcard->total_labour_cost ?? 0);
+                
+                // If no enhanced data, fall back to old calculation
+                if ($totalLabourCost == 0) {
+                    $labourHours = $jobcard->employees->pluck('pivot.hours_worked')->sum();
+                    $totalLabourCost = $labourHours * ($company->labour_rate ?? 0);
+                }
 
                 // Calculate subtotal, VAT, and grand total
-                $subtotal = $inventoryTotal + $labourTotal;
-                $vat = $subtotal * (($company->vat_percent ?? 0) / 100);
+                $subtotal = $inventoryTotal + $totalLabourCost;
+                $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
                 $grandTotal = $subtotal + $vat;
 
                 \App\Models\Invoice::create([

@@ -9,6 +9,7 @@ use App\Mail\InvoiceMailable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Invoice; // <- ADD THIS
 use Illuminate\Support\Facades\DB; // <- ADD THIS
+use App\Mail\InvoiceReminderMailable;
 
 class InvoiceController extends Controller
 {
@@ -60,7 +61,9 @@ class InvoiceController extends Controller
 
             // Calculate totals
             $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                return $item->pivot->quantity * $item->selling_price;
+                $quantity = $item->pivot->quantity ?? 0;
+                $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+                return $quantity * $sellingPrice;
             });
 
             $labourHours = $jobcard->employees->sum(function($employee) {
@@ -117,10 +120,12 @@ class InvoiceController extends Controller
                 $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->findOrFail($validated['jobcard_id']);
                 $company = CompanyDetail::first();
 
-                // Calculate totals (same logic as your PDF generation)
-                $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                    return $item->pivot->quantity * $item->selling_price;
-                });
+                            // Calculate totals (same logic as your PDF generation)
+            $inventoryTotal = $jobcard->inventory->sum(function($item) {
+                $quantity = $item->pivot->quantity ?? 0;
+                $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+                return $quantity * $sellingPrice;
+            });
 
                 $labourHours = $jobcard->employees->sum(function($employee) {
                     return $employee->pivot->hours_worked ?? 0;
@@ -155,5 +160,15 @@ class InvoiceController extends Controller
             return back()->withInput()
                 ->with('error', 'Error creating invoice: ' . $e->getMessage());
         }
+    }
+
+    public function sendReminder($invoiceId)
+    {
+        $invoice = \App\Models\Invoice::with(['client', 'jobcard'])->findOrFail($invoiceId);
+        $company = \App\Models\CompanyDetail::first();
+        // Send reminder email
+        Mail::to($invoice->client->email)
+            ->send(new InvoiceReminderMailable($invoice, $company));
+        return response()->json(['success' => true]);
     }
 }

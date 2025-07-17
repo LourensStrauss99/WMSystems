@@ -53,6 +53,12 @@ class Inventory extends Model
         'stock_added' => 'integer',
     ];
 
+    // Accessor to get the selling price (prioritize selling_price over sell_price)
+    public function getSellingPriceAttribute($value)
+    {
+        return $value ?: $this->sell_price;
+    }
+
     /**
      * Check if inventory is at or below minimum level
      */
@@ -143,7 +149,7 @@ class Inventory extends Model
      */
     public function jobcards()
     {
-        return $this->belongsToMany(Jobcard::class)
+        return $this->belongsToMany(\App\Models\Jobcard::class, 'inventory_jobcard')
                     ->withPivot('quantity')
                     ->withTimestamps();
     }

@@ -33,6 +33,15 @@ class JobcardEditor extends Component
         $this->status = $jobcard->status;
         $this->work_done = $jobcard->work_done;
         $this->time_spent = $jobcard->time_spent;
+        
+        // Load existing inventory assignments
+        $this->assignedInventory = $jobcard->inventory->map(function($item) {
+            return [
+                'id' => $item->id,
+                'quantity' => $item->pivot->quantity ?? 1,
+                'name' => $item->name ?? $item->description
+            ];
+        })->toArray();
     }
 
     public function addEmployee()
@@ -85,7 +94,17 @@ class JobcardEditor extends Component
             $this->jobcard->time_spent = $this->time_spent;
             $this->jobcard->save();
 
+            // Sync employees
             $this->jobcard->employees()->sync($this->assignedEmployees);
+
+            // Sync inventory from the assigned inventory array
+            if (!empty($this->assignedInventory)) {
+                $syncData = [];
+                foreach ($this->assignedInventory as $item) {
+                    $syncData[$item['id']] = ['quantity' => $item['quantity']];
+                }
+                $this->jobcard->inventory()->sync($syncData);
+            }
 
             session()->flash('success', 'Jobcard updated!');
         } catch (\Throwable $e) {
@@ -110,10 +129,10 @@ class JobcardEditor extends Component
             'employees' => $this->employees,
             'inventory' => $this->inventory,
             'assignedEmployees' => $this->assignedEmployees,
+            'assignedInventory' => $this->assignedInventory,
             'status' => $this->status,
             'work_done' => $this->work_done,
             'time_spent' => $this->time_spent,
-            // add any other properties you use in the Blade view
         ]);
     }
 }

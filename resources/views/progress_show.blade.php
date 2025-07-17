@@ -26,7 +26,13 @@
             <h4>Inventory Used</h4>
             <ul>
                 @foreach($jobcard->inventory as $item)
-                    <li>{{ $item->name }} (Qty: {{ $item->pivot->quantity }})</li>
+                    <li>
+                        {{ $item->name ?? $item->description ?? 'Item' }} 
+                        (Qty: {{ $item->pivot->quantity ?? 0 }})
+                        @if($item->selling_price || $item->sell_price)
+                            - R{{ number_format(($item->pivot->quantity ?? 0) * ($item->selling_price ?? $item->sell_price ?? 0), 2) }}
+                        @endif
+                    </li>
                 @endforeach
             </ul>
             <div class="d-flex gap-2">

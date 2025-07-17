@@ -484,3 +484,9 @@ Route::middleware(['auth'])->group(function () {
     
     // Other GRV routes...
 });
+
+// Invoice reminder
+Route::post('/invoice/{invoice}/reminder', [App\Http\Controllers\InvoiceController::class, 'sendReminder'])->name('invoice.reminder');
+// Customer statement
+Route::post('/customer/{customer}/statement', [App\Http\Controllers\CustomerController::class, 'sendStatement'])->name('customer.statement');
+Route::get('/customer/{customer}/statement/download', [App\Http\Controllers\CustomerController::class, 'downloadStatement'])->name('customer.statement.download');

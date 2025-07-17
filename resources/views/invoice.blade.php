@@ -125,10 +125,12 @@
                                 $grandTotal = $invoice->amount;
                                 $itemCount = $jobcard->inventory->count();
                             } else {
-                                // Fallback calculation if no invoice exists
-                                $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                                    return $item->pivot->quantity * $item->selling_price;
-                                });
+                                                            // Fallback calculation if no invoice exists
+                            $inventoryTotal = $jobcard->inventory->sum(function($item) {
+                                $quantity = $item->pivot->quantity ?? 0;
+                                $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+                                return $quantity * $sellingPrice;
+                            });
                                 
                                 // Calculate labour costs from jobcard enhanced data
                                 $company = \App\Models\CompanyDetail::first();

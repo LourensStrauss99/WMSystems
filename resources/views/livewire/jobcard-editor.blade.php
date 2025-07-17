@@ -283,14 +283,14 @@
                                 <i class="fas fa-list me-2"></i>Current Items
                             </h6>
                             <ul id="inventory_list" class="list-unstyled mb-0">
-                                @forelse($jobcard->inventory as $item)
-                                    <li data-id="{{ $item->id }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                @forelse($assignedInventory as $item)
+                                    <li data-id="{{ $item['id'] }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
                                         <div>
-                                            <strong>{{ $item->name }}</strong>
-                                            <span class="badge bg-warning text-dark ms-2">Qty: {{ $item->pivot->quantity ?? 0 }}</span>
+                                            <strong>{{ $item['name'] }}</strong>
+                                            <span class="badge bg-warning text-dark ms-2">Qty: {{ $item['quantity'] }}</span>
                                         </div>
-                                        <input type="hidden" name="inventory_items[]" value="{{ $item->id }}">
-                                        <input type="hidden" name="inventory_qty[{{ $item->id }}]" value="{{ $item->pivot->quantity ?? 0 }}">
+                                        <input type="hidden" name="inventory_items[]" value="{{ $item['id'] }}">
+                                        <input type="hidden" name="inventory_qty[{{ $item['id'] }}]" value="{{ $item['quantity'] }}">
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInventory(this)">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -366,6 +366,7 @@
             </div>
         </div>
     </form>
+
 </div>
 
 <meta name="csrf-token" content="{{ csrf_token() }}">

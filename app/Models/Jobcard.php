@@ -38,9 +38,19 @@ class Jobcard extends Model
 
     public function inventory()
     {
-        return $this->belongsToMany(Inventory::class)
+        return $this->belongsToMany(\App\Models\Inventory::class, 'inventory_jobcard')
             ->withPivot('quantity')
             ->withTimestamps();
+    }
+
+    // Helper method to get inventory total
+    public function getInventoryTotal()
+    {
+        return $this->inventory->sum(function($item) {
+            $quantity = $item->pivot->quantity ?? 0;
+            $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+            return $quantity * $sellingPrice;
+        });
     }
     
     public function invoice()
