@@ -2,6 +2,18 @@ document.addEventListener("DOMContentLoaded", function () {
   let selectedJobcardId = null;
   const HOURLY_RATE = 50.0; // Configurable hourly rate
 
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyB7S2G-bfOCeILZlA-2DBFKBJakAXr3WpY",
+    authDomain: "wmsystems-2af66.firebaseapp.com",
+    projectId: "wmsystems-2af66",
+    storageBucket: "wmsystems-2af66.firebasestorage.app",
+    messagingSenderId: "560740833259",
+    appId: "1:560740833259:web:22a3cb1365482e1daa2bae",
+    measurementId: "G-1GWTS43TF3",
+    vapidKey: "BD-wo4IqQMZX8NVuloW_c-gWLVKPrpyljtVeRTmkk07fZgEvcXwXglqNkyS7u4ulvxxEvFLM74HAlf4Otlgxm3Q",
+  };
+
   // Utility function for API requests
   async function apiRequest(url, method = "GET", data = null) {
     const options = {

@@ -506,3 +506,10 @@ use App\Http\Controllers\MobileJobcardController;
 
 Route::get('/mobile-app/jobcard/{jobcard}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcard.edit');
 Route::put('/mobile-app/jobcard/{jobcard}/update', [MobileJobcardController::class, 'update'])->name('mobile.jobcard.update');
+Route::get('/mobile-app/login', [App\Http\Controllers\MobileJobcardController::class, 'showLoginForm'])->name('mobile.login');
+Route::post('/mobile-app/login', [App\Http\Controllers\MobileJobcardController::class, 'login'])->name('mobile.login.submit');
+
+Route::post('/jobcard/{id}/opened', [MobileJobcardController::class, 'markOpened'])->name('jobcard.opened');
+Route::post('/jobcard/{id}/closed', [MobileJobcardController::class, 'markClosed'])->name('jobcard.closed');
+Route::get('/mobile-app/jobcard/index', [MobileJobcardController::class, 'mobileIndex'])->name('jobcard.mobile.index');
+

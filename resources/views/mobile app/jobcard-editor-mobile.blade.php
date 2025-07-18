@@ -1,30 +1,12 @@
 @extends('layouts.mobile')
-
 @section('content')
 <div class="container-fluid px-2 py-2">
     <!-- Jobcard Header -->
-    <div class="card mb-3 shadow-sm border-0" style="background: #1976d2; color: #fff;">
-        <div class="card-body py-2 px-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between">
-            <div>
-                <h5 class="mb-1 fw-bold">
-                    <i class="fas fa-clipboard-list me-2"></i>Jobcard #{{ $jobcard->jobcard_number }}
-                </h5>
-                <div class="small">{{ $clients->find($jobcard->client_id)->name ?? '' }}</div>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge rounded-pill bg-warning text-dark px-3 py-2">{{ ucfirst($jobcard->status) }}</span>
-                <a href="/mobile-app/jobcard/index" class="btn btn-light btn-sm ms-2"><i class="fas fa-arrow-left me-1"></i>Back</a>
-            </div>
-        </div>
-    </div>
-
-    <form id="jobcardForm" method="POST" action="{{ route('mobile.jobcard.update', $jobcard->id) }}" enctype="multipart/form-data">
+    <form id="jobcardForm" action="{{ route('jobcard.update', $jobcard->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
         @method('PUT')
-
         <div class="row">
-            <div class="col-12 px-0">
-                <!-- Job Information -->
+            <div class="col-md-8">
                 <div class="card mb-3 shadow-sm border-0">
                     <div class="card-header py-2 px-3" style="background:#1565c0; color:#fff;">
                         <strong><i class="fas fa-info-circle me-2"></i>Job Information</strong>
@@ -102,25 +84,6 @@
                             <label class="form-label fw-bold">Work Completed:</label>
                             <textarea name="work_done" class="form-control" rows="3" placeholder="Describe the work completed...">{{ old('work_done', $jobcard->work_done) }}</textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Additional Notes:</label>
-                            <textarea name="additional_notes" class="form-control" rows="2" placeholder="Any additional notes or observations..."></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Time Spent (hours):</label>
-                            <input type="number" name="time_spent" class="form-control" min="0" step="0.1" value="{{ old('time_spent', 0) }}">
-                        </div>
-                        <!-- Enhanced Photos Section -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Photos:</label>
-                            <div class="d-flex gap-2 mb-2">
-                                <button type="button" class="btn btn-outline-primary flex-fill" onclick="document.getElementById('takePhoto').click()"><i class="fas fa-camera"></i> Take Photo</button>
-                                <button type="button" class="btn btn-outline-secondary flex-fill" onclick="document.getElementById('pickGallery').click()"><i class="fas fa-images"></i> Gallery</button>
-                            </div>
-                            <input type="file" id="takePhoto" name="photos[]" accept="image/*" capture="environment" style="display:none" onchange="handleImageSelect(event)" multiple>
-                            <input type="file" id="pickGallery" name="photos[]" accept="image/*" style="display:none" onchange="handleImageSelect(event)" multiple>
-                            <div id="imagePreview" class="d-flex flex-wrap mt-2"></div>
-                        </div>
                     </div>
                 </div>
 
@@ -147,268 +110,244 @@
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- Enhanced Employees Card with Integrated Hour Types -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-users text-success me-2"></i>Assigned Employees & Hours
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-2 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-muted">Employee</label>
-                        <select id="employee_select" class="form-control">
-                            <option value="">Select Employee</option>
-                            @foreach($employees as $employee)
-                                <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                            @endforeach
-                        </select>
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users text-success me-2"></i>Assigned Employees & Hours
+                        </h5>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold text-muted">Hours Worked</label>
-                        <input type="number" id="employee_hours_input" class="form-control" 
-                               min="0" step="0.5" placeholder="Hours">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold text-muted">Hour Type</label>
-                        <select id="hour_type_select" class="form-control">
-                            <option value="normal">Normal (R<span class="normal-rate">750</span>/hr)</option>
-                            <option value="overtime">Overtime (R<span class="overtime-rate">1,125</span>/hr)</option>
-                            <option value="weekend">Weekend (R<span class="weekend-rate">1,500</span>/hr)</option>
-                            <option value="holiday">Holiday (R<span class="holiday-rate">1,875</span>/hr)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold text-muted">&nbsp;</label>
-                        <button type="button" class="btn btn-success text-white d-block w-100" onclick="addEmployee()">
-                            <i class="fas fa-plus me-1"></i>Add
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Call Out & Mileage Section (moved here for better flow) -->
-                <div class="row g-3 mb-3 border-top pt-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-muted">Call Out Fee</label>
-                        <div class="input-group">
-                            <span class="input-group-text">R</span>
-                            <input type="number" name="call_out_fee" id="call_out_fee" class="form-control" 
-                                   min="0" step="0.01" value="{{ old('call_out_fee', $jobcard->call_out_fee ?? 0) }}" 
-                                   onchange="calculateTotalCosts()">
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="setStandardCallOut()">
-                            <i class="fas fa-phone me-1"></i>Standard (R1,000)
-                        </button>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-muted">Mileage (km)</label>
-                        <input type="number" name="mileage_km" id="mileage_km" class="form-control" 
-                               min="0" step="0.1" value="{{ old('mileage_km', $jobcard->mileage_km ?? 0) }}" 
-                               onchange="calculateTotalCosts()">
-                        <small class="text-muted">Rate: R<span id="mileage_rate">7.50</span>/km</small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold text-muted">Mileage Cost</label>
-                        <div class="input-group">
-                            <span class="input-group-text">R</span>
-                            <input type="number" name="mileage_cost" id="mileage_cost" class="form-control" 
-                                   readonly value="{{ old('mileage_cost', $jobcard->mileage_cost ?? 0) }}">
-                        </div>
-                        <small class="text-muted">Auto-calculated</small>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3 bg-light">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-muted mb-0">
-                            <i class="fas fa-list me-2"></i>Current Employees & Hours
-                        </h6>
-                        <div class="text-end">
-                            <small class="text-muted">Total Labour Cost: </small>
-                            <strong class="text-success">R<span id="display_total_labour_cost">0.00</span></strong>
-                        </div>
-                    </div>
-                    <ul id="employee_list" class="list-unstyled mb-0">
-                        @forelse($jobcard->employees as $employee)
-                            @php
-                                $hourType = $employee->pivot->hour_type ?? 'normal';
-                                $hours = $employee->pivot->hours_worked ?? 0;
-                                $company = \App\Models\CompanyDetail::first();
-                                
-                                // Calculate rate based on hour type
-                                $baseRate = $company->labour_rate ?? 750;
-                                switch($hourType) {
-                                    case 'overtime':
-                                        $rate = $baseRate * ($company->overtime_multiplier ?? 1.5);
-                                        $badgeClass = 'bg-warning text-dark';
-                                        $label = 'Overtime';
-                                        break;
-                                    case 'weekend':
-                                        $rate = $baseRate * ($company->weekend_multiplier ?? 2.0);
-                                        $badgeClass = 'bg-primary';
-                                        $label = 'Weekend';
-                                        break;
-                                    case 'holiday':
-                                        $rate = $baseRate * ($company->public_holiday_multiplier ?? 2.5);
-                                        $badgeClass = 'bg-danger';
-                                        $label = 'Holiday';
-                                        break;
-                                    default:
-                                        $rate = $baseRate;
-                                        $badgeClass = 'bg-secondary';
-                                        $label = 'Normal';
-                                }
-                                $cost = $hours * $rate;
-                            @endphp
-                            <li data-id="{{ $employee->id }}" data-hours="{{ $hours }}" data-type="{{ $hourType }}" 
-                                class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                                <div>
-                                    <strong>{{ $employee->name }}</strong>
-                                    <span class="badge bg-info ms-2">{{ $hours }} hrs</span>
-                                    <span class="badge {{ $badgeClass }} ms-1">{{ $label }}</span>
-                                    <small class="text-muted ms-2">R{{ number_format($cost, 2) }}</small>
-                                </div>
-                                <input type="hidden" name="employees[]" value="{{ $employee->id }}">
-                                <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $hours }}">
-                                <input type="hidden" name="employee_hour_types[{{ $employee->id }}]" value="{{ $hourType }}">
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
-                                    <i class="fas fa-times"></i>
+                    <div class="card-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Employee</label>
+                                <select id="employee_select" class="form-control">
+                                    <option value="">Select Employee</option>
+                                    @foreach($employees as $employee)
+                                        <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">Hours Worked</label>
+                                <input type="number" id="employee_hours_input" class="form-control" 
+                                       min="0" step="0.5" placeholder="Hours">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">Hour Type</label>
+                                <select id="hour_type_select" class="form-control">
+                                    <option value="normal">Normal (R<span class="normal-rate">750</span>/hr)</option>
+                                    <option value="overtime">Overtime (R<span class="overtime-rate">1,125</span>/hr)</option>
+                                    <option value="weekend">Weekend (R<span class="weekend-rate">1,500</span>/hr)</option>
+                                    <option value="holiday">Holiday (R<span class="holiday-rate">1,875</span>/hr)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold text-muted">&nbsp;</label>
+                                <button type="button" class="btn btn-success text-white d-block w-100" onclick="addEmployee()">
+                                    <i class="fas fa-plus me-1"></i>Add
                                 </button>
-                            </li>
-                        @empty
-                            <li class="text-muted">No employees assigned yet</li>
-                        @endforelse
-                    </ul>
-                </div>
+                            </div>
+                        </div>
 
-                <!-- Hidden fields for hour totals (for form submission) -->
-                <input type="hidden" name="normal_hours" id="hidden_normal_hours" value="{{ old('normal_hours', $jobcard->normal_hours ?? 0) }}">
-                <input type="hidden" name="overtime_hours" id="hidden_overtime_hours" value="{{ old('overtime_hours', $jobcard->overtime_hours ?? 0) }}">
-                <input type="hidden" name="weekend_hours" id="hidden_weekend_hours" value="{{ old('weekend_hours', $jobcard->weekend_hours ?? 0) }}">
-                <input type="hidden" name="public_holiday_hours" id="hidden_public_holiday_hours" value="{{ old('public_holiday_hours', $jobcard->public_holiday_hours ?? 0) }}">
-                <input type="hidden" name="total_labour_cost" id="hidden_total_labour_cost" value="{{ old('total_labour_cost', $jobcard->total_labour_cost ?? 0) }}">
-            </div>
-        </div>
-
-        <!-- Inventory Card -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-boxes text-warning me-2"></i>Inventory Items
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-muted">Inventory Item</label>
-                        <select id="inventory_select" class="form-control">
-                            <option value="">Select Inventory Item</option>
-                            @foreach($inventory as $item)
-                                @php $stockStatus = $item->getStockStatus(); @endphp
-                                <option value="{{ $item->id }}" 
-                                        data-short="{{ $item->short_description }}"
-                                        data-stock="{{ $item->stock_level }}"
-                                        data-min="{{ $item->min_level }}"
-                                        data-code="{{ $item->short_code }}"
-                                        data-status="{{ $stockStatus['status'] }}">
-                                    [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold text-muted">Quantity</label>
-                        <input type="number" id="inventory_quantity" class="form-control" 
-                               min="1" max="100" value="1" placeholder="Qty">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold text-muted">&nbsp;</label>
-                        <button type="button" id="add_inventory" class="btn btn-primary text-white d-block">
-                            <i class="fas fa-plus me-2"></i>Add Item
-                        </button>
-                    </div>
-                </div>
-
-                <div class="border rounded p-3 bg-light">
-                    <h6 class="text-muted mb-2">
-                        <i class="fas fa-list me-2"></i>Current Items
-                    </h6>
-                    <ul id="inventory_list" class="list-unstyled mb-0">
-                        @forelse($assignedInventory as $item)
-                            <li data-id="{{ $item['id'] }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
-                                <div>
-                                    <strong>{{ $item['name'] }}</strong>
-                                    <span class="badge bg-warning text-dark ms-2">Qty: {{ $item['quantity'] }}</span>
+                        <!-- Call Out & Mileage Section (moved here for better flow) -->
+                        <div class="row g-3 mb-3 border-top pt-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Call Out Fee</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <input type="number" name="call_out_fee" id="call_out_fee" class="form-control" 
+                                           min="0" step="0.01" value="{{ old('call_out_fee', $jobcard->call_out_fee ?? 0) }}" 
+                                           onchange="calculateTotalCosts()">
                                 </div>
-                                <input type="hidden" name="inventory_items[]" value="{{ $item['id'] }}">
-                                <input type="hidden" name="inventory_qty[{{ $item['id'] }}]" value="{{ $item['quantity'] }}">
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInventory(this)">
-                                    <i class="fas fa-times"></i>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="setStandardCallOut()">
+                                    <i class="fas fa-phone me-1"></i>Standard (R1,000)
                                 </button>
-                            </li>
-                        @empty
-                            <li class="text-muted">No inventory items added yet</li>
-                        @endforelse
-                    </ul>
-                </div>
-            </div>
-        </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Mileage (km)</label>
+                                <input type="number" name="mileage_km" id="mileage_km" class="form-control" 
+                                       min="0" step="0.1" value="{{ old('mileage_km', $jobcard->mileage_km ?? 0) }}" 
+                                       onchange="calculateTotalCosts()">
+                                <small class="text-muted">Rate: R<span id="mileage_rate">7.50</span>/km</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-muted">Mileage Cost</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R</span>
+                                    <input type="number" name="mileage_cost" id="mileage_cost" class="form-control" 
+                                           readonly value="{{ old('mileage_cost', $jobcard->mileage_cost ?? 0) }}">
+                                </div>
+                                <small class="text-muted">Auto-calculated</small>
+                            </div>
+                        </div>
 
-        <!-- Status & Actions Card (moved from sidebar) -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-tasks text-info me-2"></i>Status & Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-4">
-                    <label class="form-label fw-bold text-muted">Current Status</label>
-                    <select name="status" class="form-control" required>
-                        <option value="assigned" {{ $jobcard->status == 'assigned' ? 'selected' : '' }}>Assigned</option>
-                        <option value="in progress" {{ $jobcard->status == 'in progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="completed" {{ $jobcard->status == 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="invoiced" {{ $jobcard->status == 'invoiced' ? 'selected' : '' }}>Invoiced</option>
-                    </select>
+                        <div class="border rounded p-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-muted mb-0">
+                                    <i class="fas fa-list me-2"></i>Current Employees & Hours
+                                </h6>
+                                <div class="text-end">
+                                    <small class="text-muted">Total Labour Cost: </small>
+                                    <strong class="text-success">R<span id="display_total_labour_cost">0.00</span></strong>
+                                </div>
+                            </div>
+                            <ul id="employee_list" class="list-unstyled mb-0">
+                                @forelse($jobcard->employees as $employee)
+                                    <li data-id="{{ $employee->id }}" data-hours="{{ $employee->pivot->hours_worked }}" data-type="{{ $employee->pivot->hour_type }}">
+                                        <div>
+                                            <strong>{{ $employee->name }}</strong>
+                                            <span class="badge bg-info ms-2">{{ $employee->pivot->hours_worked }} hrs</span>
+                                            <span class="badge {{ $employee->pivot->hour_type == 'overtime' ? 'bg-warning text-dark' : ($employee->pivot->hour_type == 'weekend' ? 'bg-primary' : ($employee->pivot->hour_type == 'holiday' ? 'bg-danger' : 'bg-secondary')) }} ms-1">{{ ucfirst($employee->pivot->hour_type) }}</span>
+                                            <small class="text-muted ms-2">
+                                                R{{ number_format(
+                                                    $employee->pivot->hours_worked *
+                                                    (
+                                                        $employee->pivot->hour_type == 'overtime' ? 1125 :
+                                                        ($employee->pivot->hour_type == 'weekend' ? 1500 :
+                                                        ($employee->pivot->hour_type == 'holiday' ? 1875 : 750))
+                                                    )
+                                                , 2) }}
+                                            </small>
+                                        </div>
+                                        <input type="hidden" name="employees[]" value="{{ $employee->id }}">
+                                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $employee->pivot->hours_worked }}">
+                                        <input type="hidden" name="employee_hour_types[{{ $employee->id }}]" value="{{ $employee->pivot->hour_type }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </li>
+                                @empty
+                                    <li class="text-muted">No employees assigned yet</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                        <input type="hidden" name="overtime_hours" id="hidden_overtime_hours" value="{{ old('overtime_hours', $jobcard->overtime_hours ?? 0) }}">
+                        <input type="hidden" name="weekend_hours" id="hidden_weekend_hours" value="{{ old('weekend_hours', $jobcard->weekend_hours ?? 0) }}">
+                        <input type="hidden" name="public_holiday_hours" id="hidden_public_holiday_hours" value="{{ old('public_holiday_hours', $jobcard->public_holiday_hours ?? 0) }}">
+                        <input type="hidden" name="total_labour_cost" id="hidden_total_labour_cost" value="{{ old('total_labour_cost', $jobcard->total_labour_cost ?? 0) }}">
+                    </div>
                 </div>
 
-                <div class="d-grid gap-2">
-                    <button type="button" class="btn btn-success text-white" onclick="submitToOffice()">
-                        <i class="fas fa-paper-plane me-2"></i>Submit to Office
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="saveLocally()">
-                        <i class="fas fa-save me-2"></i>Save Locally
-                    </button>
-                </div>
-            </div>
-        </div>
+                <!-- Inventory Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-boxes text-warning me-2"></i>Inventory Items
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold text-muted">Inventory Item</label>
+                                <select id="inventory_select" class="form-control">
+                                    <option value="">Select Inventory Item</option>
+                                    @foreach($inventory as $item)
+                                        @php $stockStatus = $item->getStockStatus(); @endphp
+                                        <option value="{{ $item->id }}" 
+                                                data-short="{{ $item->short_description }}"
+                                                data-stock="{{ $item->stock_level }}"
+                                                data-min="{{ $item->min_level }}"
+                                                data-code="{{ $item->short_code }}"
+                                                data-status="{{ $stockStatus['status'] }}">
+                                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">Quantity</label>
+                                <input type="number" id="inventory_quantity" class="form-control" 
+                                       min="1" max="100" value="1" placeholder="Qty">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-muted">&nbsp;</label>
+                                <button type="button" id="add_inventory" class="btn btn-primary text-white d-block">
+                                    <i class="fas fa-plus me-2"></i>Add Item
+                                </button>
+                            </div>
+                        </div>
 
-        <!-- Summary Card (moved from sidebar) -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-light">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar text-primary me-2"></i>Summary
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-sm mb-2">
-                    <div class="col-7"><i class="fas fa-calendar text-muted me-2"></i>Created:</div>
-                    <div class="col-5 text-end">{{ $jobcard->created_at->format('d M Y') }}</div>
+                        <div class="border rounded p-3 bg-light">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-list me-2"></i>Current Items
+                            </h6>
+                            <ul id="inventory_list" class="list-unstyled mb-0">
+                                @forelse($assignedInventory as $item)
+                                    <li data-id="{{ $item['id'] }}" class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                                        <div>
+                                            <strong>{{ $item['name'] }}</strong>
+                                            <span class="badge bg-warning text-dark ms-2">Qty: {{ $item['quantity'] }}</span>
+                                        </div>
+                                        <input type="hidden" name="inventory_items[]" value="{{ $item['id'] }}">
+                                        <input type="hidden" name="inventory_qty[{{ $item['id'] }}]" value="{{ $item['quantity'] }}">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeInventory(this)">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </li>
+                                @empty
+                                    <li class="text-muted">No inventory items added yet</li>
+                                @endforelse
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div class="row text-sm mb-2">
-                    <div class="col-7"><i class="fas fa-users text-muted me-2"></i>Employees:</div>
-                    <div class="col-5 text-end fw-bold" id="employee_count">{{ $jobcard->employees->count() }}</div>
+
+                <!-- Status & Actions Card (moved from sidebar) -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-tasks text-info me-2"></i>Status & Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-muted">Current Status</label>
+                            <select name="status" class="form-control" required>
+                                <option value="assigned" {{ $jobcard->status == 'assigned' ? 'selected' : '' }}>Assigned</option>
+                                <option value="in progress" {{ $jobcard->status == 'in progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="completed" {{ $jobcard->status == 'completed' ? 'selected' : '' }}>Completed</option>
+                                <option value="invoiced" {{ $jobcard->status == 'invoiced' ? 'selected' : '' }}>Invoiced</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-success text-white" onclick="submitToOffice()">
+                                <i class="fas fa-paper-plane me-2"></i>Submit to Office
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="saveLocally()">
+                                <i class="fas fa-save me-2"></i>Save Locally
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="row text-sm mb-2">
-                    <div class="col-7"><i class="fas fa-boxes text-muted me-2"></i>Items:</div>
-                    <div class="col-5 text-end fw-bold" id="inventory_count">{{ $jobcard->inventory->count() }}</div>
-                </div>
-                <div class="row text-sm">
-                    <div class="col-7"><i class="fas fa-clock text-muted me-2"></i>Total Hours:</div>
-                    <div class="col-5 text-end fw-bold" id="total_hours">{{ $jobcard->employees->sum('pivot.hours_worked') }}</div>
+
+                <!-- Summary Card (moved from sidebar) -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar text-primary me-2"></i>Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-calendar text-muted me-2"></i>Created:</div>
+                            <div class="col-5 text-end">{{ $jobcard->created_at->format('d M Y') }}</div>
+                        </div>
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-users text-muted me-2"></i>Employees:</div>
+                            <div class="col-5 text-end fw-bold" id="employee_count">{{ $jobcard->employees->count() }}</div>
+                        </div>
+                        <div class="row text-sm mb-2">
+                            <div class="col-7"><i class="fas fa-boxes text-muted me-2"></i>Items:</div>
+                            <div class="col-5 text-end fw-bold" id="inventory_count">{{ $jobcard->inventory->count() }}</div>
+                        </div>
+                        <div class="row text-sm">
+                            <div class="col-7"><i class="fas fa-clock text-muted me-2"></i>Total Hours:</div>
+                            <div class="col-5 text-end fw-bold" id="total_hours">{{ $jobcard->employees->sum('pivot.hours_worked') }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -464,18 +403,15 @@ function loadLocalDraft() {
     if (!draft) return;
     try {
         const data = JSON.parse(draft);
-        Object.keys(data).forEach(key => {
-            if (key === 'employees' || key === 'inventory') return;
-            const el = document.querySelector(`[name='${key}']`);
-            if (el) el.value = data[key];
-        });
         // Restore employees
         if (Array.isArray(data.employees)) {
             document.getElementById('employee_list').innerHTML = '';
             data.employees.forEach(emp => {
                 let select = document.getElementById('employee_select');
                 let name = select.querySelector(`option[value='${emp.id}']`)?.text || 'Employee';
-                let hourTypeLabel = 'Normal', badgeClass = 'bg-secondary', rate = 750;
+                let rate = 750;
+                let hourTypeLabel = 'Normal';
+                let badgeClass = 'bg-secondary';
                 switch(emp.type) {
                     case 'overtime': rate = 750 * 1.5; hourTypeLabel = 'Overtime'; badgeClass = 'bg-warning text-dark'; break;
                     case 'weekend': rate = 750 * 2.0; hourTypeLabel = 'Weekend'; badgeClass = 'bg-primary'; break;
@@ -562,11 +498,11 @@ function addInventoryToJobcard() {
         return;
     }
     if (document.querySelector('#inventory_list li[data-id="'+id+'"]')) {
-        alert('This item is already added to the jobcard');
+        alert('This item is already added');
         return;
     }
     const noItemsMsg = document.querySelector('#inventory_list .text-muted');
-    if (noItemsMsg && noItemsMsg.textContent.includes('No inventory')) {
+    if (noItemsMsg && noItemsMsg.textContent.includes('No inventory items')) {
         noItemsMsg.remove();
     }
     let li = document.createElement('li');
@@ -575,16 +511,7 @@ function addInventoryToJobcard() {
     li.innerHTML = `<div><strong>${name.split(' (Stock:')[0]}</strong><span class='badge bg-warning text-dark ms-2'>Qty: ${qty}</span></div><input type='hidden' name='inventory_items[]' value='${id}'><input type='hidden' name='inventory_qty[${id}]' value='${qty}'><button type='button' class='btn btn-sm btn-outline-danger' onclick='removeInventory(this)'><i class='fas fa-times'></i></button>`;
     document.getElementById('inventory_list').appendChild(li);
     select.value = '';
-    document.getElementById('inventory_quantity').value = 1;
-    updateSummary();
-}
-
-function removeInventory(btn) {
-    btn.closest('li').remove();
-    const list = document.getElementById('inventory_list');
-    if (list.children.length === 0) {
-        list.innerHTML = '<li class="text-muted">No inventory items added yet</li>';
-    }
+    document.getElementById('inventory_quantity').value = '1';
     updateSummary();
 }
 
@@ -701,11 +628,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     loadLocalDraft();
     updateSummary();
-    document.getElementById('jobcardForm').addEventListener('submit', function(e) { e.preventDefault(); });
+    const jobcardForm = document.getElementById('jobcardForm');
+    if (jobcardForm) {
+        jobcardForm.addEventListener('submit', function(e) { e.preventDefault(); });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/jobcard/{{ $jobcard->id }}/opened', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+    });
 });
 </script>
 @endsection
-  
+
+
 
 
 

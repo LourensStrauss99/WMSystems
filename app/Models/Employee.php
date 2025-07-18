@@ -144,4 +144,12 @@ class Employee extends Authenticatable
             default => $baseRate,
         };
     }
+
+    /**
+     * Get the FCM token for the employee.
+     */
+    public function routeNotificationForFcm()
+    {
+        return $this->fcm_token;
+    }
 }
