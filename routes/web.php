@@ -490,3 +490,19 @@ Route::post('/invoice/{invoice}/reminder', [App\Http\Controllers\InvoiceControll
 // Customer statement
 Route::post('/customer/{customer}/statement', [App\Http\Controllers\CustomerController::class, 'sendStatement'])->name('customer.statement');
 Route::get('/customer/{customer}/statement/download', [App\Http\Controllers\CustomerController::class, 'downloadStatement'])->name('customer.statement.download');
+
+Route::get('/mobile/jobcard/{id}/edit', [JobcardController::class, 'editMobile'])->name('jobcard.edit.mobile');
+
+// Employee-specific jobcard routes
+Route::post('/employee/jobcards', [JobcardController::class, 'apiAssignedJobcards']);
+Route::get('/jobcard/{id}/view', [JobcardController::class, 'apiViewJobcard']);
+Route::put('/jobcard/{id}/update', [JobcardController::class, 'apiUpdateJobcard']);
+// Mobile jobcard index view (device-received jobcards)
+Route::get('/mobile-app/jobcard/index', function() {
+    return view('mobile app.index.mobile');
+})->name('jobcard.mobile.index');
+
+use App\Http\Controllers\MobileJobcardController;
+
+Route::get('/mobile-app/jobcard/{jobcard}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcard.edit');
+Route::put('/mobile-app/jobcard/{jobcard}/update', [MobileJobcardController::class, 'update'])->name('mobile.jobcard.update');

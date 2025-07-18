@@ -14,6 +14,64 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
+    // API: List jobcards assigned to an employee (by phone or employee_id)
+    public function apiAssignedJobcards(Request $request)
+    {
+        $phone = $request->input('phone');
+        $employeeId = $request->input('employee_id');
+        $employee = Employee::query()
+            ->when($phone, fn($q) => $q->where('telephone', $phone))
+            ->when($employeeId, fn($q) => $q->orWhere('employee_id', $employeeId))
+            ->first();
+        if (!$employee) {
+            return response()->json(['error' => 'Employee not found'], 404);
+        }
+        $jobcards = $employee->jobcards()->with(['client', 'inventory', 'employees'])->get();
+        return response()->json(['jobcards' => $jobcards]);
+    }
+
+    // API: View a single jobcard (by jobcard id)
+    public function apiViewJobcard($id)
+    {
+        $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->find($id);
+        if (!$jobcard) {
+            return response()->json(['error' => 'Jobcard not found'], 404);
+        }
+        return response()->json(['jobcard' => $jobcard]);
+    }
+
+    // API: Update a jobcard (by jobcard id)
+    public function apiUpdateJobcard(Request $request, $id)
+    {
+        $jobcard = Jobcard::find($id);
+        if (!$jobcard) {
+            return response()->json(['error' => 'Jobcard not found'], 404);
+        }
+        $jobcard->update($request->only([
+            'status', 'work_done', 'progress_note', 'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
+            'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
+        ]));
+        // Optionally update employees/inventory if provided
+        if ($request->has('employees')) {
+            $syncData = [];
+            foreach ($request->employees as $employee) {
+                $syncData[$employee['id']] = [
+                    'hours_worked' => $employee['hours_worked'] ?? 0,
+                    'hour_type' => $employee['hour_type'] ?? 'normal'
+                ];
+            }
+            $jobcard->employees()->sync($syncData);
+        }
+        if ($request->has('inventory')) {
+            $syncData = [];
+            foreach ($request->inventory as $item) {
+                $syncData[$item['id']] = ['quantity' => $item['quantity'] ?? 1];
+            }
+            $jobcard->inventory()->sync($syncData);
+        }
+        return response()->json(['success' => true, 'jobcard' => $jobcard->fresh(['client', 'inventory', 'employees'])]);
+    }
+
     public function index(Request $request)
     {
         $query = Jobcard::with('client');
@@ -161,6 +219,22 @@ class JobcardController extends Controller
             ];
         })->toArray();
         return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
+    }
+
+    public function editMobile($id)
+    {
+        $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
+        $employees = Employee::all();
+        $inventory = Inventory::all();
+        $clients = Client::all();
+        $assignedInventory = $jobcard->inventory->map(function($item) {
+            return [
+                'id' => $item->id,
+                'quantity' => $item->pivot->quantity ?? 1,
+                'name' => $item->name ?? $item->description
+            ];
+        })->toArray();
+        return view('mobile app.jobcard-editor-mobile', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
     }
 
     public function update(Request $request, Jobcard $jobcard)
