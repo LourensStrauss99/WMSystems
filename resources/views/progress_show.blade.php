@@ -9,7 +9,14 @@
             <h2>Jobcard: {{ $jobcard->jobcard_number }}</h2>
             <p><strong>Status:</strong> {{ $jobcard->status }}</p>
             <p><strong>Client:</strong> {{ $jobcard->client->name ?? '' }}</p>
-            <p><strong>Work Done:</strong> {{ $jobcard->work_done }}</p>
+            <form method="POST" action="{{ route('progress.jobcard.update', $jobcard->id) }}" class="mb-3">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="action" value="save">
+                <label for="work_done" class="form-label"><strong>Work Done:</strong></label>
+                <textarea name="work_done" id="work_done" class="form-control mb-2" rows="2" placeholder="Describe work done...">{{ old('work_done', $jobcard->work_done) }}</textarea>
+                <button type="submit" class="btn btn-primary">Save Progress</button>
+            </form>
             <h4>Employees & Hours Worked</h4>
             <ul>
                 @php

@@ -503,6 +503,17 @@ Route::get('/mobile-app/jobcard/index', function() {
 })->name('jobcard.mobile.index');
 
 use App\Http\Controllers\MobileJobcardController;
+use App\Http\Controllers\MobileQuoteController;
+use App\Http\Controllers\MobileJobcardPhotoController;
+
+Route::prefix('mobile')->group(function () {
+    Route::get('/jobcards', [MobileJobcardController::class, 'index'])->name('mobile.jobcards.index');
+    Route::get('/jobcards/{id}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcards.edit');
+    Route::get('/quotes', [MobileQuoteController::class, 'index'])->name('mobile.quotes.index');
+    Route::get('/quotes/{id}/edit', [MobileQuoteController::class, 'edit'])->name('mobile.quotes.edit');
+    Route::post('/jobcards/{jobcard}/photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile.jobcards.photos.store');
+    Route::delete('/jobcards/photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile.jobcards.photos.destroy');
+});
 
 Route::get('/mobile-app/jobcard/{jobcard}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcard.edit');
 Route::put('/mobile-app/jobcard/{jobcard}/update', [MobileJobcardController::class, 'update'])->name('mobile.jobcard.update');
