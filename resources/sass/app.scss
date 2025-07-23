@@ -1,8 +1,6 @@
+
+@use 'variables' as *;
+@use 'bootstrap/scss/bootstrap' as *;
+
 // Fonts
 @import url('https://fonts.bunny.net/css?family=Nunito');
-
-// Variables
-@use 'variables' as *;
-
-// Bootstrap
-@use 'bootstrap/scss/bootstrap' as *;
