@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
+use App\Http\Controllers\QuoteController;
+
 // Authentication Routes
 Auth::routes(['verify' => true]);
 
@@ -90,15 +92,16 @@ Route::view('/settings', 'settings')->name('settings');
 //Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
+
+// Place this FIRST, before any /quotes/{id} or /quotes/{id}/... routes
+Route::get('/quotes/create', function() { return view('quotes_create'); })->name('quotes.create');
+
 Route::view('/quotes', 'quotes')->name('quotes');
 Route::get('/quotes', [QuotesController::class, 'index'])->name('quotes.index');
 Route::post('/quotes/save', [QuotesController::class, 'save'])->name('quotes.save');
 Route::get('/quotes/{id}', [QuotesController::class, 'show'])->name('quotes.show');
 Route::get('/quotes/{id}/download', [QuotesController::class, 'download'])->name('quotes.download');
 Route::post('/quotes/{id}/email', [QuotesController::class, 'email'])->name('quotes.email');
-//Route::view('/admin-panel', 'admin-panel')->name('admin-panel');
-//Route::view('/admin/login', 'admin login')->name('admin.login');
-//Route::view('/admin/register', 'admin.register')->name('admin.register');
 
 // Jobcard resource (RESTful)
 Route::resource('jobcard', JobcardController::class);
@@ -502,25 +505,14 @@ Route::get('/mobile-app/jobcard/index', function() {
     return view('mobile app.index.mobile');
 })->name('jobcard.mobile.index');
 
-use App\Http\Controllers\MobileJobcardController;
-use App\Http\Controllers\MobileQuoteController;
-use App\Http\Controllers\MobileJobcardPhotoController;
+Route::get('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'mobileIndex'])->name('mobile.jobcards.index');
+Route::get('/mobile/jobcards/{jobcard}/edit', [App\Http\Controllers\JobcardController::class, 'editMobile'])->name('mobile.jobcards.edit');
+Route::get('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'showMobile'])->name('mobile.jobcards.show');
 
-Route::prefix('mobile')->group(function () {
-    Route::get('/jobcards', [MobileJobcardController::class, 'index'])->name('mobile.jobcards.index');
-    Route::get('/jobcards/{id}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcards.edit');
-    Route::get('/quotes', [MobileQuoteController::class, 'index'])->name('mobile.quotes.index');
-    Route::get('/quotes/{id}/edit', [MobileQuoteController::class, 'edit'])->name('mobile.quotes.edit');
-    Route::post('/jobcards/{jobcard}/photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile.jobcards.photos.store');
-    Route::delete('/jobcards/photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile.jobcards.photos.destroy');
-});
-
-Route::get('/mobile-app/jobcard/{jobcard}/edit', [MobileJobcardController::class, 'edit'])->name('mobile.jobcard.edit');
-Route::put('/mobile-app/jobcard/{jobcard}/update', [MobileJobcardController::class, 'update'])->name('mobile.jobcard.update');
-Route::get('/mobile-app/login', [App\Http\Controllers\MobileJobcardController::class, 'showLoginForm'])->name('mobile.login');
-Route::post('/mobile-app/login', [App\Http\Controllers\MobileJobcardController::class, 'login'])->name('mobile.login.submit');
-
-Route::post('/jobcard/{id}/opened', [MobileJobcardController::class, 'markOpened'])->name('jobcard.opened');
-Route::post('/jobcard/{id}/closed', [MobileJobcardController::class, 'markClosed'])->name('jobcard.closed');
-Route::get('/mobile-app/jobcard/index', [MobileJobcardController::class, 'mobileIndex'])->name('jobcard.mobile.index');
+Route::get('/mobile/quotes', [QuotesController::class, 'mobileIndex'])->name('mobile.quotes.index');
+Route::get('/mobile/quotes/{quote}', [QuotesController::class, 'showMobile'])->name('mobile.quotes.show');
+Route::get('/mobile/quotes/{quote}/edit', [QuotesController::class, 'editMobile'])->name('mobile.quotes.edit');
+Route::put('/quotes/{quote}', [App\Http\Controllers\QuotesController::class, 'update'])->name('quotes.update');
+Route::get('/quotes/{quote}/edit', [App\Http\Controllers\QuotesController::class, 'edit'])->name('quotes.edit');
+Route::put('/mobile/quotes/{quote}', [QuotesController::class, 'update'])->name('mobile.quotes.update');
 

@@ -173,17 +173,6 @@
         <div class="section-header header-yellow">
             <i class="fas fa-camera"></i> Photos
         </div>
-        <form id="photo-upload-form" enctype="multipart/form-data">
-            @csrf
-            <input type="hidden" name="jobcard_id" value="{{ $jobcard->id }}">
-            <label class="photo-upload-label">
-                <i class="fas fa-camera"></i> Take Photo / Gallery
-                <input type="file" name="photo" accept="image/*" capture="environment">
-            </label>
-            <input type="text" name="caption" class="form-control" placeholder="Add a caption (optional)">
-            <button type="submit" class="btn btn-primary">Upload Photo</button>
-            <div id="photo-uploading" class="photo-uploading" style="display:none;">Uploading...</div>
-        </form>
         <div class="photo-list" id="photo-list">
             @foreach($jobcard->mobilePhotos ?? [] as $photo)
                 <div style="position:relative; display:inline-block;">
@@ -198,45 +187,61 @@
         <div class="section-header header-green">
             <i class="fas fa-check-circle"></i> Job Completion
         </div>
-        <div>Mark this job as completed</div>
+        <div>Mark this job as completed </div>
     </div>
         <button type="submit" class="save-btn">Save Progress</button>
         <div id="save-status" class="save-status" style="display:none;"></div>
     </form>
+    <!-- Move photo upload form OUTSIDE the main form -->
+    <form id="photo-upload-form" enctype="multipart/form-data" style="margin-top:1rem;">
+        @csrf
+        <input type="hidden" name="jobcard_id" value="{{ $jobcard->id }}">
+        <label class="photo-upload-label">
+            <i class="fas fa-camera"></i> Take Photo / Gallery
+            <input type="file" name="photo" accept="image/*" capture="environment">
+        </label>
+        <input type="text" name="caption" class="form-control" placeholder="Add a caption (optional)">
+        <button type="submit" class="btn btn-primary">Upload Photo</button>
+        <div id="photo-uploading" class="photo-uploading" style="display:none;">Uploading...</div>
+    </form>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // AJAX save for jobcard
-    const jobcardForm = document.getElementById('jobcard-edit-form');
-    const saveStatus = document.getElementById('save-status');
-    if (jobcardForm) {
-        jobcardForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveStatus.textContent = 'Saving...';
-            saveStatus.className = 'save-status loading';
-            saveStatus.style.display = 'block';
-            const data = new FormData(jobcardForm);
-            fetch("{{ route('mobile.jobcards.edit', $jobcard->id) }}", {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value, 'X-HTTP-Method-Override': 'PUT' },
-                body: data
-            })
-            .then(res => {
-                if (!res.ok) return res.text().then(text => { throw new Error(text); });
-                return res.text();
-            })
-            .then(() => {
-                saveStatus.textContent = 'Jobcard updated successfully!';
-                saveStatus.className = 'save-status success';
-                setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
-            })
-            .catch(err => {
-                saveStatus.textContent = 'Error saving jobcard.';
-                saveStatus.className = 'save-status error';
-                console.error('Save error:', err);
-            });
+console.log('Script loaded');
+const jobcardForm = document.getElementById('jobcard-edit-form');
+console.log('jobcardForm:', jobcardForm);
+const saveStatus = document.getElementById('save-status');
+if (jobcardForm) {
+    console.log('Attaching submit handler');
+    jobcardForm.addEventListener('submit', function(e) {
+        console.log('Jobcard form submit handler triggered');
+        e.preventDefault();
+        saveStatus.textContent = 'Saving...';
+        saveStatus.className = 'save-status loading';
+        saveStatus.style.display = 'block';
+        const data = new FormData(jobcardForm);
+        fetch("{{ route('jobcard.update', $jobcard->id) }}", {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value, 'X-HTTP-Method-Override': 'PUT' },
+            body: data
+        })
+        .then(res => {
+            if (!res.ok) return res.text().then(text => { throw new Error(text); });
+            return res.text();
+        })
+        .then(() => {
+            saveStatus.textContent = 'Jobcard updated successfully!';
+            saveStatus.className = 'save-status success';
+            setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
+        })
+        .catch(err => {
+            saveStatus.textContent = 'Error saving jobcard.';
+            saveStatus.className = 'save-status error';
+            console.error('Save error:', err);
         });
-    }
+    });
+} else {
+    console.log('jobcardForm not found');
+}
 
     // Add inventory item
     const addInventoryBtn = document.getElementById('add_inventory');
@@ -268,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('inventory_quantity').value = 1;
         });
     }
-});
+
 function removeInventory(btn) {
     btn.closest('.inventory-list-item').remove();
 }

@@ -223,10 +223,8 @@ class JobcardController extends Controller
 
     public function editMobile($id)
     {
-        $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
-        $employees = Employee::all();
-        $inventory = Inventory::all();
-        $clients = Client::all();
+        $jobcard = Jobcard::with('client', 'inventory')->findOrFail($id);
+        $inventory = \App\Models\Inventory::all();
         $assignedInventory = $jobcard->inventory->map(function($item) {
             return [
                 'id' => $item->id,
@@ -234,11 +232,18 @@ class JobcardController extends Controller
                 'name' => $item->name ?? $item->description
             ];
         })->toArray();
-        return view('mobile app.jobcard-editor-mobile', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
+        return view('mobile.jobcard-edit', compact('jobcard', 'inventory', 'assignedInventory'));
+    }
+
+    public function showMobile($id)
+    {
+        $jobcard = Jobcard::with('client', 'inventory')->findOrFail($id);
+        return view('mobile.jobcard-view', compact('jobcard'));
     }
 
     public function update(Request $request, Jobcard $jobcard)
     {
+        dd('JobcardController@update called', $request->all());
         DB::transaction(function () use ($request, $jobcard) {
             // Update jobcard basic fields
             $jobcard->update($request->only([
@@ -412,5 +417,13 @@ class JobcardController extends Controller
         $jobcard->calculateLaborCosts();
         
         return redirect()->back()->with('success', 'Employee added to jobcard successfully!');
+    }
+
+    public function mobileIndex(Request $request)
+    {
+        $jobcards = Jobcard::with('client')
+            ->orderBy('job_date', 'desc')
+            ->paginate(15);
+        return view('mobile.jobcard-list', compact('jobcards'));
     }
 }

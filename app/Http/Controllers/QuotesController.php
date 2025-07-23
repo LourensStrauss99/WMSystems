@@ -13,16 +13,7 @@ class QuotesController extends Controller
     public function index(Request $request)
     {
         $company = CompanyDetail::first();
-        $quotes = collect();
-        $quote = null;
-        $nextQuoteNumber = Quote::max('quote_number') + 1 ?? 1;
-
-        // Search by client name
-        if ($request->filled('client')) {
-            $quotes = Quote::where('client_name', 'like', '%' . $request->client . '%')->get();
-        }
-
-        return view('quotes', compact('company', 'quotes', 'quote', 'nextQuoteNumber'));
+        return view('quotes', compact('company'));
     }
 
     // Save a new or edited quote
@@ -87,5 +78,57 @@ class QuotesController extends Controller
         \Mail::to($quote->client_email)->send(new QuoteMailable($quote, $company, $pdf->output()));
 
         return back()->with('success', 'Quote emailed successfully!');
+    }
+
+    public function edit($id)
+    {
+        $quote = Quote::findOrFail($id);
+        return view('quotes_edit', compact('quote'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $quote = Quote::findOrFail($id);
+        $data = $request->validate([
+            'client_name' => 'required|string|max:255',
+            'client_address' => 'nullable|string|max:255',
+            'client_email' => 'nullable|email|max:255',
+            'client_telephone' => 'nullable|string|max:255',
+            'quote_date' => 'required|date',
+            'items' => 'nullable|array',
+            'items.*.description' => 'nullable|string',
+            'items.*.qty' => 'nullable|numeric',
+            'items.*.unit_price' => 'nullable|numeric',
+            'items.*.total' => 'nullable|numeric',
+            'notes' => 'nullable|string',
+        ]);
+        $quote->update([
+            'client_name' => $data['client_name'],
+            'client_address' => $data['client_address'] ?? '',
+            'client_email' => $data['client_email'] ?? '',
+            'client_telephone' => $data['client_telephone'] ?? '',
+            'quote_date' => $data['quote_date'],
+            'items' => $data['items'] ?? [],
+            'notes' => $data['notes'] ?? '',
+        ]);
+        return redirect()->route('quotes.show', $quote->id)->with('success', 'Quote updated successfully!');
+    }
+
+    public function mobileIndex()
+    {
+        $quotes = \App\Models\Quote::orderBy('created_at', 'desc')->paginate(15);
+        return view('mobile.quote-list', compact('quotes'));
+    }
+
+    public function showMobile($id)
+    {
+        $quote = \App\Models\Quote::findOrFail($id);
+        return view('mobile.quote-view', compact('quote'));
+    }
+
+    public function editMobile($id)
+    {
+        $quote = \App\Models\Quote::findOrFail($id);
+        return view('mobile.quote-edit', compact('quote'));
     }
 }

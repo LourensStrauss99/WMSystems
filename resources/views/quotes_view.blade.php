@@ -37,12 +37,30 @@
         </thead>
         <tbody>
             @foreach($quote->items as $item)
-            <tr>
-                <td>{{ $item['description'] }}</td>
-                <td>{{ $item['qty'] }}</td>
-                <td>R {{ number_format($item['unit_price'], 2) }}</td>
-                <td>R {{ number_format($item['total'], 2) }}</td>
-            </tr>
+                @if(isset($item['description']))
+                    <tr>
+                        <td>{{ $item['description'] }}</td>
+                        <td>{{ $item['qty'] ?? '' }}</td>
+                        <td>R {{ number_format($item['unit_price'] ?? 0, 2) }}</td>
+                        <td>R {{ number_format($item['total'] ?? 0, 2) }}</td>
+                    </tr>
+                @elseif(isset($item['inventory_id']))
+                    @php
+                        $inv = \App\Models\Inventory::find($item['inventory_id']);
+                    @endphp
+                    <tr>
+                        <td>
+                            @if($inv)
+                                [{{ $inv->short_code }}] {{ $inv->description }}
+                            @else
+                                Inventory #{{ $item['inventory_id'] }}
+                            @endif
+                        </td>
+                        <td>{{ $item['quantity'] ?? '' }}</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                @endif
             @endforeach
         </tbody>
     </table>
