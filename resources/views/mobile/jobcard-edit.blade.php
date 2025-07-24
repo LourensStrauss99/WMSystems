@@ -79,7 +79,7 @@
         background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 1.1rem; padding: 0.8rem 0; width: 100%; margin-top: 1.2rem;
     }
     .photo-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin: 0.2rem; border: 1px solid #e5e7eb; }
-    .photo-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .photo-list { display: flex; flex-wrap:wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
     .photo-delete-btn { background: #dc2626; color: #fff; border: none; border-radius: 6px; padding: 0.2em 0.7em; font-size: 0.9em; margin-left: 0.2em; }
     .photo-upload-label { display: block; background: #f3f4f6; border: 1px dashed #2563eb; border-radius: 8px; padding: 0.7rem; text-align: center; color: #2563eb; font-weight: 600; cursor: pointer; margin-bottom: 0.7rem; }
     .photo-upload-label input { display: none; }
@@ -123,12 +123,45 @@
         <div style="color: #64748b;">{{ $jobcard->client->email ?? '' }}</div>
         <button class="icon-btn" type="button"><i class="fas fa-phone"></i></button>
     </div>
-    <!-- Assigned Team Card -->
+    <!-- Assigned Employees Card -->
     <div class="mobile-card">
         <div class="section-header header-gray">
-            <i class="fas fa-users"></i> Assigned Team
+            <i class="fas fa-users"></i> Assign Employees
         </div>
-        <div>Mike <span class="badge badge-status" style="background:#2563eb;">You</span></div>
+        <div class="inventory-add-row" style="gap: 0.5rem; margin-bottom: 1rem;">
+            <select id="employee_select" class="form-control" style="margin-bottom: 0.3rem;">
+                <option value="">Select Employee</option>
+                @foreach($employees as $employee)
+                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                @endforeach
+            </select>
+            <input type="number" id="employee_hours" class="form-control" min="0" step="0.1" value="" placeholder="Hours" style="margin-bottom: 0.3rem;">
+            <select id="employee_hour_type" class="form-control" style="margin-bottom: 0.3rem;">
+                <option value="normal">Normal</option>
+                <option value="overtime">Overtime</option>
+                <option value="weekend">Weekend</option>
+                <option value="public_holiday">Public Holiday</option>
+                <option value="call_out">Call Out</option>
+            </select>
+            <button type="button" id="add_employee" class="btn btn-light inventory-add-btn" style="background:#e0e7ef; color:#2563eb; font-weight:600; border:1px solid #cbd5e1;">Add Employee</button>
+        </div>
+        <div class="inventory-list" id="employee_list" style="margin-top:0.5rem;">
+            @if(isset($jobcard->employees) && $jobcard->employees->count())
+                @foreach($jobcard->employees as $employee)
+                    <div class="inventory-list-item" data-id="{{ $employee->id }}" style="background:#f3f4f6; border-radius:10px; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem;">
+                        <span style="display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;">
+                            <span>{{ $employee->name }}</span>
+                            <span>Hours: {{ $employee->pivot->hours_worked ?? 0 }}</span>
+                            <span>Type: {{ $employee->pivot->hour_type ?? 'normal' }}</span>
+                        </span>
+                        <input type="hidden" name="employees[]" value="{{ $employee->id }}">
+                        <input type="hidden" name="employee_hours[{{ $employee->id }}]" value="{{ $employee->pivot->hours_worked ?? 0 }}">
+                        <input type="hidden" name="employee_hour_types[{{ $employee->id }}]" value="{{ $employee->pivot->hour_type ?? 'normal' }}">
+                        <button type="button" class="inventory-remove-btn" onclick="removeEmployee(this)" style="background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;">&times;</button>
+                    </div>
+                @endforeach
+            @endif
+        </div>
     </div>
     <!-- Inventory Card -->
     <div class="mobile-card">
@@ -147,11 +180,14 @@
         </div>
         <div class="inventory-list" id="inventory_list">
             @foreach($assignedInventory as $item)
-                <div class="inventory-list-item" data-id="{{ $item['id'] }}">
-                    <span><strong>{{ $item['name'] ?? $item['description'] ?? 'No description' }}</strong> <span class="badge-qty">Qty: {{ $item['quantity'] }}</span></span>
+                <div class="inventory-list-item" data-id="{{ $item['id'] }}" style="background:#f3f4f6; border-radius:10px; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem;">
+                    <span style="display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;">
+                        <span>{{ $item['name'] ?? $item['description'] ?? 'No description' }}</span>
+                        <span>Qty: {{ $item['quantity'] }}</span>
+                    </span>
                     <input type="hidden" name="inventory_items[]" value="{{ $item['id'] }}">
                     <input type="hidden" name="inventory_qty[]" value="{{ $item['quantity'] }}">
-                    <button type="button" class="inventory-remove-btn" onclick="removeInventory(this)">&times;</button>
+                    <button type="button" class="inventory-remove-btn" onclick="removeInventory(this)" style="background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;">&times;</button>
                 </div>
             @endforeach
         </div>
@@ -162,21 +198,17 @@
             <i class="fas fa-tasks"></i> Work Progress
         </div>
         <label class="form-label">Work Completed:</label>
-        <textarea class="form-control" placeholder="Describe the work completed..."></textarea>
-        <label class="form-label">Additional Notes:</label>
-        <textarea class="form-control" placeholder="Any additional notes or observations..."></textarea>
-        <label class="form-label">Time Spent (hours):</label>
-        <input type="number" class="form-control" value="0.0">
+        <textarea class="form-control" name="work_done" placeholder="Describe the work completed...">{{ old('work_done', $jobcard->work_done) }}</textarea>
     </div>
     <!-- Photos Card -->
     <div class="mobile-card">
         <div class="section-header header-yellow">
             <i class="fas fa-camera"></i> Photos
         </div>
-        <div class="photo-list" id="photo-list">
+        <div class="photo-list" id="photo-list" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
             @foreach($jobcard->mobilePhotos ?? [] as $photo)
                 <div style="position:relative; display:inline-block;">
-                    <img src="{{ Storage::url($photo->file_path) }}" class="photo-thumb">
+                    <img src="{{ Storage::url($photo->file_path) }}" class="photo-thumb" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin:0.2rem; border:1px solid #e5e7eb;">
                     <button class="photo-delete-btn" onclick="deletePhoto({{ $photo->id }})" type="button">&times;</button>
                 </div>
             @endforeach
@@ -185,21 +217,36 @@
     <!-- Job Completion Card -->
     <div class="mobile-card">
         <div class="section-header header-green">
-            <i class="fas fa-check-circle"></i> Job Completion
+            <i class="fas fa-check-circle"></i> Job Status
         </div>
-        <div>Mark this job as completed </div>
+        <label class="form-label">Change Job Status:</label>
+        <select class="form-control" name="status">
+            <option value="assigned" {{ $jobcard->status == 'assigned' ? 'selected' : '' }}>Assigned</option>
+            <option value="in progress" {{ $jobcard->status == 'in progress' ? 'selected' : '' }}>In Progress</option>
+            <option value="completed" {{ $jobcard->status == 'completed' ? 'selected' : '' }}>Completed</option>
+        </select>
     </div>
         <button type="submit" class="save-btn">Save Progress</button>
         <div id="save-status" class="save-status" style="display:none;"></div>
     </form>
     <!-- Move photo upload form OUTSIDE the main form -->
-    <form id="photo-upload-form" enctype="multipart/form-data" style="margin-top:1rem;">
+    @if ($errors->any())
+        <div class="alert alert-danger" style="margin-top:1rem;">
+            <ul style="margin-bottom:0;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    <form id="photo-upload-form" action="{{ route('mobile-jobcard-photos.store') }}" method="POST" enctype="multipart/form-data" style="margin-top:1rem;">
         @csrf
         <input type="hidden" name="jobcard_id" value="{{ $jobcard->id }}">
         <label class="photo-upload-label">
-            <i class="fas fa-camera"></i> Take Photo / Gallery
-            <input type="file" name="photo" accept="image/*" capture="environment">
+            <i class="fas fa-camera"></i> Select Photo from Gallery
+            <input type="file" name="photo" accept="image/*">
         </label>
+        <small style="color:#888; display:block; margin-bottom:0.5rem;">Max file size: 15MB. Large camera photos may fail to upload.</small>
         <input type="text" name="caption" class="form-control" placeholder="Add a caption (optional)">
         <button type="submit" class="btn btn-primary">Upload Photo</button>
         <div id="photo-uploading" class="photo-uploading" style="display:none;">Uploading...</div>
@@ -263,10 +310,10 @@ if (jobcardForm) {
             let div = document.createElement('div');
             div.className = 'inventory-list-item';
             div.setAttribute('data-id', id);
-            div.innerHTML = `<span><strong>${name.split(' (Stock:')[0]}</strong> <span class='badge-qty'>Qty: ${qty}</span></span>
+            div.innerHTML = `<span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'><span>${name.split(' (Stock:')[0]}</span><span>Qty: ${qty}</span></span>
                 <input type='hidden' name='inventory_items[]' value='${id}'>
                 <input type='hidden' name='inventory_qty[]' value='${qty}'>
-                <button type='button' class='inventory-remove-btn' onclick='removeInventory(this)'>&times;</button>`;
+                <button type='button' class='inventory-remove-btn' onclick='removeInventory(this)' style='background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;'>&times;</button>`;
             document.getElementById('inventory_list').appendChild(div);
             // Reset form
             select.value = '';
@@ -276,6 +323,59 @@ if (jobcardForm) {
 
 function removeInventory(btn) {
     btn.closest('.inventory-list-item').remove();
+}
+
+function removeEmployee(btn) {
+    btn.closest('.inventory-list-item').remove();
+}
+const addEmployeeBtn = document.getElementById('add_employee');
+if (addEmployeeBtn) {
+    addEmployeeBtn.addEventListener('click', function() {
+        let select = document.getElementById('employee_select');
+        let hours = document.getElementById('employee_hours').value;
+        let hourType = document.getElementById('employee_hour_type').value;
+        let id = select.value;
+        let name = select.options[select.selectedIndex].text;
+        if (!id || !hours || hours < 0) {
+            alert('Please select an employee and enter valid hours');
+            return;
+        }
+        // Prevent duplicate
+        if (document.querySelector('#employee_list .inventory-list-item[data-id="'+id+'"]')) {
+            alert('This employee is already assigned');
+            return;
+        }
+        let div = document.createElement('div');
+        div.className = 'inventory-list-item';
+        div.setAttribute('data-id', id);
+        div.innerHTML = `<span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'><span>${name}</span><span>Hours: ${hours}</span><span>Type: ${hourType}</span></span>
+            <input type='hidden' name='employees[]' value='${id}'>
+            <input type='hidden' name='employee_hours[${id}]' value='${hours}'>
+            <input type='hidden' name='employee_hour_types[${id}]' value='${hourType}'>
+            <button type='button' class='inventory-remove-btn' onclick='removeEmployee(this)' style='background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;'>&times;</button>`;
+        document.getElementById('employee_list').appendChild(div);
+        // Reset form
+        select.value = '';
+        document.getElementById('employee_hours').value = '';
+        document.getElementById('employee_hour_type').value = 'normal';
+    });
+}
+
+function deletePhoto(photoId) {
+    if (!confirm('Delete this photo?')) return;
+    fetch('/mobile-jobcard-photos/' + photoId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the photo thumbnail from the DOM
+            document.querySelector('button[onclick="deletePhoto(' + photoId + ')"]').closest('div').remove();
+        }
+    });
 }
 </script>
 @endsection

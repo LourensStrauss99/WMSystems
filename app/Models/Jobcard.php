@@ -104,5 +104,10 @@ class Jobcard extends Model
         
         return $costs;
     }
+
+    public function mobilePhotos()
+    {
+        return $this->hasMany(\App\Models\MobileJobcardPhoto::class, 'jobcard_id');
+    }
 }
 

@@ -223,16 +223,25 @@ class JobcardController extends Controller
 
     public function editMobile($id)
     {
-        $jobcard = Jobcard::with('client', 'inventory')->findOrFail($id);
-        $inventory = \App\Models\Inventory::all();
+        $jobcard = Jobcard::with(['client', 'inventory', 'mobilePhotos'])->findOrFail($id);
+        $inventory = Inventory::all();
         $assignedInventory = $jobcard->inventory->map(function($item) {
             return [
                 'id' => $item->id,
+                'name' => $item->description ?? $item->name ?? '',
                 'quantity' => $item->pivot->quantity ?? 1,
-                'name' => $item->name ?? $item->description
             ];
-        })->toArray();
-        return view('mobile.jobcard-edit', compact('jobcard', 'inventory', 'assignedInventory'));
+        });
+
+        // Fetch all employees
+        $employees = \App\Models\Employee::all();
+
+        return view('mobile.jobcard-edit', [
+            'jobcard' => $jobcard,
+            'inventory' => $inventory,
+            'assignedInventory' => $assignedInventory,
+            'employees' => $employees,
+        ]);
     }
 
     public function showMobile($id)
@@ -243,7 +252,6 @@ class JobcardController extends Controller
 
     public function update(Request $request, Jobcard $jobcard)
     {
-        dd('JobcardController@update called', $request->all());
         DB::transaction(function () use ($request, $jobcard) {
             // Update jobcard basic fields
             $jobcard->update($request->only([
@@ -289,6 +297,9 @@ class JobcardController extends Controller
             }
         });
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Jobcard updated!']);
+        }
         return redirect()->route('jobcard.show', $jobcard->id)->with('success', 'Jobcard updated successfully!');
     }
 

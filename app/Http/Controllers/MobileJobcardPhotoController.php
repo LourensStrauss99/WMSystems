@@ -6,33 +6,37 @@ use Illuminate\Http\Request;
 use App\Models\MobileJobcardPhoto;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MobileJobcardPhotoController extends Controller
 {
     public function store(Request $request)
     {
+        Log::info('Photo upload hit', $request->all());
         $request->validate([
             'jobcard_id' => 'required|exists:jobcards,id',
-            'photo' => 'required|image|max:5120',
+            'photo' => 'required|image|max:15360', // 15MB
             'caption' => 'nullable|string|max:255',
         ]);
 
-        $path = $request->file('photo')->store('public/jobcards/' . $request->jobcard_id);
+        // Store without 'public/' prefix for correct Storage::url
+        $path = $request->file('photo')->store('jobcards/' . $request->jobcard_id, 'public');
         $photo = MobileJobcardPhoto::create([
             'jobcard_id' => $request->jobcard_id,
-            'file_path' => $path,
+            'file_path' => $path, // e.g. 'jobcards/7/filename.jpg'
             'uploaded_at' => now(),
-            'uploaded_by' => Auth::id(),
+            'uploaded_by' => \Auth::id(),
             'caption' => $request->caption,
         ]);
 
-        return response()->json(['success' => true, 'photo' => $photo]);
+        // Redirect back to show the new photo
+        return redirect()->back()->with('success', 'Photo uploaded!');
     }
 
     public function destroy($id)
     {
         $photo = MobileJobcardPhoto::findOrFail($id);
-        Storage::delete($photo->file_path);
+        \Storage::disk('public')->delete($photo->file_path);
         $photo->delete();
         return response()->json(['success' => true]);
     }

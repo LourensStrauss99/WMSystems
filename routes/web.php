@@ -34,6 +34,8 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 use App\Http\Controllers\QuoteController;
 
+use App\Http\Controllers\MobileJobcardPhotoController;
+
 // Authentication Routes
 Auth::routes(['verify' => true]);
 
@@ -515,4 +517,7 @@ Route::get('/mobile/quotes/{quote}/edit', [QuotesController::class, 'editMobile'
 Route::put('/quotes/{quote}', [App\Http\Controllers\QuotesController::class, 'update'])->name('quotes.update');
 Route::get('/quotes/{quote}/edit', [App\Http\Controllers\QuotesController::class, 'edit'])->name('quotes.edit');
 Route::put('/mobile/quotes/{quote}', [QuotesController::class, 'update'])->name('mobile.quotes.update');
+
+Route::post('/mobile-jobcard-photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile-jobcard-photos.store');
+Route::delete('/mobile-jobcard-photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile-jobcard-photos.destroy');
 
