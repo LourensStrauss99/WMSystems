@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->unsignedBigInteger('created_by')->nullable()->change();
-        });
+        if (Schema::hasColumn('purchase_orders', 'created_by')) {
+            Schema::table('purchase_orders', function (Blueprint $table) {
+                $table->unsignedBigInteger('created_by')->nullable()->change();
+            });
+        }
     }
 
     /**
@@ -21,8 +23,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('purchase_orders', function (Blueprint $table) {
-            $table->unsignedBigInteger('created_by')->nullable(false)->change();
-        });
+        // Only revert if the column exists
+        if (Schema::hasColumn('purchase_orders', 'created_by')) {
+            Schema::table('purchase_orders', function (Blueprint $table) {
+                $table->unsignedBigInteger('created_by')->nullable(false)->change();
+            });
+        }
     }
 };

@@ -42,6 +42,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drops the table if it exists. Safe to run multiple times.
         Schema::dropIfExists('mobile_jobcards');
     }
 };

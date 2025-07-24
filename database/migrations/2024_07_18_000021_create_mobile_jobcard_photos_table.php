@@ -13,15 +13,17 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('mobile_jobcard_photos', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('jobcard_id')->index();
-            $table->string('file_path', 255);
-            $table->timestamp('uploaded_at');
-            $table->unsignedBigInteger('uploaded_by')->nullable();
-            $table->string('caption', 255)->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('mobile_jobcard_photos')) {
+            Schema::create('mobile_jobcard_photos', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('jobcard_id')->index();
+                $table->string('file_path', 255);
+                $table->timestamp('uploaded_at');
+                $table->unsignedBigInteger('uploaded_by')->nullable();
+                $table->string('caption', 255)->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
@@ -31,6 +33,7 @@ return new class extends Migration
      */
     public function down()
     {
+        // Drops the table if it exists. Safe to run multiple times.
         Schema::dropIfExists('mobile_jobcard_photos');
     }
 }; 

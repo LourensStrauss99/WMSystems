@@ -126,6 +126,21 @@ return new class extends Migration
      */
     public function down()
     {
-        // No columns are dropped in down() to avoid data loss.
+        // Drops columns if they exist. Safe to run multiple times, but may fail if columns are missing.
+        Schema::table('purchase_orders', function (Blueprint $table) {
+            $columns = [
+                'po_number', 'status', 'supplier_name', 'supplier_contact', 'supplier_email', 'supplier_phone',
+                'supplier_address', 'order_date', 'expected_delivery_date', 'actual_delivery_date', 'total_amount',
+                'subtotal', 'vat_amount', 'vat_percent', 'grand_total', 'created_by', 'approved_by', 'approved_at',
+                'notes', 'terms_conditions', 'payment_terms', 'created_at', 'updated_at', 'supplier_id',
+                'submitted_for_approval_at', 'submitted_by', 'rejected_at', 'rejection_reason', 'rejection_history',
+                'rejected_by', 'sent_at', 'sent_by', 'amended_by', 'amended_at'
+            ];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('purchase_orders', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+        });
     }
 }; 

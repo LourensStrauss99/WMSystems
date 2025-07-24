@@ -213,6 +213,28 @@ return new class extends Migration
      */
     public function down()
     {
-        // No columns are dropped in down() to avoid data loss.
+        // Drops columns if they exist. Safe to run multiple times, but may fail if columns are missing.
+        Schema::table('company_details', function (Blueprint $table) {
+            $columns = [
+                'id', 'labour_rate', 'call_out_rate', 'overtime_multiplier', 'weekend_multiplier',
+                'public_holiday_multiplier', 'mileage_rate', 'vat_percent', 'markup_percentage',
+                'discount_threshold', 'company_name', 'trading_name', 'company_reg_number', 'vat_reg_number',
+                'paye_number', 'uif_number', 'bee_level', 'bank_name', 'account_holder', 'account_number',
+                'branch_code', 'branch_name', 'swift_code', 'account_type', 'reference_format', 'address',
+                'physical_address', 'postal_address', 'city', 'province', 'postal_code', 'country',
+                'company_telephone', 'company_fax', 'company_cell', 'company_email', 'accounts_email',
+                'orders_email', 'support_email', 'company_website', 'invoice_terms', 'invoice_footer',
+                'quote_terms', 'po_terms', 'warranty_terms', 'company_slogan', 'company_description',
+                'letterhead_template', 'default_payment_terms', 'late_payment_fee', 'late_payment_fee_percent',
+                'minimum_invoice_amount', 'quote_validity_days', 'warranty_period_months',
+                'po_auto_approval_limit', 'hourly_rate_categories', 'business_sectors', 'certification_numbers',
+                'insurance_details', 'safety_certifications', 'created_at', 'updated_at', 'company_logo'
+            ];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('company_details', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+        });
     }
 }; 

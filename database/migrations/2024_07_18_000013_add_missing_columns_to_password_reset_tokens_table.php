@@ -33,6 +33,14 @@ return new class extends Migration
      */
     public function down()
     {
-        // No columns are dropped in down() to avoid data loss.
+        // Drops columns if they exist. Safe to run multiple times, but may fail if columns are missing.
+        Schema::table('password_reset_tokens', function (Blueprint $table) {
+            $columns = ['email', 'token', 'created_at'];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('password_reset_tokens', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+        });
     }
 }; 

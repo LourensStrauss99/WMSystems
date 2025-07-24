@@ -13,19 +13,23 @@ return new class extends Migration
     {
         Schema::table('employee_jobcard', function (Blueprint $table) {
             // Add hour_type column to track different types of hours
-            $table->enum('hour_type', [
-                'normal', 
-                'overtime', 
-                'weekend', 
-                'public_holiday', 
-                'call_out'
-            ])->default('normal')->after('hours_worked');
-            
+            if (!Schema::hasColumn('employee_jobcard', 'hour_type')) {
+                $table->enum('hour_type', [
+                    'normal', 
+                    'overtime', 
+                    'weekend', 
+                    'public_holiday', 
+                    'call_out'
+                ])->default('normal')->after('hours_worked');
+            }
             // Add hourly rate for this specific entry
-            $table->decimal('hourly_rate', 8, 2)->default(0)->after('hour_type');
-            
+            if (!Schema::hasColumn('employee_jobcard', 'hourly_rate')) {
+                $table->decimal('hourly_rate', 8, 2)->default(0)->after('hour_type');
+            }
             // Add total cost for this employee's work
-            $table->decimal('total_cost', 10, 2)->default(0)->after('hourly_rate');
+            if (!Schema::hasColumn('employee_jobcard', 'total_cost')) {
+                $table->decimal('total_cost', 10, 2)->default(0)->after('hourly_rate');
+            }
         });
     }
 
@@ -34,8 +38,14 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drops columns if they exist. Safe to run multiple times, but may fail if columns are missing.
         Schema::table('employee_jobcard', function (Blueprint $table) {
-            $table->dropColumn(['hour_type', 'hourly_rate', 'total_cost']);
+            $columns = ['hour_type', 'hourly_rate', 'total_cost'];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('employee_jobcard', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 };

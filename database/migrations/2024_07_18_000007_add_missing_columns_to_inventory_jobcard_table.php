@@ -42,6 +42,14 @@ return new class extends Migration
      */
     public function down()
     {
-        // No columns are dropped in down() to avoid data loss.
+        // Drops columns if they exist. Safe to run multiple times, but may fail if columns are missing.
+        Schema::table('inventory_jobcard', function (Blueprint $table) {
+            $columns = ['id', 'inventory_id', 'jobcard_id', 'created_at', 'updated_at', 'quantity'];
+            foreach ($columns as $column) {
+                if (Schema::hasColumn('inventory_jobcard', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
+        });
     }
 }; 
