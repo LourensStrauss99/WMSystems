@@ -66,12 +66,40 @@ class InvoiceController extends Controller
                 return $quantity * $sellingPrice;
             });
 
-            $labourHours = $jobcard->employees->sum(function($employee) {
-                return $employee->pivot->hours_worked ?? 0;
-            });
+            // --- BEGIN: Enhanced Labour Calculation ---
+            $labourRate = $company->labour_rate ?? 750;
+            $overtimeRate = $labourRate * ($company->overtime_multiplier ?? 1.5);
+            $weekendRate = $labourRate * ($company->weekend_multiplier ?? 2.0);
+            $holidayRate = $labourRate * ($company->public_holiday_multiplier ?? 2.5);
+            $callOutRate = $company->call_out_rate ?? 1000;
+            $mileageRate = $company->mileage_rate ?? 7.5;
 
-            $labourTotal = $labourHours * ($company->labour_rate ?? 0); // <- ADD NULL CHECK
-            $subtotal = $inventoryTotal + $labourTotal;
+            $normalHours = $overtimeHours = $weekendHours = $holidayHours = $callOutHours = 0;
+            $totalTravelKm = 0;
+
+            foreach ($jobcard->employees as $employee) {
+                $type = $employee->pivot->hour_type ?? 'normal';
+                $hours = floatval($employee->pivot->hours_worked ?? 0);
+                if ($type === 'normal') $normalHours += $hours;
+                elseif ($type === 'overtime') $overtimeHours += $hours;
+                elseif ($type === 'weekend') $weekendHours += $hours;
+                elseif ($type === 'public_holiday') $holidayHours += $hours;
+                elseif ($type === 'call_out') $callOutHours += $hours;
+                elseif ($type === 'traveling') $totalTravelKm += floatval($employee->pivot->travel_km ?? 0);
+            }
+
+            $normalCost = $normalHours * $labourRate;
+            $overtimeCost = $overtimeHours * $overtimeRate;
+            $weekendCost = $weekendHours * $weekendRate;
+            $holidayCost = $holidayHours * $holidayRate;
+            $callOutCost = $callOutHours * $callOutRate;
+            $mileageCost = $totalTravelKm * $mileageRate;
+
+            $totalLabourCost = $normalCost + $overtimeCost + $weekendCost + $holidayCost + $callOutCost + $mileageCost;
+            // --- END: Enhanced Labour Calculation ---
+
+            // Use $totalLabourCost for invoice totals
+            $subtotal = $inventoryTotal + $totalLabourCost;
             $vat = $subtotal * (($company->vat_percent ?? 15) / 100); // <- ADD NULL CHECK
             $grandTotal = $subtotal + $vat;
 
@@ -79,8 +107,8 @@ class InvoiceController extends Controller
                 'jobcard' => $jobcard,
                 'company' => $company,
                 'inventoryTotal' => $inventoryTotal,
-                'labourHours' => $labourHours,
-                'labourTotal' => $labourTotal,
+                'labourHours' => $normalHours + $overtimeHours + $weekendHours + $holidayHours + $callOutHours,
+                'labourTotal' => $totalLabourCost,
                 'subtotal' => $subtotal,
                 'vat' => $vat,
                 'grandTotal' => $grandTotal
@@ -120,33 +148,49 @@ class InvoiceController extends Controller
                 $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->findOrFail($validated['jobcard_id']);
                 $company = CompanyDetail::first();
 
-                            // Calculate totals (same logic as your PDF generation)
-            $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                $quantity = $item->pivot->quantity ?? 0;
-                $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
-                return $quantity * $sellingPrice;
-            });
+                // --- BEGIN: Enhanced Labour Calculation ---
+                $labourRate = $company->labour_rate ?? 750;
+                $overtimeRate = $labourRate * ($company->overtime_multiplier ?? 1.5);
+                $weekendRate = $labourRate * ($company->weekend_multiplier ?? 2.0);
+                $holidayRate = $labourRate * ($company->public_holiday_multiplier ?? 2.5);
+                $callOutRate = $company->call_out_rate ?? 1000;
+                $mileageRate = $company->mileage_rate ?? 7.5;
 
-                $labourHours = $jobcard->employees->sum(function($employee) {
-                    return $employee->pivot->hours_worked ?? 0;
-                });
+                $normalHours = $overtimeHours = $weekendHours = $holidayHours = $callOutHours = 0;
+                $totalTravelKm = 0;
 
-                $labourTotal = $labourHours * ($company->labour_rate ?? 0);
-                $subtotal = $inventoryTotal + $labourTotal;
-                $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
-                $grandTotal = $subtotal + $vat;
+                foreach ($jobcard->employees as $employee) {
+                    $type = $employee->pivot->hour_type ?? 'normal';
+                    $hours = floatval($employee->pivot->hours_worked ?? 0);
+                    if ($type === 'normal') $normalHours += $hours;
+                    elseif ($type === 'overtime') $overtimeHours += $hours;
+                    elseif ($type === 'weekend') $weekendHours += $hours;
+                    elseif ($type === 'public_holiday') $holidayHours += $hours;
+                    elseif ($type === 'call_out') $callOutHours += $hours;
+                    elseif ($type === 'traveling') $totalTravelKm += floatval($employee->pivot->travel_km ?? 0);
+                }
+
+                $normalCost = $normalHours * $labourRate;
+                $overtimeCost = $overtimeHours * $overtimeRate;
+                $weekendCost = $weekendHours * $weekendRate;
+                $holidayCost = $holidayHours * $holidayRate;
+                $callOutCost = $callOutHours * $callOutRate;
+                $mileageCost = $totalTravelKm * $mileageRate;
+
+                $totalLabourCost = $normalCost + $overtimeCost + $weekendCost + $holidayCost + $callOutCost + $mileageCost;
+                // --- END: Enhanced Labour Calculation ---
 
                 // ✅ CREATE ACTUAL INVOICE RECORD
                 $invoice = Invoice::create([
                     'invoice_number' => Invoice::generateInvoiceNumber(),
                     'client_id' => $jobcard->client_id,
                     'jobcard_id' => $jobcard->id,
-                    'amount' => $grandTotal,
+                    'amount' => $totalLabourCost, // Use totalLabourCost for invoice record
                     'invoice_date' => now(),
                     'due_date' => $validated['due_date'] ?? now()->addDays(30),
                     'status' => 'unpaid',
                     'paid_amount' => 0,
-                    'outstanding_amount' => $grandTotal,
+                    'outstanding_amount' => $totalLabourCost,
                 ]);
 
                 // Update jobcard status

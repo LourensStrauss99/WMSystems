@@ -49,7 +49,8 @@ class Employee extends Authenticatable
                         'hours_worked', 
                         'hour_type',
                         'hourly_rate',
-                        'total_cost'
+                        'total_cost',
+                        'travel_km' // Ensure travel_km is included
                     ])
                     ->withTimestamps();
     }

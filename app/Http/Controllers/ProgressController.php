@@ -38,9 +38,11 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
+        \Log::info('updateProgress called', $request->all());
         $jobcard = Jobcard::with(['employees', 'inventory'])->findOrFail($id);
 
         if ($request->action === 'invoice') {
+            \Log::info('Jobcard invoice_number before check', ['id' => $jobcard->id, 'invoice_number' => $jobcard->invoice_number]);
             // Prevent duplicate invoices
             if (!$jobcard->invoice_number) {
                 // Calculate inventory total using selling_price
@@ -49,12 +51,15 @@ class ProgressController extends Controller
                     $quantity = $item->pivot->quantity ?? 0;
                     $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
                     $inventoryTotal += ($quantity * $sellingPrice);
+                    // Reduce inventory stock here (quantity only)
+                    $item->quantity = max(0, $item->quantity - $quantity);
+                    $item->save();
                 }
 
                 // Calculate labour total using enhanced jobcard data
                 $company = \App\Models\CompanyDetail::first();
                 $totalLabourCost = floatval($jobcard->total_labour_cost ?? 0);
-                
+
                 // If no enhanced data, fall back to old calculation
                 if ($totalLabourCost == 0) {
                     $labourHours = $jobcard->employees->pluck('pivot.hours_worked')->sum();
@@ -77,8 +82,14 @@ class ProgressController extends Controller
                 $jobcard->status = 'invoiced';
                 $jobcard->invoice_number = $jobcard->jobcard_number;
                 $jobcard->save();
+                \Log::info('Jobcard status after invoice', ['id' => $jobcard->id, 'status' => $jobcard->status, 'invoice_number' => $jobcard->invoice_number]);
+                return redirect()->route('progress')->with('success', 'Invoice created and jobcard removed from progress!');
+            } else {
+                // Already invoiced: always set status to invoiced and save
+                $jobcard->status = 'invoiced';
+                $jobcard->save();
+                return redirect()->route('progress')->with('info', 'This jobcard has already been invoiced and removed from progress.');
             }
-            return redirect()->route('progress')->with('success', 'Invoice created and jobcard removed from progress!');
         }
 
         // Update employee hours

@@ -89,12 +89,21 @@ class GrvItem extends Model
                 $inventory->last_stock_update = now();
                 $inventory->stock_added = $this->getAcceptedQuantity();
                 $inventory->stock_update_reason = "Stock received via GRV: {$this->grv->grv_number}";
-                
                 // Update purchase information
                 $inventory->goods_received_voucher = $this->grv->grv_number;
                 $inventory->purchase_date = $this->grv->received_date;
                 $inventory->purchase_notes = "Received via GRV {$this->grv->grv_number}";
-                
+                // Update buying_price to the unit_price from the related PO item (for cost accuracy)
+                $poItem = $this->purchaseOrderItem;
+                if ($poItem && $poItem->unit_price) {
+                    $inventory->buying_price = $poItem->unit_price;
+                    Log::info('DEBUG: Setting inventory buying_price from PO item', [
+                        'inventory_id' => $inventory->id,
+                        'po_item_id' => $poItem->id,
+                        'unit_price' => $poItem->unit_price,
+                        'buying_price_set' => $inventory->buying_price
+                    ]);
+                }
                 // Save inventory
                 if ($inventory->save()) {
                     Log::info("Inventory saved successfully", [

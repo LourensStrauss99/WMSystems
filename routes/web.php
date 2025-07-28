@@ -464,7 +464,7 @@ Route::get('/api/company-rates', function() {
             'labour_rate' => 750.00,
             'overtime_multiplier' => 1.50,
             'weekend_multiplier' => 2.00,
-            'holiday_multiplier' => 2.50,
+            'public_holiday_multiplier' => 2.50,
             'call_out_rate' => 1000.00,
             'mileage_rate' => 7.50,
         ]);
@@ -474,7 +474,7 @@ Route::get('/api/company-rates', function() {
         'labour_rate' => floatval($company->labour_rate ?? 750),
         'overtime_multiplier' => floatval($company->overtime_multiplier ?? 1.5),
         'weekend_multiplier' => floatval($company->weekend_multiplier ?? 2.0),
-        'holiday_multiplier' => floatval($company->public_holiday_multiplier ?? 2.5),
+        'public_holiday_multiplier' => floatval($company->public_holiday_multiplier ?? 2.5),
         'call_out_rate' => floatval($company->call_out_rate ?? 1000),
         'mileage_rate' => floatval($company->mileage_rate ?? 7.5),
     ]);

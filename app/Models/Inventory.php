@@ -21,6 +21,7 @@ class Inventory extends Model
         // Pricing
         'nett_price',
         'sell_price',
+        'buying_price', // <-- Added for mass assignment
         
         // Stock
         'quantity',

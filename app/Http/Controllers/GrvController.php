@@ -150,6 +150,7 @@ class GrvController extends Controller
                             'short_code' => $poItem->item_code ?: 'AUTO-' . time(),
                             'vendor' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
                             'nett_price' => $poItem->unit_price,
+                            'buying_price' => $poItem->unit_price, // <-- Set buying_price from PO item
                             'sell_price' => $poItem->unit_price * 1.3, // 30% markup
                             'quantity' => 0, // Will be updated when stock is received
                             'min_quantity' => 5, // Default minimum

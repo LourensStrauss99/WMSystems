@@ -160,77 +160,129 @@
                 </tr>
             </thead>
             <tbody>
-                {{-- Inventory Items --}}
+                @php
+                    $company = $company ?? \App\Models\CompanyDetail::first();
+                    $inventoryTotal = 0;
+                    $normalHours = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? 'normal') === 'normal')->sum('pivot.hours_worked'));
+                    $overtimeHours = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'overtime')->sum('pivot.hours_worked'));
+                    $weekendHours = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'weekend')->sum('pivot.hours_worked'));
+                    $holidayHours = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'public_holiday')->sum('pivot.hours_worked'));
+                    $callOutHours = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'call_out')->sum('pivot.hours_worked'));
+                    $totalTravelKm = floatval($jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'traveling')->sum('pivot.travel_km'));
+                    $labourRate = $company->labour_rate ?? 750;
+                    $overtimeRate = $labourRate * ($company->overtime_multiplier ?? 1.5);
+                    $weekendRate = $labourRate * ($company->weekend_multiplier ?? 2.0);
+                    $holidayRate = $labourRate * ($company->public_holiday_multiplier ?? 2.5);
+                    $callOutRate = $company->call_out_rate ?? 1000;
+                    $mileageRate = $company->mileage_rate ?? 7.5;
+                    $normalCost = $normalHours * $labourRate;
+                    $overtimeCost = $overtimeHours * $overtimeRate;
+                    $weekendCost = $weekendHours * $weekendRate;
+                    $holidayCost = $holidayHours * $holidayRate;
+                    $callOutCost = $callOutHours * $callOutRate;
+                    $mileageCost = $totalTravelKm * $mileageRate;
+                    $totalLabourCost = $normalCost + $overtimeCost + $weekendCost + $holidayCost + $callOutCost + $mileageCost;
+                @endphp
+
+                <!-- Inventory Items -->
                 @foreach($jobcard->inventory as $item)
+                    @php
+                        $lineTotal = ($item->pivot->quantity ?? 0) * ($item->selling_price ?? $item->sell_price ?? 0);
+                        $inventoryTotal += $lineTotal;
+                    @endphp
                     <tr>
-                        <td>{{ $item->description ?? $item->name }}</td>
+                        <td>
+                            <strong>{{ $item->name }}</strong>
+                            @if($item->description)
+                                <br><small>{{ $item->description }}</small>
+                            @elseif($item->short_description)
+                                <br><small>{{ $item->short_description }}</small>
+                            @endif
+                        </td>
                         <td>{{ $item->pivot->quantity ?? 0 }}</td>
                         <td>{{ number_format($item->selling_price ?? $item->sell_price ?? 0, 2) }}</td>
-                        <td>{{ number_format(($item->pivot->quantity ?? 0) * ($item->selling_price ?? $item->sell_price ?? 0), 2) }}</td>
+                        <td>{{ number_format($lineTotal, 2) }}</td>
                     </tr>
                 @endforeach
                 @if($jobcard->inventory->count())
                 <tr>
                     <td colspan="3" style="text-align:right;">Inventory Subtotal</td>
-                    <td>{{ number_format($inventoryTotal ?? $jobcard->getInventoryTotal(), 2) }}</td>
+                    <td>{{ number_format($inventoryTotal, 2) }}</td>
                 </tr>
                 @endif
-                {{-- Labour Services --}}
-                @php
-                    $company = $company ?? \App\Models\CompanyDetail::first();
-                    $labourRows = [];
-                    foreach($jobcard->employees as $employee) {
-                        $type = $employee->pivot->hour_type ?? 'normal';
-                        $hours = $employee->pivot->hours_worked ?? 0;
-                        $rate = $company->labour_rate ?? 750;
-                        $label = 'Professional Labour';
-                        if($type === 'overtime') { $rate *= ($company->overtime_multiplier ?? 1.5); $label = 'Overtime Labour'; }
-                        elseif($type === 'weekend') { $rate *= ($company->weekend_multiplier ?? 2.0); $label = 'Weekend Labour'; }
-                        elseif($type === 'holiday') { $rate *= ($company->public_holiday_multiplier ?? 2.5); $label = 'Holiday Labour'; }
-                        $labourRows[] = [ 'label' => $label, 'hours' => $hours, 'rate' => $rate, 'total' => $hours * $rate ];
-                    }
-                @endphp
-                @foreach($labourRows as $row)
-                    @if($row['hours'] > 0)
+
+                <!-- Labour Services -->
+                @if($normalHours > 0 || $overtimeHours > 0 || $weekendHours > 0 || $holidayHours > 0 || $callOutHours > 0 || $totalTravelKm > 0)
+                    @if($normalHours > 0)
                     <tr>
-                        <td>{{ $row['label'] }}</td>
-                        <td>{{ $row['hours'] }}</td>
-                        <td>{{ number_format($row['rate'], 2) }}</td>
-                        <td>{{ number_format($row['total'], 2) }}</td>
+                        <td>Professional Labour - Normal Hours</td>
+                        <td>{{ number_format($normalHours, 1) }}</td>
+                        <td>{{ number_format($labourRate, 2) }}</td>
+                        <td>{{ number_format($normalCost, 2) }}</td>
                     </tr>
                     @endif
-                @endforeach
-                @if($jobcard->call_out_fee > 0)
-                <tr>
-                    <td>Emergency Call Out Fee</td>
-                    <td>1</td>
-                    <td>{{ number_format($jobcard->call_out_fee, 2) }}</td>
-                    <td>{{ number_format($jobcard->call_out_fee, 2) }}</td>
-                </tr>
+                    @if($overtimeHours > 0)
+                    <tr>
+                        <td>Professional Labour - Overtime Hours</td>
+                        <td>{{ number_format($overtimeHours, 1) }}</td>
+                        <td>{{ number_format($overtimeRate, 2) }}</td>
+                        <td>{{ number_format($overtimeCost, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($weekendHours > 0)
+                    <tr>
+                        <td>Professional Labour - Weekend Hours</td>
+                        <td>{{ number_format($weekendHours, 1) }}</td>
+                        <td>{{ number_format($weekendRate, 2) }}</td>
+                        <td>{{ number_format($weekendCost, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($holidayHours > 0)
+                    <tr>
+                        <td>Professional Labour - Public Holiday Hours</td>
+                        <td>{{ number_format($holidayHours, 1) }}</td>
+                        <td>{{ number_format($holidayRate, 2) }}</td>
+                        <td>{{ number_format($holidayCost, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($callOutHours > 0)
+                    <tr>
+                        <td>Professional Labour - Call Out</td>
+                        <td>{{ number_format($callOutHours, 1) }}</td>
+                        <td>{{ number_format($callOutRate, 2) }}</td>
+                        <td>{{ number_format($callOutCost, 2) }}</td>
+                    </tr>
+                    @endif
+                    @if($totalTravelKm > 0)
+                    <tr>
+                        <td>Travel / Mileage</td>
+                        <td>{{ number_format($totalTravelKm, 1) }}</td>
+                        <td>{{ number_format($mileageRate, 2) }}</td>
+                        <td>{{ number_format($mileageCost, 2) }}</td>
+                    </tr>
+                    @endif
+                    <tr>
+                        <td colspan="3" style="text-align:right;">Labour Services Subtotal</td>
+                        <td>{{ number_format($totalLabourCost, 2) }}</td>
+                    </tr>
                 @endif
-                @if($jobcard->mileage_km > 0)
-                <tr>
-                    <td>Total / Mileage</td>
-                    <td>{{ $jobcard->mileage_km }}</td>
-                    <td>{{ number_format($company->mileage_rate ?? 7.50, 2) }}</td>
-                    <td>{{ number_format($jobcard->mileage_cost, 2) }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <td colspan="3" style="text-align:right;">Labour Services Subtotal</td>
-                    <td>{{ number_format($jobcard->total_labour_cost ?? 0, 2) }}</td>
-                </tr>
+
+                @php
+                    $subtotal = $inventoryTotal + $totalLabourCost;
+                    $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
+                    $grandTotal = $subtotal + $vat;
+                @endphp
                 <tr>
                     <td colspan="3" style="text-align:right;">Subtotal</td>
-                    <td>{{ number_format(($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0), 2) }}</td>
+                    <td>{{ number_format($subtotal, 2) }}</td>
                 </tr>
                 <tr>
                     <td colspan="3" style="text-align:right;">VAT ({{ $company->vat_percent ?? 15 }}%)</td>
-                    <td>{{ number_format($vat ?? ((($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0)) * (($company->vat_percent ?? 15)/100)), 2) }}</td>
+                    <td>{{ number_format($vat, 2) }}</td>
                 </tr>
                 <tr class="total-row">
                     <td colspan="3" style="text-align:right;">Total Amount Due</td>
-                    <td>{{ number_format($grandTotal ?? ((($inventoryTotal ?? $jobcard->getInventoryTotal()) + ($jobcard->total_labour_cost ?? 0)) * (1 + ($company->vat_percent ?? 15)/100)), 2) }}</td>
+                    <td>{{ number_format($grandTotal, 2) }}</td>
                 </tr>
             </tbody>
         </table>

@@ -31,7 +31,8 @@ class Jobcard extends Model
                         'hours_worked', 
                         'hour_type',     // Add this
                         'hourly_rate',   // Add this  
-                        'total_cost'     // Add this
+                        'total_cost',    // Add this
+                        'travel_km'      // Ensure travel_km is included
                     ])
                     ->withTimestamps();
     }
@@ -39,7 +40,7 @@ class Jobcard extends Model
     public function inventory()
     {
         return $this->belongsToMany(\App\Models\Inventory::class, 'inventory_jobcard')
-            ->withPivot('quantity')
+            ->withPivot('quantity', 'buying_price', 'selling_price')
             ->withTimestamps();
     }
 

@@ -99,6 +99,8 @@
     <form id="jobcard-edit-form" enctype="multipart/form-data">
         @csrf
         @method('PUT')
+        <input type="hidden" id="deleted_employees" name="deleted_employees" value="">
+        <input type="hidden" id="deleted_traveling" name="deleted_traveling" value="">
     <!-- Job Info Card -->
     <div class="mobile-card">
         <div class="section-header header-blue">
@@ -143,11 +145,13 @@
                 <option value="public_holiday">Public Holiday</option>
                 <option value="call_out">Call Out</option>
             </select>
+            <input type="number" id="employee_travel_km" class="form-control" min="0" step="0.1" value="" placeholder="Kilometers (if Traveling)" style="margin-bottom: 0.3rem; display:none;">
             <button type="button" id="add_employee" class="btn btn-light inventory-add-btn" style="background:#e0e7ef; color:#2563eb; font-weight:600; border:1px solid #cbd5e1;">Add Employee</button>
         </div>
         <div class="inventory-list" id="employee_list" style="margin-top:0.5rem;">
             @if(isset($jobcard->employees) && $jobcard->employees->count())
                 @foreach($jobcard->employees as $employee)
+                    @if(($employee->pivot->hour_type ?? 'normal') !== 'traveling')
                     <div class="inventory-list-item" data-id="{{ $employee->id }}" style="background:#f3f4f6; border-radius:10px; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem;">
                         <span style="display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;">
                             <span>{{ $employee->name }}</span>
@@ -159,8 +163,42 @@
                         <input type="hidden" name="employee_hour_types[{{ $employee->id }}]" value="{{ $employee->pivot->hour_type ?? 'normal' }}">
                         <button type="button" class="inventory-remove-btn" onclick="removeEmployee(this)" style="background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;">&times;</button>
                     </div>
+                    @endif
                 @endforeach
             @endif
+        </div>
+        <!-- Traveling Section -->
+        <div class="mobile-card">
+            <div class="section-header header-teal">
+                <i class="fas fa-car"></i> Traveling (Kilometers)
+            </div>
+            <div class="inventory-add-row" style="gap: 0.5rem; margin-bottom: 1rem;">
+                <select id="travel_employee_select" class="form-control" style="margin-bottom: 0.3rem;">
+                    <option value="">Select Employee</option>
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" id="travel_km" class="form-control" min="0" step="0.1" value="" placeholder="Kilometers">
+                <button type="button" id="add_traveling" class="btn btn-light inventory-add-btn" style="background:#e0e7ef; color:#14b8a6; font-weight:600; border:1px solid #99f6e4;">Add Traveling</button>
+            </div>
+            <div class="inventory-list" id="traveling_list" style="margin-top:0.5rem;">
+                @if(isset($jobcard->employees) && $jobcard->employees->count())
+                    @foreach($jobcard->employees as $employee)
+                        @if(($employee->pivot->hour_type ?? '') === 'traveling')
+                        <div class="inventory-list-item" data-id="{{ $employee->id }}" style="background:#e0f2f1; border-radius:10px; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem;">
+                            <span style="display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;">
+                                <span>{{ $employee->name }}</span>
+                                <span>Kilometers: {{ $employee->pivot->travel_km ?? 0 }}</span>
+                            </span>
+                            <input type="hidden" name="traveling_employees[]" value="{{ $employee->id }}">
+                            <input type="hidden" name="traveling_km[{{ $employee->id }}]" value="{{ $employee->pivot->travel_km ?? 0 }}">
+                            <button type="button" class="inventory-remove-btn" onclick="removeTraveling(this)" style="background:#e0e7eb; color:#14b8a6; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;">&times;</button>
+                        </div>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
         </div>
     </div>
     <!-- Inventory Card -->
@@ -326,7 +364,26 @@ function removeInventory(btn) {
 }
 
 function removeEmployee(btn) {
-    btn.closest('.inventory-list-item').remove();
+    const item = btn.closest('.inventory-list-item');
+    const id = item.getAttribute('data-id');
+    // Add to deleted_employees hidden input
+    let deleted = document.getElementById('deleted_employees').value;
+    let arr = deleted ? deleted.split(',') : [];
+    if (!arr.includes(id)) arr.push(id);
+    document.getElementById('deleted_employees').value = arr.join(',');
+    item.remove();
+}
+const hourTypeInput = document.getElementById('employee_hour_type');
+const travelKmInput = document.getElementById('employee_travel_km');
+if (hourTypeInput) {
+    hourTypeInput.addEventListener('change', function() {
+        if (hourTypeInput.value === 'traveling') {
+            travelKmInput.style.display = '';
+        } else {
+            travelKmInput.style.display = 'none';
+            travelKmInput.value = '';
+        }
+    });
 }
 const addEmployeeBtn = document.getElementById('add_employee');
 if (addEmployeeBtn) {
@@ -334,10 +391,15 @@ if (addEmployeeBtn) {
         let select = document.getElementById('employee_select');
         let hours = document.getElementById('employee_hours').value;
         let hourType = document.getElementById('employee_hour_type').value;
+        let travelKm = document.getElementById('employee_travel_km').value;
         let id = select.value;
         let name = select.options[select.selectedIndex].text;
         if (!id || !hours || hours < 0) {
             alert('Please select an employee and enter valid hours');
+            return;
+        }
+        if (hourType === 'traveling' && (!travelKm || travelKm < 0)) {
+            alert('Please enter kilometers for traveling');
             return;
         }
         // Prevent duplicate
@@ -345,19 +407,64 @@ if (addEmployeeBtn) {
             alert('This employee is already assigned');
             return;
         }
+        let extraTravel = hourType === 'traveling' ? `<span>Kilometers: ${travelKm}</span>` : '';
+        let travelInput = hourType === 'traveling' ? `<input type='hidden' name='employee_travel_km[${id}]' value='${travelKm}'>` : '';
         let div = document.createElement('div');
         div.className = 'inventory-list-item';
         div.setAttribute('data-id', id);
-        div.innerHTML = `<span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'><span>${name}</span><span>Hours: ${hours}</span><span>Type: ${hourType}</span></span>
+        div.innerHTML = `<span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'><span>${name}</span><span>Hours: ${hours}</span><span>Type: ${hourType}</span>${extraTravel}</span>
             <input type='hidden' name='employees[]' value='${id}'>
             <input type='hidden' name='employee_hours[${id}]' value='${hours}'>
             <input type='hidden' name='employee_hour_types[${id}]' value='${hourType}'>
+            ${travelInput}
             <button type='button' class='inventory-remove-btn' onclick='removeEmployee(this)' style='background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;'>&times;</button>`;
         document.getElementById('employee_list').appendChild(div);
         // Reset form
         select.value = '';
         document.getElementById('employee_hours').value = '';
         document.getElementById('employee_hour_type').value = 'normal';
+        travelKmInput.value = '';
+        travelKmInput.style.display = 'none';
+    });
+}
+
+function removeTraveling(btn) {
+    const item = btn.closest('.inventory-list-item');
+    const id = item.getAttribute('data-id');
+    // Add to deleted_traveling hidden input
+    let deleted = document.getElementById('deleted_traveling').value;
+    let arr = deleted ? deleted.split(',') : [];
+    if (!arr.includes(id)) arr.push(id);
+    document.getElementById('deleted_traveling').value = arr.join(',');
+    item.remove();
+}
+const addTravelingBtn = document.getElementById('add_traveling');
+if (addTravelingBtn) {
+    addTravelingBtn.addEventListener('click', function() {
+        let select = document.getElementById('travel_employee_select');
+        let km = document.getElementById('travel_km').value;
+        let id = select.value;
+        let name = select.options[select.selectedIndex].text;
+        if (!id || !km || km < 0) {
+            alert('Please select an employee and enter valid kilometers');
+            return;
+        }
+        // Prevent duplicate traveling for same employee
+        if (document.querySelector('#traveling_list .inventory-list-item[data-id="'+id+'"]')) {
+            alert('This employee already has a traveling entry');
+            return;
+        }
+        let div = document.createElement('div');
+        div.className = 'inventory-list-item';
+        div.setAttribute('data-id', id);
+        div.innerHTML = `<span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'><span>${name}</span><span>Kilometers: ${km}</span></span>
+            <input type='hidden' name='traveling_employees[]' value='${id}'>
+            <input type='hidden' name='traveling_km[${id}]' value='${km}'>
+            <button type='button' class='inventory-remove-btn' onclick='removeTraveling(this)' style='background:#e0e7eb; color:#14b8a6; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;'>&times;</button>`;
+        document.getElementById('traveling_list').appendChild(div);
+        // Reset form
+        select.value = '';
+        document.getElementById('travel_km').value = '';
     });
 }
 

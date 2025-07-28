@@ -65,7 +65,12 @@ class JobcardController extends Controller
         if ($request->has('inventory')) {
             $syncData = [];
             foreach ($request->inventory as $item) {
-                $syncData[$item['id']] = ['quantity' => $item['quantity'] ?? 1];
+                $inventory = Inventory::find($item['id']);
+                $syncData[$item['id']] = [
+                    'quantity' => $item['quantity'] ?? 1,
+                    'buying_price' => $inventory ? $inventory->buying_price : null,
+                    'selling_price' => $inventory ? $inventory->selling_price : null,
+                ];
             }
             $jobcard->inventory()->sync($syncData);
         }
@@ -190,12 +195,14 @@ class JobcardController extends Controller
             if ($request->has('inventory_qty')) {
                 $syncData = [];
                 foreach ($request->inventory_qty as $itemId => $qty) {
-                    $syncData[$itemId] = ['quantity' => $qty];
                     $inventory = Inventory::find($itemId);
-                    if ($inventory) {
-                        $inventory->stock_level = max(0, $inventory->stock_level - $qty);
-                        $inventory->save();
-                    }
+                    // Store current buying_price and selling_price on the pivot for historical accuracy
+                    $syncData[$itemId] = [
+                        'quantity' => $qty,
+                        'buying_price' => $inventory ? $inventory->buying_price : null,
+                        'selling_price' => $inventory ? $inventory->selling_price : null,
+                    ];
+                    // Do NOT update inventory stock here
                 }
                 $jobcard->inventory()->sync($syncData);
             }
@@ -253,27 +260,91 @@ class JobcardController extends Controller
     public function update(Request $request, Jobcard $jobcard)
     {
         DB::transaction(function () use ($request, $jobcard) {
-            // Update jobcard basic fields
+            // Update basic jobcard fields
             $jobcard->update($request->only([
-                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 
-                'status', 'work_done', 'time_spent', 'progress_note',
-                'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
-                'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
+                'jobcard_number', 'job_date', 'client_id', 'category', 
+                'work_request', 'special_request', 'status', 'work_done',
+                'normal_hours', 'overtime_hours', 'weekend_hours', 
+                'public_holiday_hours', 'call_out_hours', 'total_labour_cost'
             ]));
+            // Clean up duplicate pivot entries for this jobcard
+            $pivotTable = 'employee_jobcard';
+            $jobcardId = $jobcard->id;
+            DB::statement("
+                DELETE t1 FROM $pivotTable t1
+                INNER JOIN $pivotTable t2
+                WHERE
+                    t1.id > t2.id
+                    AND t1.employee_id = t2.employee_id
+                    AND t1.jobcard_id = t2.jobcard_id
+                    AND t1.hour_type = t2.hour_type
+                    AND t1.jobcard_id = ?
+            ", [$jobcardId]);
 
-            // Handle employees with hours AND hour types
-            if ($request->has('employees')) {
-                $syncData = [];
+            // Detach all existing employee_jobcard entries for this jobcard
+            $jobcard->employees()->detach();
+
+            // Attach all current entries (including traveling)
+            $attachData = [];
+            // Non-traveling employees
+            if ($request->has('employees') && !empty($request->employees)) {
                 foreach ($request->employees as $employeeId) {
-                    $hours = $request->employee_hours[$employeeId] ?? 0;
                     $hourType = $request->employee_hour_types[$employeeId] ?? 'normal';
-                    
-                    $syncData[$employeeId] = [
+                    $hours = $request->employee_hours[$employeeId] ?? 0;
+                    $travelKm = ($hourType === 'traveling') ? ($request->traveling_km[$employeeId] ?? 0) : null;
+                    $attachData[] = [
+                        'employee_id' => $employeeId,
                         'hours_worked' => $hours,
-                        'hour_type' => $hourType  // Add this to pivot table
+                        'hour_type' => $hourType,
+                        'travel_km' => $travelKm
                     ];
                 }
-                $jobcard->employees()->sync($syncData);
+            }
+            // Traveling employees (ensure not duplicated)
+            if ($request->has('traveling_employees')) {
+                foreach ($request->traveling_employees as $employeeId) {
+                    // Only add if not already in attachData as traveling
+                    $already = collect($attachData)->first(function($row) use ($employeeId) {
+                        return $row['employee_id'] == $employeeId && $row['hour_type'] == 'traveling';
+                    });
+                    if (!$already) {
+                        $travelKm = $request->traveling_km[$employeeId] ?? 0;
+                        $attachData[] = [
+                            'employee_id' => $employeeId,
+                            'hours_worked' => 0,
+                            'hour_type' => 'traveling',
+                            'travel_km' => $travelKm
+                        ];
+                    }
+                }
+            }
+            // Attach all
+            foreach ($attachData as $row) {
+                $jobcard->employees()->attach($row['employee_id'], [
+                    'hours_worked' => $row['hours_worked'],
+                    'hour_type' => $row['hour_type'],
+                    'travel_km' => $row['travel_km']
+                ]);
+            }
+
+            // After handling traveling, update mileage_km on jobcard
+            $totalTravelKm = $jobcard->employees()->wherePivot('hour_type', 'traveling')->sum('employee_jobcard.travel_km');
+            $jobcard->mileage_km = $totalTravelKm;
+            $jobcard->save();
+
+            // Handle deletions for employees (all hour types except traveling)
+            if ($request->filled('deleted_employees')) {
+                $ids = array_filter(explode(',', $request->deleted_employees));
+                if (!empty($ids)) {
+                    $jobcard->employees()->wherePivotIn('employee_id', $ids)->wherePivot('hour_type', '!=', 'traveling')->detach();
+                }
+            }
+            // Handle deletions for traveling entries
+            if ($request->filled('deleted_traveling')) {
+                $ids = array_filter(explode(',', $request->deleted_traveling));
+                if (!empty($ids)) {
+                    $jobcard->employees()->wherePivotIn('employee_id', $ids)->wherePivot('hour_type', 'traveling')->detach();
+                }
             }
 
             // Handle inventory - support both old and new formats

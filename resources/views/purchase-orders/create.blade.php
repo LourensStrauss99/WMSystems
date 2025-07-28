@@ -157,10 +157,10 @@
                                                     data-name="{{ $item->name }}"
                                                     data-code="{{ $item->short_code }}"
                                                     data-description="{{ $item->description }}"
-                                                    data-price="{{ $item->buying_price }}"
+                                                    data-price="{{ $item->buying_price ?? $item->nett_price ?? 0 }}"
                                                     data-supplier="{{ $item->supplier }}"
                                                     data-stock="{{ $item->quantity }}">
-                                                {{ $item->name }} ({{ $item->short_code }}) - R{{ number_format($item->buying_price, 2) }} - Stock: {{ $item->quantity }}
+                                                {{ $item->name }} ({{ $item->short_code }}) - R{{ number_format($item->buying_price ?? $item->nett_price ?? 0, 2) }} - Stock: {{ $item->quantity }}
                                             </option>
                                         @endforeach
                                     </select>

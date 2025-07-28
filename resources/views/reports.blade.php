@@ -41,16 +41,19 @@
                             <h6 class="card-title mb-1">Hours Revenue</h6>
                             <h4 class="mb-0">R {{ number_format($currentRevenue['hours_revenue'], 2) }}</h4>
                             <small class="opacity-75">
-                                {{ number_format($currentHours['booked_hours']) }} hours total
+                                {{ number_format(array_sum($currentRevenue['hours_detail'] ?? [])) }} hours total
                             </small>
                         </div>
                         <i class="fas fa-clock fa-2x opacity-50"></i>
                     </div>
                     <div class="mt-2">
                         <div class="small">
-                            <div>Normal: R {{ number_format($currentRevenue['hours_breakdown']['normal'], 2) }}</div>
-                            <div>Overtime: R {{ number_format($currentRevenue['hours_breakdown']['overtime'], 2) }}</div>
-                            <div>Weekend: R {{ number_format($currentRevenue['hours_breakdown']['weekend'], 2) }}</div>
+                            <div>Normal: R {{ number_format($currentRevenue['hours_breakdown']['normal'] ?? 0, 2) }}</div>
+                            <div>Overtime: R {{ number_format($currentRevenue['hours_breakdown']['overtime'] ?? 0, 2) }}</div>
+                            <div>Weekend: R {{ number_format($currentRevenue['hours_breakdown']['weekend'] ?? 0, 2) }}</div>
+                            <div>Holiday: R {{ number_format($currentRevenue['hours_breakdown']['public_holiday'] ?? 0, 2) }}</div>
+                            <div>Call Out: R {{ number_format($currentRevenue['hours_breakdown']['call_out'] ?? 0, 2) }}</div>
+                            <div>Traveling: R {{ number_format($currentRevenue['hours_breakdown']['traveling'] ?? 0, 2) }}</div>
                         </div>
                     </div>
                 </div>
@@ -126,6 +129,22 @@
                 </div>
             </div>
         </div>
+
+        {{-- Total Invoiced Card --}}
+        <div class="col-md-3 mt-3 mt-md-0">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-1">Total Invoiced</h6>
+                            <h4 class="mb-0">R {{ number_format($currentRevenue['total_invoiced'] ?? 0, 2) }}</h4>
+                            <small class="opacity-75">All invoices for period</small>
+                        </div>
+                        <i class="fas fa-file-invoice-dollar fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     {{-- Hours Utilization Section --}}
@@ -191,44 +210,58 @@
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
                                     <span>Normal (R{{ number_format($company->standard_labour_rate, 2) }}/hr)</span>
-                                    <strong>{{ number_format($currentRevenue['hours_detail']['normal']) }}h</strong>
+                                    <strong>{{ number_format($currentRevenue['hours_detail']['normal'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar bg-primary" style="width: {{ $currentHours['booked_hours'] > 0 ? ($currentRevenue['hours_detail']['normal'] / $currentHours['booked_hours']) * 100 : 0 }}%"></div>
+                                    <div class="progress-bar bg-primary" style="width: {{ array_sum($currentRevenue['hours_detail'] ?? []) > 0 ? ($currentRevenue['hours_detail']['normal'] / array_sum($currentRevenue['hours_detail'] ?? [])) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-                            
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
-                                    <span>Overtime (R{{ number_format($company->calculateHourlyRate('overtime'), 2) }}/hr)</span>
-                                    <strong>{{ number_format($currentRevenue['hours_detail']['overtime']) }}h</strong>
+                                    <span>Overtime (R{{ number_format($company->standard_labour_rate * $company->overtime_multiplier, 2) }}/hr)</span>
+                                    <strong>{{ number_format($currentRevenue['hours_detail']['overtime'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar bg-warning" style="width: {{ $currentHours['booked_hours'] > 0 ? ($currentRevenue['hours_detail']['overtime'] / $currentHours['booked_hours']) * 100 : 0 }}%"></div>
+                                    <div class="progress-bar bg-warning" style="width: {{ array_sum($currentRevenue['hours_detail'] ?? []) > 0 ? ($currentRevenue['hours_detail']['overtime'] / array_sum($currentRevenue['hours_detail'] ?? [])) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="col-6">
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
-                                    <span>Weekend (R{{ number_format($company->calculateHourlyRate('weekend'), 2) }}/hr)</span>
-                                    <strong>{{ number_format($currentRevenue['hours_detail']['weekend']) }}h</strong>
+                                    <span>Weekend (R{{ number_format($company->standard_labour_rate * $company->weekend_multiplier, 2) }}/hr)</span>
+                                    <strong>{{ number_format($currentRevenue['hours_detail']['weekend'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar bg-info" style="width: {{ $currentHours['booked_hours'] > 0 ? ($currentRevenue['hours_detail']['weekend'] / $currentHours['booked_hours']) * 100 : 0 }}%"></div>
+                                    <div class="progress-bar bg-info" style="width: {{ array_sum($currentRevenue['hours_detail'] ?? []) > 0 ? ($currentRevenue['hours_detail']['weekend'] / array_sum($currentRevenue['hours_detail'] ?? [])) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
-                            
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
-                                    <span>Holiday (R{{ number_format($company->calculateHourlyRate('holiday'), 2) }}/hr)</span>
-                                    <strong>{{ number_format($currentRevenue['hours_detail']['holiday']) }}h</strong>
+                                    <span>Holiday (R{{ number_format($company->standard_labour_rate * $company->public_holiday_multiplier, 2) }}/hr)</span>
+                                    <strong>{{ number_format($currentRevenue['hours_detail']['public_holiday'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
-                                    <div class="progress-bar bg-danger" style="width: {{ $currentHours['booked_hours'] > 0 ? ($currentRevenue['hours_detail']['holiday'] / $currentHours['booked_hours']) * 100 : 0 }}%"></div>
+                                    <div class="progress-bar bg-danger" style="width: {{ array_sum($currentRevenue['hours_detail'] ?? []) > 0 ? ($currentRevenue['hours_detail']['public_holiday'] / array_sum($currentRevenue['hours_detail'] ?? [])) * 100 : 0 }}%"></div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <span>Call Out (R{{ number_format($company->call_out_rate, 2) }}/hr)</span>
+                                    <strong>{{ number_format($currentRevenue['hours_detail']['call_out'] ?? 0) }}h</strong>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar bg-secondary" style="width: {{ array_sum($currentRevenue['hours_detail'] ?? []) > 0 ? ($currentRevenue['hours_detail']['call_out'] / array_sum($currentRevenue['hours_detail'] ?? [])) * 100 : 0 }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Traveling (R{{ number_format($company->mileage_rate, 2) }}/km)</span>
+                            <strong>{{ number_format($currentRevenue['hours_detail']['traveling'] ?? 0, 1) }} km</strong>
                         </div>
                     </div>
                 </div>
@@ -250,6 +283,7 @@
                         <tr>
                             <th>Employee</th>
                             <th>Total Hours</th>
+                            <th>Traveling (km)</th>
                             <th>Jobcards</th>
                             <th>Avg Hours/Jobcard</th>
                             <th>Utilization</th>
@@ -260,6 +294,7 @@
                             <tr>
                                 <td>{{ $employee['name'] }}</td>
                                 <td>{{ number_format($employee['total_hours'], 1) }}</td>
+                                <td>{{ number_format($employee['traveling_km'], 1) }}</td>
                                 <td>{{ $employee['jobcard_count'] }}</td>
                                 <td>{{ number_format($employee['avg_hours_per_jobcard'], 1) }}</td>
                                 <td>

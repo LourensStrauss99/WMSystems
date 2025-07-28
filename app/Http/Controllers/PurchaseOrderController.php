@@ -118,6 +118,8 @@ class PurchaseOrderController extends Controller
                     'line_total' => $itemData['quantity_ordered'] * $itemData['unit_price'],
                 ]);
             }
+            // Ensure totals are correct
+            $purchaseOrder->calculateTotals();
         });
 
         return redirect()->route('purchase-orders.index')
@@ -233,6 +235,8 @@ class PurchaseOrderController extends Controller
                     'line_total' => $item['quantity_ordered'] * $item['unit_price'],
                 ]);
             }
+            // Ensure totals are correct
+            $purchaseOrder->calculateTotals();
         });
 
         $message = $purchaseOrder->status === 'draft' 

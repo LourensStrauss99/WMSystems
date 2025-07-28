@@ -20,7 +20,7 @@ class ReportController extends Controller
         $selectedYear = $request->get('year', Carbon::now()->year);
         $viewMode = $request->get('view', 'monthly'); // monthly or ytd
         
-        $company = Company::getSettings();
+        $company = \App\Models\CompanyDetail::first();
         
         return view('reports', [
             'selectedMonth' => $selectedMonth,
@@ -78,17 +78,39 @@ class ReportController extends Controller
         
         $utilizationRate = $availableHours > 0 ? round(($bookedHours / $availableHours) * 100, 2) : 0;
         
+        $traveling_km = DB::table('employee_jobcard')
+            ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+            ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+            ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+            ->where('employees.is_active', true)
+            ->whereDate('invoices.invoice_date', '>=', $startDate)
+            ->whereDate('invoices.invoice_date', '<=', $endDate)
+            ->where('employee_jobcard.hour_type', 'traveling')
+            ->sum('employee_jobcard.travel_km');
+
+        $callOutHours = DB::table('employee_jobcard')
+            ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+            ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+            ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+            ->where('employees.is_active', true)
+            ->whereDate('invoices.invoice_date', '>=', $startDate)
+            ->whereDate('invoices.invoice_date', '<=', $endDate)
+            ->where('employee_jobcard.hour_type', 'call_out')
+            ->sum('employee_jobcard.hours_worked');
+
         return [
             'working_days' => $workingDays,
             'artisan_count' => $employees, // Rename this to employee_count
             'available_hours' => $availableHours,
             'booked_hours' => $bookedHours,
-            'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours,
+            'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours - $callOutHours,
             'overtime_hours' => $overtimeHours,
             'weekend_hours' => $weekendHours,
             'holiday_hours' => $holidayHours,
             'utilization_rate' => $utilizationRate,
             'hours_per_employee' => $employees > 0 ? round($bookedHours / $employees, 2) : 0,
+            'traveling_km' => $traveling_km,
+            'call_out_hours' => $callOutHours,
         ];
     }
 
@@ -130,17 +152,39 @@ class ReportController extends Controller
         
         $utilizationRate = $availableHours > 0 ? round(($bookedHours / $availableHours) * 100, 2) : 0;
         
+        $traveling_km = DB::table('employee_jobcard')
+            ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+            ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+            ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+            ->where('employees.is_active', true)
+            ->whereDate('invoices.invoice_date', '>=', $startDate)
+            ->whereDate('invoices.invoice_date', '<=', $endDate)
+            ->where('employee_jobcard.hour_type', 'traveling')
+            ->sum('employee_jobcard.travel_km');
+
+        $callOutHours = DB::table('employee_jobcard')
+            ->join('jobcards', 'employee_jobcard.jobcard_id', '=', 'jobcards.id')
+            ->join('employees', 'employee_jobcard.employee_id', '=', 'employees.id')
+            ->join('invoices', 'jobcards.id', '=', 'invoices.jobcard_id')
+            ->where('employees.is_active', true)
+            ->whereDate('invoices.invoice_date', '>=', $startDate)
+            ->whereDate('invoices.invoice_date', '<=', $endDate)
+            ->where('employee_jobcard.hour_type', 'call_out')
+            ->sum('employee_jobcard.hours_worked');
+
         return [
             'working_days' => $workingDays,
             'artisan_count' => $employees, // Rename this to employee_count
             'available_hours' => $availableHours,
             'booked_hours' => $bookedHours,
-            'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours,
+            'normal_hours' => $bookedHours - $overtimeHours - $weekendHours - $holidayHours - $callOutHours,
             'overtime_hours' => $overtimeHours,
             'weekend_hours' => $weekendHours,
             'holiday_hours' => $holidayHours,
             'utilization_rate' => $utilizationRate,
             'hours_per_employee' => $employees > 0 ? round($bookedHours / $employees, 2) : 0,
+            'traveling_km' => $traveling_km,
+            'call_out_hours' => $callOutHours,
         ];
     }
 
@@ -150,47 +194,79 @@ class ReportController extends Controller
         $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
         $company = Company::getSettings();
         
-        // GET ACTUAL INVOICES INSTEAD OF CALCULATING FROM JOBCARDS
         $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
                           ->whereDate('invoice_date', '<=', $endDate)
                           ->with(['jobcard.inventory', 'jobcard.employees'])
                           ->get();
         
         $totalRevenue = $invoices->sum('amount');
-        
-        // Calculate hours breakdown from actual invoices
         $hoursRevenue = 0;
         $inventoryRevenue = 0;
         $inventoryCost = 0;
-        
+        $breakdown = [
+            'normal' => 0,
+            'overtime' => 0,
+            'weekend' => 0,
+            'public_holiday' => 0,
+            'call_out' => 0,
+            'traveling' => 0,
+        ];
+        $hours_detail = [
+            'normal' => 0,
+            'overtime' => 0,
+            'weekend' => 0,
+            'public_holiday' => 0,
+            'call_out' => 0,
+            'traveling' => 0,
+        ];
         foreach ($invoices as $invoice) {
             $jobcard = $invoice->jobcard;
-            
-            // Calculate inventory portion
+            if (!$jobcard) continue;
+            // Inventory
             $invTotal = $jobcard->inventory->sum(function($item) {
-                return $item->pivot->quantity * $item->selling_price;
+                // Use selling_price from pivot if available, else from inventory
+                $selling = $item->pivot->selling_price ?? $item->selling_price ?? $item->sell_price ?? 0;
+                return $item->pivot->quantity * $selling;
             });
             $invCost = $jobcard->inventory->sum(function($item) {
-                return $item->pivot->quantity * $item->buying_price;
+                // Use buying_price from pivot if available, else from inventory
+                $cost = $item->pivot->buying_price ?? $item->buying_price ?? 0;
+                return $item->pivot->quantity * $cost;
             });
-            
             $inventoryRevenue += $invTotal;
             $inventoryCost += $invCost;
-            
-            // Calculate labour portion
-            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
-            $labourTotal = $labourHours * $company->standard_labour_rate;
-            $hoursRevenue += $labourTotal;
+            // Labour by hour type
+            $types = ['normal','overtime','weekend','public_holiday','call_out','traveling'];
+            foreach ($types as $type) {
+                if ($type === 'traveling') {
+                    $km = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'traveling')->sum('pivot.travel_km');
+                    $breakdown['traveling'] += $km * ($company->mileage_rate ?? 0);
+                    $hours_detail['traveling'] += $km;
+                } elseif ($type === 'call_out') {
+                    $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'call_out')->sum('pivot.hours_worked');
+                    $breakdown['call_out'] += $hours * ($company->call_out_rate ?? 0);
+                    $hours_detail['call_out'] += $hours;
+                } else {
+                    $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? ($type === 'normal' ? 'normal' : '')) === $type)->sum('pivot.hours_worked');
+                    $rate = match($type) {
+                        'normal' => $company->standard_labour_rate ?? 0,
+                        'overtime' => ($company->standard_labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
+                        'weekend' => ($company->standard_labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
+                        'public_holiday' => ($company->standard_labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
+                        default => 0,
+                    };
+                    $breakdown[$type] += $hours * $rate;
+                    $hours_detail[$type] += $hours;
+                }
+            }
         }
-        
+        $hoursRevenue = array_sum($breakdown);
         $inventoryProfit = $inventoryRevenue - $inventoryCost;
         $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
-        
-        // Calculate VAT (it's included in invoice amount)
         $subtotal = $hoursRevenue + $inventoryRevenue;
-        $vatAmount = $subtotal * ($company->vat_percentage / 100);
+        $vatAmount = $subtotal * (($company->vat_percentage ?? $company->vat_percent ?? 0) / 100);
         $netProfit = $hoursRevenue + $inventoryProfit;
-        
+        $total_invoiced = $totalRevenue;
         return [
             'hours_revenue' => $hoursRevenue,
             'inventory_revenue' => $inventoryRevenue,
@@ -202,18 +278,9 @@ class ReportController extends Controller
             'total_inc_vat' => $totalRevenue,
             'net_profit' => $netProfit,
             'profit_margin' => $subtotal > 0 ? round(($netProfit / $subtotal) * 100, 2) : 0,
-            // Add hour breakdowns if needed
-            'hours_breakdown' => [
-                'normal' => $hoursRevenue, // You can break this down further if needed
-                'overtime' => 0,
-                'weekend' => 0,
-            ],
-            'hours_detail' => [
-                'normal' => $hoursRevenue / ($company->standard_labour_rate ?: 1),
-                'overtime' => 0,
-                'weekend' => 0,
-                'holiday' => 0,
-            ],
+            'hours_breakdown' => $breakdown,
+            'hours_detail' => $hours_detail,
+            'total_invoiced' => $total_invoiced,
         ];
     }
 
@@ -261,49 +328,72 @@ class ReportController extends Controller
         $startDate = Carbon::createFromFormat('Y', $year)->startOfYear();
         $endDate = Carbon::createFromFormat('Y', $year)->endOfYear();
         $company = Company::getSettings();
-        
-        // GET ALL INVOICES FOR THE YEAR
         $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
                           ->whereDate('invoice_date', '<=', $endDate)
                           ->with(['jobcard.inventory', 'jobcard.employees'])
                           ->get();
-        
         $totalRevenue = $invoices->sum('amount');
-        
-        // Calculate breakdown from actual invoices
         $hoursRevenue = 0;
         $inventoryRevenue = 0;
         $inventoryCost = 0;
-        
+        $breakdown = [
+            'normal' => 0,
+            'overtime' => 0,
+            'weekend' => 0,
+            'public_holiday' => 0,
+            'call_out' => 0,
+            'traveling' => 0,
+        ];
+        $hours_detail = [
+            'normal' => 0,
+            'overtime' => 0,
+            'weekend' => 0,
+            'public_holiday' => 0,
+            'call_out' => 0,
+            'traveling' => 0,
+        ];
         foreach ($invoices as $invoice) {
             $jobcard = $invoice->jobcard;
-            
-            if (!$jobcard) continue; // Skip if no jobcard
-            
-            // Calculate inventory portion
+            if (!$jobcard) continue;
             $invTotal = $jobcard->inventory->sum(function($item) {
                 return $item->pivot->quantity * $item->selling_price;
             });
             $invCost = $jobcard->inventory->sum(function($item) {
                 return $item->pivot->quantity * $item->buying_price;
             });
-            
             $inventoryRevenue += $invTotal;
             $inventoryCost += $invCost;
-            
-            // Calculate labour portion
-            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
-            $labourTotal = $labourHours * $company->standard_labour_rate;
-            $hoursRevenue += $labourTotal;
+            $types = ['normal','overtime','weekend','public_holiday','call_out','traveling'];
+            foreach ($types as $type) {
+                if ($type === 'traveling') {
+                    $km = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'traveling')->sum('pivot.travel_km');
+                    $breakdown['traveling'] += $km * ($company->mileage_rate ?? 0);
+                    $hours_detail['traveling'] += $km;
+                } elseif ($type === 'call_out') {
+                    $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'call_out')->sum('pivot.hours_worked');
+                    $breakdown['call_out'] += $hours * ($company->call_out_rate ?? 0);
+                    $hours_detail['call_out'] += $hours;
+                } else {
+                    $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? ($type === 'normal' ? 'normal' : '')) === $type)->sum('pivot.hours_worked');
+                    $rate = match($type) {
+                        'normal' => $company->standard_labour_rate ?? 0,
+                        'overtime' => ($company->standard_labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
+                        'weekend' => ($company->standard_labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
+                        'public_holiday' => ($company->standard_labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
+                        default => 0,
+                    };
+                    $breakdown[$type] += $hours * $rate;
+                    $hours_detail[$type] += $hours;
+                }
+            }
         }
-        
+        $hoursRevenue = array_sum($breakdown);
         $inventoryProfit = $inventoryRevenue - $inventoryCost;
         $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
-        
         $subtotal = $hoursRevenue + $inventoryRevenue;
-        $vatAmount = $subtotal * ($company->vat_percentage / 100);
+        $vatAmount = $subtotal * (($company->vat_percentage ?? $company->vat_percent ?? 0) / 100);
         $netProfit = $hoursRevenue + $inventoryProfit;
-        
+        $total_invoiced = $totalRevenue;
         return [
             'hours_revenue' => $hoursRevenue,
             'inventory_revenue' => $inventoryRevenue,
@@ -315,17 +405,9 @@ class ReportController extends Controller
             'total_inc_vat' => $totalRevenue,
             'net_profit' => $netProfit,
             'profit_margin' => $subtotal > 0 ? round(($netProfit / $subtotal) * 100, 2) : 0,
-            'hours_breakdown' => [
-                'normal' => $hoursRevenue,
-                'overtime' => 0,
-                'weekend' => 0,
-            ],
-            'hours_detail' => [
-                'normal' => $hoursRevenue / ($company->standard_labour_rate ?: 1),
-                'overtime' => 0,
-                'weekend' => 0,
-                'holiday' => 0,
-            ],
+            'hours_breakdown' => $breakdown,
+            'hours_detail' => $hours_detail,
+            'total_invoiced' => $total_invoiced,
         ];
     }
 
@@ -444,29 +526,33 @@ class ReportController extends Controller
             foreach ($jobcard->employees as $employee) {
                 $employeeName = $employee->full_name ?? ($employee->name . ' ' . $employee->surname);
                 $hours = $employee->pivot->hours_worked ?? 0;
+                $traveling_km = ($employee->pivot->hour_type ?? '') === 'traveling' ? ($employee->pivot->travel_km ?? 0) : 0;
                 
                 if (!isset($employeeStats[$employee->id])) {
                     $employeeStats[$employee->id] = [
                         'name' => $employeeName,
                         'total_hours' => 0,
                         'jobcard_count' => 0,
+                        'traveling_km' => 0,
                     ];
                 }
                 
                 $employeeStats[$employee->id]['total_hours'] += $hours;
                 $employeeStats[$employee->id]['jobcard_count']++;
+                $employeeStats[$employee->id]['traveling_km'] += $traveling_km;
             }
         }
         
         // Calculate averages and format
         $stats = [];
         foreach ($employeeStats as $stat) {
-            if ($stat['total_hours'] > 0) {
+            if ($stat['total_hours'] > 0 || $stat['traveling_km'] > 0) {
                 $stats[] = [
                     'name' => $stat['name'],
                     'total_hours' => $stat['total_hours'],
                     'jobcard_count' => $stat['jobcard_count'],
                     'avg_hours_per_jobcard' => $stat['jobcard_count'] > 0 ? round($stat['total_hours'] / $stat['jobcard_count'], 2) : 0,
+                    'traveling_km' => $stat['traveling_km'],
                 ];
             }
         }

@@ -124,6 +124,7 @@
                     <th>Supplier</th>
                     <th>Stock Level</th>
                     <th>Min Level</th>
+                    <th>Buying Price</th>
                     <th>Selling Price</th>
                     <th>Actions</th>
                 </tr>
@@ -159,7 +160,7 @@
                     </td>
                     
                     <td>{{ $item->min_quantity }}</td>
-                    
+                    <td>R{{ number_format($item->buying_price, 2) }}</td>
                     <td>R{{ number_format($item->selling_price, 2) }}</td>
                     
                     <td>
