@@ -101,6 +101,7 @@
         @method('PUT')
         <input type="hidden" id="deleted_employees" name="deleted_employees" value="">
         <input type="hidden" id="deleted_traveling" name="deleted_traveling" value="">
+        <div id="completion-success" style="display:none; background:#059669; color:#fff; font-weight:600; border-radius:8px; padding:0.7rem 1rem; margin-bottom:1rem; text-align:center;">Job marked as completed and removed from your list.</div>
     <!-- Job Info Card -->
     <div class="mobile-card">
         <div class="section-header header-blue">
@@ -314,9 +315,18 @@ if (jobcardForm) {
             return res.text();
         })
         .then(() => {
-            saveStatus.textContent = 'Jobcard updated successfully!';
-            saveStatus.className = 'save-status success';
-            setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
+            // Check if status was set to completed
+            const status = jobcardForm.querySelector('[name="status"]').value;
+            if (status === 'completed') {
+                document.getElementById('completion-success').style.display = 'block';
+                setTimeout(() => {
+                    window.location.href = '{{ route('mobile.jobcards.index') }}';
+                }, 1800);
+            } else {
+                saveStatus.textContent = 'Jobcard updated successfully!';
+                saveStatus.className = 'save-status success';
+                setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
+            }
         })
         .catch(err => {
             saveStatus.textContent = 'Error saving jobcard.';

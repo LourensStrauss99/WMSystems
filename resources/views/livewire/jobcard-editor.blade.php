@@ -24,7 +24,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('jobcard.update', $jobcard->id) }}">
+    <form method="POST" action="{{ route('jobcard.update', $jobcard->id) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
 
@@ -91,6 +91,28 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold text-muted">Work Done</label>
                             <textarea name="work_done" class="form-control" rows="4">{{ old('work_done', $jobcard->work_done) }}</textarea>
+                        </div>
+                        <!-- Photo Upload Field -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-muted">Jobcard Photos</label>
+                            @if($jobcard->mobilePhotos && $jobcard->mobilePhotos->count())
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    @foreach($jobcard->mobilePhotos as $photo)
+                                        <div style="position:relative; display:inline-block;">
+                                            <a href="{{ Storage::url($photo->file_path) }}" target="_blank">
+                                                <img src="{{ Storage::url($photo->file_path) }}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb; margin:0.2rem;">
+                                            </a>
+                                            <form method="POST" action="{{ route('mobile-jobcard-photos.destroy', $photo->id) }}" style="position:absolute; top:2px; right:2px;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-danger" style="border-radius:50%; padding:0.2em 0.5em; font-size:0.9em;">&times;</button>
+                                            </form>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-muted">No photos uploaded for this jobcard.</div>
+                            @endif
                         </div>
                     </div>
                 </div>

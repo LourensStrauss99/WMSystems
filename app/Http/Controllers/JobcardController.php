@@ -366,6 +366,16 @@ class JobcardController extends Controller
                     $jobcard->inventory()->sync($syncData);
                 }
             }
+            // Handle photo uploads (system side)
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $photo) {
+                    $path = $photo->store('jobcard_photos', 'public');
+                    \App\Models\MobileJobcardPhoto::create([
+                        'jobcard_id' => $jobcard->id,
+                        'file_path' => $path,
+                    ]);
+                }
+            }
         });
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -504,6 +514,7 @@ class JobcardController extends Controller
     public function mobileIndex(Request $request)
     {
         $jobcards = Jobcard::with('client')
+            ->whereNotIn('status', ['completed', 'invoiced'])
             ->orderBy('job_date', 'desc')
             ->paginate(15);
         return view('mobile.jobcard-list', compact('jobcards'));
