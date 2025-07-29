@@ -115,6 +115,28 @@
         </div>
         <div style="margin-bottom: 0.5rem;"><span style="font-weight: 500;">Work Request:</span> {{ $jobcard->work_request }}</div>
         <div style="margin-bottom: 0.5rem;"><span style="font-weight: 500;">Special Instructions:</span> <span style="color: #dc2626;">{{ $jobcard->special_request }}</span></div>
+        <div class="mb-3">
+            <label class="form-label fw-bold text-muted">
+                <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
+            </label>
+        </div>
+        @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
+            <div class="alert alert-info">
+                <form method="POST" action="{{ route('jobcard.acceptQuote', $jobcard->id) }}">
+                    @csrf
+                    <div class="mb-2">
+                        <label for="accepted_signature" class="form-label">Signature (type your name to accept):</label>
+                        <input type="text" name="accepted_signature" id="accepted_signature" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Accept Quote</button>
+                </form>
+            </div>
+        @elseif($jobcard->quote_accepted_at)
+            <div class="alert alert-success">
+                Quote accepted by user ID: {{ $jobcard->accepted_by }} at {{ $jobcard->quote_accepted_at }}<br>
+                Signature: {{ $jobcard->accepted_signature }}
+            </div>
+        @endif
     </div>
     <!-- Client Details Card -->
     <div class="mobile-card">
@@ -305,9 +327,15 @@ if (jobcardForm) {
         saveStatus.className = 'save-status loading';
         saveStatus.style.display = 'block';
         const data = new FormData(jobcardForm);
+        const csrfInput = document.querySelector('input[name=_token]');
+        if (!csrfInput) {
+            saveStatus.textContent = 'CSRF token not found. Please reload the page.';
+            saveStatus.className = 'save-status error';
+            return;
+        }
         fetch("{{ route('jobcard.update', $jobcard->id) }}", {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value, 'X-HTTP-Method-Override': 'PUT' },
+            headers: { 'X-CSRF-TOKEN': csrfInput.value, 'X-HTTP-Method-Override': 'PUT' },
             body: data
         })
         .then(res => {

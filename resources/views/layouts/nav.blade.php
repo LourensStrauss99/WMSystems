@@ -9,7 +9,6 @@
         <a href="/jobcard" class="sidebar-tab {{ request()->is('jobcard*') ? 'active' : '' }}">Jobcard</a>
         <a href="/progress" class="sidebar-tab {{ request()->is('progress*') ? 'active' : '' }}">Progress</a>
         <a href="/reports" class="sidebar-tab {{ request()->is('reports*') ? 'active' : '' }}">Reports</a>
-        <a href="/quotes" class="sidebar-tab {{ request()->is('quotes*') ? 'active' : '' }}">Quotes</a>
         <a href="/invoice" class="sidebar-tab {{ request()->is('invoice*') ? 'active' : '' }}">Invoices</a>
         <a href="/inventory" class="sidebar-tab {{ request()->is('inventory*') ? 'active' : '' }}">Inventory</a>
         <a href="/settings" class="sidebar-tab {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>

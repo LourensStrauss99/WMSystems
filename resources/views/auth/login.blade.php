@@ -1,6 +1,10 @@
 
 @extends('layouts.auth')
 
+@php
+use Illuminate\Support\Facades\Route;
+@endphp
+
 @section('content')
 <div class="container">
     <div class="row justify-content-center">

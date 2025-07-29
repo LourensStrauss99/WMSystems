@@ -89,4 +89,20 @@
         </div>
     </div>
 </div>
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="mb-2"><i class="fas fa-link text-primary me-2"></i>Share Mobile Login Link</h5>
+            <div class="input-group mb-2">
+                <input type="text" id="mobile-login-link" class="form-control" readonly value="{{ url('/mobile-app/login?email=' . urlencode($employee->email)) }}">
+                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('mobile-login-link').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy', 1500);">Copy</button>
+            </div>
+            <small class="text-muted">Send this link to the employee. It will pre-fill their email on the mobile login page.</small>
+            <div class="mt-3 text-center">
+                {!! QrCode::size(180)->generate(url('/mobile-app/login?email=' . $employee->email)) !!}
+                <div class="small text-muted mt-1">Scan to open mobile login link</div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

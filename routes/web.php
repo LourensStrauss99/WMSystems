@@ -32,9 +32,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
-use App\Http\Controllers\QuoteController;
-
 use App\Http\Controllers\MobileJobcardPhotoController;
+use App\Http\Controllers\MobileAuthController;
 
 // Authentication Routes
 Auth::routes(['verify' => true]);
@@ -94,16 +93,6 @@ Route::view('/settings', 'settings')->name('settings');
 //Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
-
-// Place this FIRST, before any /quotes/{id} or /quotes/{id}/... routes
-Route::get('/quotes/create', function() { return view('quotes_create'); })->name('quotes.create');
-
-Route::view('/quotes', 'quotes')->name('quotes');
-Route::get('/quotes', [QuotesController::class, 'index'])->name('quotes.index');
-Route::post('/quotes/save', [QuotesController::class, 'save'])->name('quotes.save');
-Route::get('/quotes/{id}', [QuotesController::class, 'show'])->name('quotes.show');
-Route::get('/quotes/{id}/download', [QuotesController::class, 'download'])->name('quotes.download');
-Route::post('/quotes/{id}/email', [QuotesController::class, 'email'])->name('quotes.email');
 
 // Jobcard resource (RESTful)
 Route::resource('jobcard', JobcardController::class);
@@ -511,13 +500,13 @@ Route::get('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, '
 Route::get('/mobile/jobcards/{jobcard}/edit', [App\Http\Controllers\JobcardController::class, 'editMobile'])->name('mobile.jobcards.edit');
 Route::get('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'showMobile'])->name('mobile.jobcards.show');
 
-Route::get('/mobile/quotes', [QuotesController::class, 'mobileIndex'])->name('mobile.quotes.index');
-Route::get('/mobile/quotes/{quote}', [QuotesController::class, 'showMobile'])->name('mobile.quotes.show');
-Route::get('/mobile/quotes/{quote}/edit', [QuotesController::class, 'editMobile'])->name('mobile.quotes.edit');
-Route::put('/quotes/{quote}', [App\Http\Controllers\QuotesController::class, 'update'])->name('quotes.update');
-Route::get('/quotes/{quote}/edit', [App\Http\Controllers\QuotesController::class, 'edit'])->name('quotes.edit');
-Route::put('/mobile/quotes/{quote}', [QuotesController::class, 'update'])->name('mobile.quotes.update');
-
 Route::post('/mobile-jobcard-photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile-jobcard-photos.store');
 Route::delete('/mobile-jobcard-photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile-jobcard-photos.destroy');
+
+Route::post('/mobile-app/login', [MobileAuthController::class, 'login'])->name('mobile.login');
+Route::get('/mobile-app/login', function () {
+    return view('mobile app.login');
+})->name('mobile.login.form');
+
+Route::post('/jobcard/{jobcard}/accept-quote', [App\Http\Controllers\JobcardController::class, 'acceptQuote'])->name('jobcard.acceptQuote');
 

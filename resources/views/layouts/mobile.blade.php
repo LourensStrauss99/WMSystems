@@ -22,7 +22,6 @@
     </div>
     <div class="mobile-nav">
         <a href="{{ route('mobile.jobcards.index') }}">Jobcards</a>
-        <a href="{{ route('mobile.quotes.index') }}">Quotes</a>
     </div>
 </body>
 </html>

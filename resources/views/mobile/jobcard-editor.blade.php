@@ -159,6 +159,28 @@
             <label class="form-label">Total Labour Cost</label>
             <input type="number" name="total_labour_cost" class="form-control" step="0.01" value="{{ old('total_labour_cost', $jobcard->total_labour_cost) }}">
         </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold text-muted">
+                <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
+            </label>
+        </div>
+        @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
+            <div class="alert alert-info">
+                <form method="POST" action="{{ route('jobcard.acceptQuote', $jobcard->id) }}">
+                    @csrf
+                    <div class="mb-2">
+                        <label for="accepted_signature" class="form-label">Signature (type your name to accept):</label>
+                        <input type="text" name="accepted_signature" id="accepted_signature" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Accept Quote</button>
+                </form>
+            </div>
+        @elseif($jobcard->quote_accepted_at)
+            <div class="alert alert-success">
+                Quote accepted by user ID: {{ $jobcard->accepted_by }} at {{ $jobcard->quote_accepted_at }}<br>
+                Signature: {{ $jobcard->accepted_signature }}
+            </div>
+        @endif
         <button type="submit" class="btn btn-primary">Update Jobcard</button>
     </form>
 </div>

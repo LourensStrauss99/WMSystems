@@ -9,6 +9,9 @@
             <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem; display: flex; flex-direction: column; align-items: flex-start;">
                 <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; color: #2563eb;">
                     {{ $jobcard->jobcard_number }}
+                    @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
+                        <span style="background: #f59e42; color: #fff; border-radius: 6px; padding: 0.2em 0.7em; font-size: 0.85em; margin-left: 0.5em;">QUOTE</span>
+                    @endif
                 </div>
                 <div style="color: #64748b; margin-bottom: 0.3rem;">{{ $jobcard->client->name ?? '' }}</div>
                 <div style="font-size: 0.95rem; color: #888; margin-bottom: 0.3rem;">Date: {{ $jobcard->job_date }}</div>

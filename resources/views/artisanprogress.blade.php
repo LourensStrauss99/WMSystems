@@ -17,7 +17,6 @@
             <a href="/artisanprogress" class="tab-button active">5 - Artisan progress</a>
             <a href="/inventory" class="tab-button">6 - Inventory</a>
             <a href="/reports" class="tab-button">7 - Reports</a>
-            <a href="/quotes" class="tab-button">8 - Quotes</a>
             <a href="/settings" class="tab-button">9 - Settings</a>
       </nav>
     </header>

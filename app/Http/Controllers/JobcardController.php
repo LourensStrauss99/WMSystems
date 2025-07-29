@@ -175,9 +175,9 @@ class JobcardController extends Controller
             $jobcard = Jobcard::create($request->only([
                 'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 
                 'status', 'work_done', 'time_spent',
-                // Add the new hour fields
                 'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
-                'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
+                'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost',
+                'is_quote'
             ]));
 
             // Sync employees (with optional hours)
@@ -265,7 +265,8 @@ class JobcardController extends Controller
                 'jobcard_number', 'job_date', 'client_id', 'category', 
                 'work_request', 'special_request', 'status', 'work_done',
                 'normal_hours', 'overtime_hours', 'weekend_hours', 
-                'public_holiday_hours', 'call_out_hours', 'total_labour_cost'
+                'public_holiday_hours', 'call_out_hours', 'total_labour_cost',
+                'is_quote'
             ]));
             // Clean up duplicate pivot entries for this jobcard
             $pivotTable = 'employee_jobcard';
@@ -513,10 +514,36 @@ class JobcardController extends Controller
 
     public function mobileIndex(Request $request)
     {
-        $jobcards = Jobcard::with('client')
+        // Require mobile employee login
+        $employeeId = $request->session()->get('mobile_employee_id');
+        if (!$employeeId) {
+            return redirect('/mobile-app/login');
+        }
+        // Only show jobcards assigned to this employee and not completed/invoiced
+        $jobcards = \App\Models\Jobcard::with('client')
+            ->whereHas('employees', function($q) use ($employeeId) {
+                $q->where('employees.id', $employeeId);
+            })
             ->whereNotIn('status', ['completed', 'invoiced'])
             ->orderBy('job_date', 'desc')
             ->paginate(15);
         return view('mobile.jobcard-list', compact('jobcards'));
+    }
+
+    public function acceptQuote(Request $request, Jobcard $jobcard)
+    {
+        if (!$jobcard->is_quote || $jobcard->quote_accepted_at) {
+            return redirect()->back()->with('error', 'This quote cannot be accepted.');
+        }
+        $request->validate([
+            'accepted_signature' => 'required|string|max:255',
+        ]);
+        $jobcard->update([
+            'quote_accepted_at' => now(),
+            'accepted_by' => $request->user()->id,
+            'accepted_signature' => $request->accepted_signature,
+            'is_quote' => false, // Now becomes a jobcard
+        ]);
+        return redirect()->route('jobcard.show', $jobcard->id)->with('success', 'Quote accepted and converted to jobcard!');
     }
 }

@@ -16,7 +16,13 @@ class Jobcard extends Model
         'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 
         'special_request', 'status', 'work_done', 'time_spent', 'progress_note',
         'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
-        'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
+        'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost',
+        'is_quote', 'quote_accepted_at', 'accepted_by', 'accepted_signature'
+    ];
+
+    protected $casts = [
+        'is_quote' => 'boolean',
+        'quote_accepted_at' => 'datetime',
     ];
 
     public function client()
