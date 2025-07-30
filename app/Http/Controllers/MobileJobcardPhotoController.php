@@ -25,7 +25,7 @@ class MobileJobcardPhotoController extends Controller
             'jobcard_id' => $request->jobcard_id,
             'file_path' => $path, // e.g. 'jobcards/7/filename.jpg'
             'uploaded_at' => now(),
-            'uploaded_by' => \Auth::id(),
+            'uploaded_by' => Auth::id(),
             'caption' => $request->caption,
         ]);
 
@@ -36,7 +36,7 @@ class MobileJobcardPhotoController extends Controller
     public function destroy($id)
     {
         $photo = MobileJobcardPhoto::findOrFail($id);
-        \Storage::disk('public')->delete($photo->file_path);
+        Storage::disk('public')->delete($photo->file_path);
         $photo->delete();
         return response()->json(['success' => true]);
     }

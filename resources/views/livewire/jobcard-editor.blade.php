@@ -1,3 +1,4 @@
+@php use Illuminate\Support\Facades\Storage; @endphp
 {{-- filepath: resources/views/livewire/jobcard-editor.blade.php --}}
 @extends('layouts.app')
 
