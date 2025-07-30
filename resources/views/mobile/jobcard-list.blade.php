@@ -3,7 +3,10 @@
 @section('header', 'Jobcards')
 
 @section('content')
-    <h2 class="fw-bold mb-3">Jobcards</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 class="fw-bold mb-0">Jobcards</h2>
+        <a href="{{ route('mobile-jobcard.create') }}" style="background: #059669; color: #fff; border: none; border-radius: 4px; padding: 0.5rem 1.2rem; text-decoration: none; font-size: 1rem; font-weight: 600;">+ New Jobcard</a>
+    </div>
     <div style="display: flex; flex-direction: column; gap: 1rem;">
         @foreach($jobcards as $jobcard)
             <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1rem; display: flex; flex-direction: column; align-items: flex-start;">

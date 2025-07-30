@@ -8,12 +8,26 @@ use App\Models\Inventory;
 use App\Models\Invoice;
 use App\Models\Client;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
+    /**
+     * Show the form for creating a new jobcard (mobile version).
+     */
+    public function createMobile()
+    {
+        $employees = \App\Models\Employee::all();
+        $inventory = \App\Models\Inventory::all();
+        $clients = \App\Models\Client::all();
+        // Generate next jobcard number (or use logic from your system)
+        $lastJobcard = \App\Models\Jobcard::orderByDesc('id')->first();
+        $jobcard_number = $lastJobcard ? ((int) $lastJobcard->jobcard_number + 1) : 1001;
+        return view('mobile.jobcard-create', compact('employees', 'inventory', 'clients', 'jobcard_number'));
+    }
     // API: List jobcards assigned to an employee (by phone or employee_id)
     public function apiAssignedJobcards(Request $request)
     {
@@ -171,44 +185,94 @@ class JobcardController extends Controller
 
     public function store(Request $request)
     {
+
         DB::transaction(function () use ($request) {
-            $jobcard = Jobcard::create($request->only([
-                'jobcard_number', 'job_date', 'client_id', 'category', 'work_request', 'special_request', 
+            $clientId = $request->input('client_id');
+            // Handle temporary client creation
+            if ($clientId === 'temp') {
+                $client = new \App\Models\Client();
+                $client->name = $request->input('temp_client_name');
+                $client->surname = $request->input('temp_client_surname');
+                $client->telephone = $request->input('temp_client_telephone') ?: '-';
+                $client->address = $request->input('temp_client_address');
+                $client->email = $request->input('temp_client_email');
+                $client->is_active = false;
+                // Add is_temporary if not present in DB, else use notes
+                if (Schema::hasColumn('clients', 'is_temporary')) {
+                    $client->is_temporary = true;
+                } else {
+                    $client->notes = ($client->notes ? $client->notes . ' ' : '') . '[TEMPORARY CLIENT]';
+                }
+                $client->save();
+                $clientId = $client->id;
+            }
+
+            $data = $request->only([
+                'jobcard_number', 'job_date', 'category', 'work_request', 'special_request',
                 'status', 'work_done', 'time_spent',
                 'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
                 'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost',
                 'is_quote'
-            ]));
+            ]);
 
-            // Sync employees (with optional hours)
-            if ($request->has('employee_hours')) {
-                $syncData = [];
-                foreach ($request->employee_hours as $employeeId => $hours) {
-                    $syncData[$employeeId] = ['hours_worked' => $hours];
-                }
-                $jobcard->employees()->sync($syncData);
-            } elseif ($request->has('employees')) {
-                $jobcard->employees()->sync($request->employees);
+            // If jobcard_number is missing and this is a call out, generate a unique number
+            if (empty($data['jobcard_number']) && (
+                (isset($data['category']) && strtolower($data['category']) === 'call out') ||
+                (isset($data['status']) && strtolower($data['status']) === 'call out')
+            )) {
+                $data['jobcard_number'] = 'CO-' . now()->format('Ymd-His');
+                $data['status'] = 'call out';
             }
 
-            // Sync inventory (with quantities) and update stock
-            if ($request->has('inventory_qty')) {
+            $jobcard = Jobcard::create(array_merge($data, ['client_id' => $clientId]));
+
+            // --- EMPLOYEES ---
+            if ($request->has('employees')) {
                 $syncData = [];
-                foreach ($request->inventory_qty as $itemId => $qty) {
-                    $inventory = Inventory::find($itemId);
-                    // Store current buying_price and selling_price on the pivot for historical accuracy
-                    $syncData[$itemId] = [
-                        'quantity' => $qty,
-                        'buying_price' => $inventory ? $inventory->buying_price : null,
-                        'selling_price' => $inventory ? $inventory->selling_price : null,
-                    ];
-                    // Do NOT update inventory stock here
+                foreach ($request->input('employees', []) as $employee) {
+                    if (!empty($employee['id'])) {
+                        $syncData[$employee['id']] = [
+                            'hours_worked' => $employee['hours'] ?? 0,
+                            'hour_type' => $employee['hour_type'] ?? 'normal',
+                        ];
+                    }
+                }
+                $jobcard->employees()->sync($syncData);
+            }
+
+            // --- TRAVELING ---
+            if ($request->has('traveling')) {
+                foreach ($request->input('traveling', []) as $travel) {
+                    if (!empty($travel['id'])) {
+                        // Attach as a separate pivot row with hour_type = 'traveling'
+                        $jobcard->employees()->attach($travel['id'], [
+                            'hours_worked' => 0,
+                            'hour_type' => 'traveling',
+                            'travel_km' => $travel['km'] ?? 0,
+                        ]);
+                    }
+                }
+            }
+
+            // --- INVENTORY ---
+            if ($request->has('inventory')) {
+                $syncData = [];
+                foreach ($request->input('inventory', []) as $item) {
+                    if (!empty($item['id'])) {
+                        $inv = \App\Models\Inventory::find($item['id']);
+                        $syncData[$item['id']] = [
+                            'quantity' => $item['qty'] ?? 1,
+                            'buying_price' => $inv ? $inv->buying_price : null,
+                            'selling_price' => $inv ? $inv->selling_price : null,
+                        ];
+                    }
                 }
                 $jobcard->inventory()->sync($syncData);
             }
         });
 
-        return redirect()->route('jobcard.index')->with('success', 'Jobcard created!');
+        // Redirect to mobile jobcard list after creation
+        return redirect()->route('mobile.jobcards.index')->with('success', 'Jobcard created!');
     }
 
     public function edit(Jobcard $jobcard)
@@ -477,11 +541,11 @@ class JobcardController extends Controller
             'total_labour' => number_format($totalLabour, 2),
             'total_with_extras' => number_format($totalWithExtras, 2),
             'rates' => [
-                'labour_rate' => number_format($company->labour_rate, 2),
-                'overtime_rate' => number_format($company->labour_rate * $company->overtime_multiplier, 2),
-                'weekend_rate' => number_format($company->labour_rate * $company->weekend_multiplier, 2),
-                'holiday_rate' => number_format($company->labour_rate * $company->public_holiday_multiplier, 2),
-                'mileage_rate' => number_format($company->mileage_rate, 2),
+                'labour_rate' => number_format((float) $company->labour_rate, 2),
+                'overtime_rate' => number_format((float) $company->labour_rate * (float) $company->overtime_multiplier, 2),
+                'weekend_rate' => number_format((float) $company->labour_rate * (float) $company->weekend_multiplier, 2),
+                'holiday_rate' => number_format((float) $company->labour_rate * (float) $company->public_holiday_multiplier, 2),
+                'mileage_rate' => number_format((float) $company->mileage_rate, 2),
             ]
         ]);
     }

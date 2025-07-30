@@ -1,6 +1,7 @@
 <?php
-
 namespace App\Http\Controllers;
+
+use Illuminate\Support\Facades\Log;
 
 use Illuminate\Http\Request;
 use App\Models\Jobcard;
@@ -38,11 +39,11 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
-        \Log::info('updateProgress called', $request->all());
+        Log::info('updateProgress called', $request->all());
         $jobcard = Jobcard::with(['employees', 'inventory'])->findOrFail($id);
 
         if ($request->action === 'invoice') {
-            \Log::info('Jobcard invoice_number before check', ['id' => $jobcard->id, 'invoice_number' => $jobcard->invoice_number]);
+            Log::info('Jobcard invoice_number before check', ['id' => $jobcard->id, 'invoice_number' => $jobcard->invoice_number]);
             // Prevent duplicate invoices
             if (!$jobcard->invoice_number) {
                 // Calculate inventory total using selling_price
@@ -82,7 +83,7 @@ class ProgressController extends Controller
                 $jobcard->status = 'invoiced';
                 $jobcard->invoice_number = $jobcard->jobcard_number;
                 $jobcard->save();
-                \Log::info('Jobcard status after invoice', ['id' => $jobcard->id, 'status' => $jobcard->status, 'invoice_number' => $jobcard->invoice_number]);
+                Log::info('Jobcard status after invoice', ['id' => $jobcard->id, 'status' => $jobcard->status, 'invoice_number' => $jobcard->invoice_number]);
                 return redirect()->route('progress')->with('success', 'Invoice created and jobcard removed from progress!');
             } else {
                 // Already invoiced: always set status to invoiced and save

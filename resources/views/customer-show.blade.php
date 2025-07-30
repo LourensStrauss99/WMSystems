@@ -1,3 +1,4 @@
+@php use Illuminate\Support\Str; @endphp
 {{-- filepath: resources/views/customer-show.blade.php --}}
 @extends('layouts.auth')
 

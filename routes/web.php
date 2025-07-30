@@ -1,6 +1,11 @@
+
 <?php
 
 use Illuminate\Support\Facades\Route;
+
+// Mobile jobcard create page
+Route::get('/mobile/jobcards/create', [App\Http\Controllers\JobcardController::class, 'createMobile'])->name('mobile-jobcard.create');
+Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
