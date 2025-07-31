@@ -1,11 +1,6 @@
-
 <?php
 
 use Illuminate\Support\Facades\Route;
-
-// Mobile jobcard create page
-Route::get('/mobile/jobcards/create', [App\Http\Controllers\JobcardController::class, 'createMobile'])->name('mobile-jobcard.create');
-Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
@@ -39,6 +34,7 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
 use App\Http\Controllers\MobileJobcardPhotoController;
 use App\Http\Controllers\MobileAuthController;
+use App\Http\Controllers\ClientStatementController;
 
 // Authentication Routes
 Auth::routes(['verify' => true]);
@@ -173,9 +169,6 @@ Route::get('/progress', [ProgressController::class, 'index'])->name('progress');
 Route::get('/progress/jobcard/{id}', [ProgressController::class, 'show'])->name('progress.jobcard.show');
 
 // Add this temporary route at the end:
-
-use App\Models\Client;
-
 Route::get('/fix-susan-reference', function() {
     // First, let's add the column if it doesn't exist
     try {
@@ -231,7 +224,7 @@ Route::middleware(['auth'])->group(function () {
     // SPECIFIC routes MUST come before generic {purchaseOrder} route
     Route::get('/purchase-orders/{id}/edit', [PurchaseOrderController::class, 'edit'])->name('purchase-orders.edit');
     Route::get('/purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
-    Route::get('/purchase-orders/{id}/pdf', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-orders.pdf');
+    Route::get('/purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'generatePDF'])->name('purchase-orders.pdf');
     Route::put('/purchase-orders/{id}', [PurchaseOrderController::class, 'update'])->name('purchase-orders.update');
     Route::delete('/purchase-orders/{id}', [PurchaseOrderController::class, 'destroy'])->name('purchase-orders.destroy');
     Route::post('/purchase-orders/{id}/update-status', [PurchaseOrderController::class, 'updateStatus'])->name('purchase-orders.update-status');
@@ -401,35 +394,26 @@ Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.
 Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
 Route::get('/employees/{employee}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
 Route::put('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+
+// Employee management routes
 Route::patch('/employees/{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->name('employees.toggle-status');
 Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
 
-// Replace individual customer routes with this single line:
+// Customer resourceful routes
 Route::resource('customers', CustomerController::class);
-
-// This automatically creates all these routes:
-// GET customers - index
-// GET customers/create - create  
-// POST customers - store
-// GET customers/{customer} - show
-// GET customers/{customer}/edit - edit
-// PUT/PATCH customers/{customer} - update
-// DELETE customers/{customer} - destroy
-
 Route::patch('customers/{customer}/toggle-status', [CustomerController::class, 'toggleStatus'])->name('customers.toggle-status');
 
+// GRV debug and force-update
 Route::get('/grv/{id}/debug', [GrvController::class, 'debugApproval'])->name('grv.debug');
-// Add to web.php
 Route::get('/grv/{id}/force-update', [GrvController::class, 'forceUpdateInventory'])->name('grv.force-update');
 
-// Add to web.php
+// Inventory test update
 Route::get('/test-inventory-update', function() {
     $inventory = App\Models\Inventory::find(1);
     if ($inventory) {
         $oldStock = $inventory->stock_level;
         $inventory->stock_level += 10;
         $saved = $inventory->save();
-        
         return response()->json([
             'inventory_id' => $inventory->id,
             'old_stock' => $oldStock,
@@ -480,15 +464,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/grv/create', [GrvController::class, 'create'])->name('grv.create');
     Route::post('/grv', [GrvController::class, 'store'])->name('grv.store');
     Route::get('/grv/{id}', [GrvController::class, 'show'])->name('grv.show');
-    
     // Other GRV routes...
 });
 
 // Invoice reminder
 Route::post('/invoice/{invoice}/reminder', [App\Http\Controllers\InvoiceController::class, 'sendReminder'])->name('invoice.reminder');
+
 // Customer statement
 Route::post('/customer/{customer}/statement', [App\Http\Controllers\CustomerController::class, 'sendStatement'])->name('customer.statement');
 Route::get('/customer/{customer}/statement/download', [App\Http\Controllers\CustomerController::class, 'downloadStatement'])->name('customer.statement.download');
+
+// Client statement (new feature)
+Route::get('/clients/{client}/statement', [ClientStatementController::class, 'show'])->name('clients.statement');
 
 Route::get('/mobile/jobcard/{id}/edit', [JobcardController::class, 'editMobile'])->name('jobcard.edit.mobile');
 
@@ -509,9 +496,9 @@ Route::post('/mobile-jobcard-photos', [MobileJobcardPhotoController::class, 'sto
 Route::delete('/mobile-jobcard-photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile-jobcard-photos.destroy');
 
 Route::post('/mobile-app/login', [MobileAuthController::class, 'login'])->name('mobile.login');
-Route::get('/mobile-app/login', function () {
-    return view('mobile app.login');
-})->name('mobile.login.form');
+Route::get('/mobile-app/login', fn () => view('mobile.login'))->name('mobile.login.form');
 
 Route::post('/jobcard/{jobcard}/accept-quote', [App\Http\Controllers\JobcardController::class, 'acceptQuote'])->name('jobcard.acceptQuote');
-
+// Mobile jobcard create page
+Route::get('/mobile/jobcards/create', [App\Http\Controllers\JobcardController::class, 'createMobile'])->name('mobile-jobcard.create');
+Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');

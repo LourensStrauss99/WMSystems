@@ -309,12 +309,12 @@ class PurchaseOrderController extends Controller
     public function generatePdf(PurchaseOrder $purchaseOrder)
     {
         $purchaseOrder->load(['supplier', 'items', 'createdBy']);
-        
-        // For now, return a simple response
-        return response()->json([
-            'message' => 'PDF generation feature coming soon!',
-            'po_number' => $purchaseOrder->po_number
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('purchase-orders.pdf', [
+            'purchaseOrder' => $purchaseOrder
         ]);
+        $filename = 'PO-' . ($purchaseOrder->po_number ?? $purchaseOrder->id) . '.pdf';
+        return $pdf->download($filename);
     }
 
     /**

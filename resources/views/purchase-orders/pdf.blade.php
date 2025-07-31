@@ -215,6 +215,7 @@
             </tr>
         </thead>
         <tbody>
+            @php $items = $purchaseOrder->items; @endphp
             @if($items && $items->count() > 0)
                 @foreach($items as $index => $item)
                     <tr>
@@ -229,7 +230,7 @@
                         <td class="text-center">{{ number_format($item->quantity_ordered, 0) }}</td>
                         <td class="text-right">R {{ number_format($item->unit_price, 2) }}</td>
                         <td class="text-right"><strong>R {{ number_format($item->line_total, 2) }}</strong></td>
-                        <td class="text-center">{{ ucfirst($item->status) }}</td>
+                        <td class="text-center">{{ isset($item->status) ? ucfirst($item->status) : '-' }}</td>
                     </tr>
                 @endforeach
             @endif
@@ -256,15 +257,15 @@
             <table class="totals-table">
                 <tr>
                     <td><strong>Subtotal:</strong></td>
-                    <td class="text-right">R {{ number_format($subtotal, 2) }}</td>
+                    <td class="text-right">R {{ number_format($items->sum('line_total'), 2) }}</td>
                 </tr>
                 <tr>
                     <td><strong>VAT (15%):</strong></td>
-                    <td class="text-right">R {{ number_format($vatAmount, 2) }}</td>
+                    <td class="text-right">R {{ number_format($purchaseOrder->vat_amount ?? 0, 2) }}</td>
                 </tr>
                 <tr class="total-row">
                     <td><strong>TOTAL:</strong></td>
-                    <td class="text-right"><strong>R {{ number_format($grandTotal, 2) }}</strong></td>
+                    <td class="text-right"><strong>R {{ number_format($purchaseOrder->grand_total ?? 0, 2) }}</strong></td>
                 </tr>
             </table>
         </div>
