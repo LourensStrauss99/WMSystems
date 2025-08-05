@@ -47,7 +47,9 @@
                         </div>
                         <div class="mt-3 mt-md-0 d-flex gap-2">
                             <a href="{{ route('mobile.jobcard.edit', $jobcard->id) }}" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
-                            <a href="#" class="btn btn-outline-danger btn-sm" onclick="deleteJobcard({{ $jobcard->id }})"><i class="fas fa-trash me-1"></i>Delete</a>
+                            @if($jobcard->status === 'completed')
+                                <button class="btn btn-warning btn-sm" onclick="removeFromMobile({{ $jobcard->id }})"><i class="fas fa-eye-slash me-1"></i>Remove</button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -71,10 +73,31 @@ function refreshJobcards() {
         });
 }
 
-function deleteJobcard(id) {
-    if (confirm('Are you sure you want to delete this jobcard?')) {
-        fetch(`/jobcard/${id}`, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } })
-            .then(() => location.reload());
+// Remove completed jobcard from mobile view (doesn't delete the jobcard)
+function removeFromMobile(id) {
+    if (!confirm('This will remove the completed jobcard from your mobile list. The jobcard will still exist in the main system. Continue?')) {
+        return;
     }
+    
+    fetch(`/jobcard/${id}/remove-from-mobile`, { 
+        method: 'POST', 
+        headers: { 
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Jobcard removed from mobile list', 'success');
+            location.reload();
+        } else {
+            showToast('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error removing jobcard from mobile list', 'error');
+    });
 }
 </script>

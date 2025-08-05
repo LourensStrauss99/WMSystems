@@ -11,6 +11,7 @@ use App\Models\Inventory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
@@ -192,7 +193,7 @@ class ReportController extends Controller
     {
         $startDate = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
         $endDate = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
-        $company = Company::getSettings();
+        $company = \App\Models\CompanyDetail::first(); // Use CompanyDetail instead of Company
         
         $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
                           ->whereDate('invoice_date', '<=', $endDate)
@@ -222,6 +223,10 @@ class ReportController extends Controller
         foreach ($invoices as $invoice) {
             $jobcard = $invoice->jobcard;
             if (!$jobcard) continue;
+            
+            // Debug: Log invoice and jobcard info
+            Log::info("Processing Invoice {$invoice->id}, Jobcard {$jobcard->id}");
+            
             // Inventory
             $invTotal = $jobcard->inventory->sum(function($item) {
                 // Use selling_price from pivot if available, else from inventory
@@ -235,6 +240,7 @@ class ReportController extends Controller
             });
             $inventoryRevenue += $invTotal;
             $inventoryCost += $invCost;
+            
             // Labour by hour type
             $types = ['normal','overtime','weekend','public_holiday','call_out','traveling'];
             foreach ($types as $type) {
@@ -244,15 +250,22 @@ class ReportController extends Controller
                     $hours_detail['traveling'] += $km;
                 } elseif ($type === 'call_out') {
                     $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? '') === 'call_out')->sum('pivot.hours_worked');
-                    $breakdown['call_out'] += $hours * ($company->call_out_rate ?? 0);
+                    $rate = $company->call_out_rate ?? 0;
+                    $revenue = $hours * $rate;
+                    
+                    // Debug: Log call out calculation
+                    Log::info("Call Out - Hours: {$hours}, Rate: {$rate}, Revenue: {$revenue}");
+                    Log::info("Employees on jobcard: " . json_encode($jobcard->employees->pluck('pivot.hour_type')->toArray()));
+                    
+                    $breakdown['call_out'] += $revenue;
                     $hours_detail['call_out'] += $hours;
                 } else {
                     $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? ($type === 'normal' ? 'normal' : '')) === $type)->sum('pivot.hours_worked');
                     $rate = match($type) {
-                        'normal' => $company->standard_labour_rate ?? 0,
-                        'overtime' => ($company->standard_labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
-                        'weekend' => ($company->standard_labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
-                        'public_holiday' => ($company->standard_labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
+                        'normal' => $company->labour_rate ?? 0,
+                        'overtime' => ($company->labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
+                        'weekend' => ($company->labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
+                        'public_holiday' => ($company->labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
                         default => 0,
                     };
                     $breakdown[$type] += $hours * $rate;
@@ -264,7 +277,7 @@ class ReportController extends Controller
         $inventoryProfit = $inventoryRevenue - $inventoryCost;
         $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
         $subtotal = $hoursRevenue + $inventoryRevenue;
-        $vatAmount = $subtotal * (($company->vat_percentage ?? $company->vat_percent ?? 0) / 100);
+        $vatAmount = $subtotal * (($company->vat_percent ?? 0) / 100);
         $netProfit = $hoursRevenue + $inventoryProfit;
         $total_invoiced = $totalRevenue;
         return [
@@ -327,7 +340,7 @@ class ReportController extends Controller
     {
         $startDate = Carbon::createFromFormat('Y', $year)->startOfYear();
         $endDate = Carbon::createFromFormat('Y', $year)->endOfYear();
-        $company = Company::getSettings();
+        $company = \App\Models\CompanyDetail::first();
         $invoices = Invoice::whereDate('invoice_date', '>=', $startDate)
                           ->whereDate('invoice_date', '<=', $endDate)
                           ->with(['jobcard.inventory', 'jobcard.employees'])
@@ -376,10 +389,10 @@ class ReportController extends Controller
                 } else {
                     $hours = $jobcard->employees->filter(fn($e) => ($e->pivot->hour_type ?? ($type === 'normal' ? 'normal' : '')) === $type)->sum('pivot.hours_worked');
                     $rate = match($type) {
-                        'normal' => $company->standard_labour_rate ?? 0,
-                        'overtime' => ($company->standard_labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
-                        'weekend' => ($company->standard_labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
-                        'public_holiday' => ($company->standard_labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
+                        'normal' => $company->labour_rate ?? 0,
+                        'overtime' => ($company->labour_rate ?? 0) * ($company->overtime_multiplier ?? 1),
+                        'weekend' => ($company->labour_rate ?? 0) * ($company->weekend_multiplier ?? 1),
+                        'public_holiday' => ($company->labour_rate ?? 0) * ($company->public_holiday_multiplier ?? 1),
                         default => 0,
                     };
                     $breakdown[$type] += $hours * $rate;
@@ -391,7 +404,7 @@ class ReportController extends Controller
         $inventoryProfit = $inventoryRevenue - $inventoryCost;
         $inventoryMargin = $inventoryRevenue > 0 ? round(($inventoryProfit / $inventoryRevenue) * 100, 2) : 0;
         $subtotal = $hoursRevenue + $inventoryRevenue;
-        $vatAmount = $subtotal * (($company->vat_percentage ?? $company->vat_percent ?? 0) / 100);
+        $vatAmount = $subtotal * (($company->vat_percent ?? 0) / 100);
         $netProfit = $hoursRevenue + $inventoryProfit;
         $total_invoiced = $totalRevenue;
         return [

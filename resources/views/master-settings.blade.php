@@ -215,8 +215,11 @@
                             <a href="{{ route('inventory.index') }}" class="btn btn-info btn-sm">
                                 <i class="fas fa-warehouse me-1"></i>View Inventory
                             </a>
+                            <a href="{{ route('inventory.create') }}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus-circle me-1"></i>New Inventory Item
+                            </a>
                             <button class="btn btn-outline-info btn-sm" onclick="scrollToInventoryForm()">
-                                <i class="fas fa-plus me-1"></i>Add Items
+                                <i class="fas fa-plus me-1"></i>Quick Add/Replenish
                             </button>
                         </div>
                     </div>

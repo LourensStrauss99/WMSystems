@@ -100,7 +100,7 @@
 <div style="padding: 0.5rem;">
     <form id="jobcard-edit-form" enctype="multipart/form-data">
         @csrf
-        @method('PUT')
+        <!-- Remove @method('PUT') to avoid conflicts with JavaScript override -->
         <input type="hidden" id="deleted_employees" name="deleted_employees" value="">
         <input type="hidden" id="deleted_traveling" name="deleted_traveling" value="">
         <div id="completion-success" style="display:none; background:#059669; color:#fff; font-weight:600; border-radius:8px; padding:0.7rem 1rem; margin-bottom:1rem; text-align:center;">Job marked as completed and removed from your list.</div>
@@ -117,11 +117,13 @@
         </div>
         <div style="margin-bottom: 0.5rem;"><span style="font-weight: 500;">Work Request:</span> {{ $jobcard->work_request }}</div>
         <div style="margin-bottom: 0.5rem;"><span style="font-weight: 500;">Special Instructions:</span> <span style="color: #dc2626;">{{ $jobcard->special_request }}</span></div>
-        <div class="mb-3">
-            <label class="form-label fw-bold text-muted">
-                <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
-            </label>
-        </div>
+        @if(!$jobcard->quote_accepted_at)
+            <div class="mb-3">
+                <label class="form-label fw-bold text-muted">
+                    <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
+                </label>
+            </div>
+        @endif
         @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
             <div class="alert alert-info">
                 <form method="POST" action="{{ route('jobcard.acceptQuote', $jobcard->id) }}">
@@ -135,7 +137,8 @@
             </div>
         @elseif($jobcard->quote_accepted_at)
             <div class="alert alert-success">
-                Quote accepted by user ID: {{ $jobcard->accepted_by }} at {{ $jobcard->quote_accepted_at }}<br>
+                <strong>Quote Accepted & Converted to Jobcard</strong><br>
+                Accepted by user ID: {{ $jobcard->accepted_by }} at {{ $jobcard->quote_accepted_at->format('Y-m-d H:i:s') }}<br>
                 Signature: {{ $jobcard->accepted_signature }}
             </div>
         @endif
@@ -292,6 +295,13 @@
         <button type="submit" class="save-btn">Save Progress</button>
         <div id="save-status" class="save-status" style="display:none;"></div>
     </form>
+    
+    <!-- Remove from Mobile button - show/hide based on job status -->
+    <div style="margin-top: 1rem; text-align: center;">
+        <button id="remove-from-mobile-btn" class="btn btn-warning" style="background: #f59e0b; color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 8px; font-weight: 600; display: {{ $jobcard->status === 'completed' ? 'inline-block' : 'none' }};">
+            <i class="fas fa-eye-slash me-2"></i>Remove from Mobile List
+        </button>
+    </div>
     <!-- Move photo upload form OUTSIDE the main form -->
     @if ($errors->any())
         <div class="alert alert-danger" style="margin-top:1rem;">
@@ -329,15 +339,24 @@ if (jobcardForm) {
         saveStatus.className = 'save-status loading';
         saveStatus.style.display = 'block';
         const data = new FormData(jobcardForm);
+        
+        // Force the _method to be PUT
+        data.set('_method', 'PUT');
+        
         const csrfInput = document.querySelector('input[name=_token]');
         if (!csrfInput) {
             saveStatus.textContent = 'CSRF token not found. Please reload the page.';
             saveStatus.className = 'save-status error';
             return;
         }
+        // Force the _method to be PUT
+        data.set('_method', 'PUT');
+        
         fetch("{{ route('jobcard.update', $jobcard->id) }}", {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfInput.value, 'X-HTTP-Method-Override': 'PUT' },
+            headers: { 
+                'X-CSRF-TOKEN': csrfInput.value
+            },
             body: data
         })
         .then(res => {
@@ -349,10 +368,20 @@ if (jobcardForm) {
             const status = jobcardForm.querySelector('[name="status"]').value;
             if (status === 'completed') {
                 document.getElementById('completion-success').style.display = 'block';
+                // Show remove from mobile button if it exists
+                const removeBtn = document.getElementById('remove-from-mobile-btn');
+                if (removeBtn) {
+                    removeBtn.style.display = 'block';
+                }
                 setTimeout(() => {
                     window.location.href = '{{ route('mobile.jobcards.index') }}';
                 }, 1800);
             } else {
+                // Hide remove from mobile button for non-completed jobs
+                const removeBtn = document.getElementById('remove-from-mobile-btn');
+                if (removeBtn) {
+                    removeBtn.style.display = 'none';
+                }
                 saveStatus.textContent = 'Jobcard updated successfully!';
                 saveStatus.className = 'save-status success';
                 setTimeout(() => { saveStatus.style.display = 'none'; }, 2000);
@@ -522,6 +551,39 @@ function deletePhoto(photoId) {
             // Remove the photo thumbnail from the DOM
             document.querySelector('button[onclick="deletePhoto(' + photoId + ')"]').closest('div').remove();
         }
+    });
+}
+
+// Handle remove from mobile functionality
+const removeFromMobileBtn = document.getElementById('remove-from-mobile-btn');
+if (removeFromMobileBtn) {
+    removeFromMobileBtn.addEventListener('click', function() {
+        if (!confirm('This will remove the completed jobcard from your mobile list. The jobcard will still exist in the main system. Continue?')) {
+            return;
+        }
+        
+        const csrfToken = document.querySelector('input[name=_token]').value;
+        
+        fetch("{{ route('jobcard.removeFromMobile', $jobcard->id) }}", {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Jobcard removed from mobile list successfully!');
+                window.location.href = '{{ route('mobile.jobcards.index') }}';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(err => {
+            alert('Error removing jobcard from mobile list');
+        });
     });
 }
 </script>

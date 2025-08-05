@@ -41,7 +41,6 @@ Auth::routes(['verify' => true]);
 
 // Email Verification Routes
 Route::middleware(['auth'])->group(function () {
-    Route::get('/verify', [VerificationController::class, 'show'])->name('verification.notice');
     Route::post('/email/resend', [VerificationController::class, 'resendEmail'])->name('verification.send');
     Route::post('/phone/send-code', [VerificationController::class, 'sendPhoneCode'])->name('verification.phone.send');
     Route::post('/phone/verify', [VerificationController::class, 'verifyPhone'])->name('verification.phone.verify');
@@ -80,6 +79,12 @@ Route::get('/inventory/{id}/edit', [InventoryController::class, 'edit'])->name('
 Route::put('/inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');
 Route::get('/inventory/{id}', [InventoryController::class, 'show'])->name('inventory.show');
 
+// Inventory API endpoints for code generation and markup
+Route::get('/api/inventory/generate-code/{departmentPrefix}', [InventoryController::class, 'generateCode']);
+Route::get('/api/inventory/search-for-po', [InventoryController::class, 'searchForPO']);
+Route::get('/api/company/markup-percentage', [InventoryController::class, 'getCompanyMarkup']);
+Route::get('/api/inventory/{id}/details', [InventoryController::class, 'getItemDetails']);
+
 // Admin panel
 Route::get('/admin-panel', [InventoryController::class, 'adminPanel'])->name('admin.panel');
 
@@ -95,18 +100,19 @@ Route::view('/settings', 'settings')->name('settings');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 
-// Jobcard resource (RESTful)
-Route::resource('jobcard', JobcardController::class);
+// Jobcard resource (RESTful) - exclude destroy method
+Route::resource('jobcard', JobcardController::class)->except(['destroy']);
 //Route::view('/jobcard', 'jobcard')->name('jobcard.index');
-Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
+//Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
 Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
 Route::get('/jobcard/{jobcard}', [JobcardController::class, 'show'])->name('jobcard.show');
 Route::post('/jobcard/{id}/submit-invoice', [JobcardController::class, 'submitForInvoice'])->name('jobcard.submitInvoice');
+Route::post('/jobcard/{id}/remove-from-mobile', [JobcardController::class, 'removeFromMobile'])->name('jobcard.removeFromMobile');
 
 // Home after login (default Laravel redirect)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
     ->middleware(['auth', 'verified'])
-    ->name('home');
+    ->name('home.index');
 
 // Redirect old .html route if needed
 Route::get('/Inventory.html', function () {
@@ -156,10 +162,10 @@ Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('
    // })->name('company.details');
   //  Route::put('/company-details', [MasterSettingsController::class, 'updateCompanyDetails'])->name('company.details.update');
 //});
-Route::get('/company-details', function () {
-    return view('company-details');
-})->name('company.details');
-Route::put('/company-details', [MasterSettingsController::class, 'updateCompanyDetails'])->name('company.details.update');
+//Route::get('/company-details', function () {
+//    return view('company-details');
+//})->name('company.details');
+//Route::put('/company-details', [MasterSettingsController::class, 'updateCompanyDetails'])->name('company.details.update');
 Route::get('/profile', function () {
     return view('profile');
 })->middleware('auth')->name('profile');
@@ -348,17 +354,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Add these routes to your web.php
-Route::middleware(['auth'])->group(function () {
-    Route::get('/company-details', [CompanyController::class, 'edit'])->name('company.details');
-    Route::put('/company-details', [CompanyController::class, 'update'])->name('company.details.update');
-    Route::get('/company/remove-logo', [CompanyController::class, 'removeLogo'])->name('company.remove-logo');
-    Route::get('/company/check-setup', [CompanyController::class, 'checkSetup'])->name('company.check-setup');
-});
+//Route::middleware(['auth'])->group(function () {
+//    Route::get('/company-details', [CompanyController::class, 'edit'])->name('company.details');
+//    Route::put('/company-details', [CompanyController::class, 'update'])->name('company.details.update');
+//    Route::get('/company/remove-logo', [CompanyController::class, 'removeLogo'])->name('company.remove-logo');
+//    Route::get('/company/check-setup', [CompanyController::class, 'checkSetup'])->name('company.check-setup');
+//});
 
 // Add to your routes/web.php:
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/master_settings', [MasterSettingsController::class, 'index'])->name('master.settings');
+    //Route::get('/master_settings', [MasterSettingsController::class, 'index'])->name('master.settings');
     
     // User management routes
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
@@ -463,7 +469,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/grv', [GrvController::class, 'index'])->name('grv.index');
     Route::get('/grv/create', [GrvController::class, 'create'])->name('grv.create');
     Route::post('/grv', [GrvController::class, 'store'])->name('grv.store');
-    Route::get('/grv/{id}', [GrvController::class, 'show'])->name('grv.show');
+    //Route::get('/grv/{id}', [GrvController::class, 'show'])->name('grv.show');
     // Other GRV routes...
 });
 
@@ -488,9 +494,13 @@ Route::get('/mobile-app/jobcard/index', function() {
     return view('mobile app.index.mobile');
 })->name('jobcard.mobile.index');
 
-Route::get('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'mobileIndex'])->name('mobile.jobcards.index');
-Route::get('/mobile/jobcards/{jobcard}/edit', [App\Http\Controllers\JobcardController::class, 'editMobile'])->name('mobile.jobcards.edit');
-Route::get('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'showMobile'])->name('mobile.jobcards.show');
+Route::middleware([\App\Http\Middleware\EmployeeAuth::class])->group(function () {
+    Route::get('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'mobileIndex'])->name('mobile.jobcards.index');
+    Route::get('/mobile/jobcards/create', [App\Http\Controllers\JobcardController::class, 'createMobile'])->name('mobile-jobcard.create');
+    Route::get('/mobile/jobcards/{jobcard}/edit', [App\Http\Controllers\JobcardController::class, 'editMobile'])->name('mobile.jobcards.edit');
+    Route::get('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'showMobile'])->name('mobile.jobcards.show');
+    Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');
+});
 
 Route::post('/mobile-jobcard-photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile-jobcard-photos.store');
 Route::delete('/mobile-jobcard-photos/{id}', [MobileJobcardPhotoController::class, 'destroy'])->name('mobile-jobcard-photos.destroy');
@@ -499,6 +509,3 @@ Route::post('/mobile-app/login', [MobileAuthController::class, 'login'])->name('
 Route::get('/mobile-app/login', fn () => view('mobile.login'))->name('mobile.login.form');
 
 Route::post('/jobcard/{jobcard}/accept-quote', [App\Http\Controllers\JobcardController::class, 'acceptQuote'])->name('jobcard.acceptQuote');
-// Mobile jobcard create page
-Route::get('/mobile/jobcards/create', [App\Http\Controllers\JobcardController::class, 'createMobile'])->name('mobile-jobcard.create');
-Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');

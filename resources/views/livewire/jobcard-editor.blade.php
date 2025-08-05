@@ -25,6 +25,46 @@
         </div>
     </div>
 
+    <!-- Quote Acceptance Form (separate from main form to avoid nesting) -->
+    @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-signature me-2"></i>Quote Acceptance</h5>
+                    <p class="mb-3">This jobcard is currently a quote. Please provide your signature to accept and convert it to a regular jobcard.</p>
+                    <form method="POST" action="{{ route('jobcard.acceptQuote', $jobcard->id) }}">
+                        @csrf
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label for="accepted_signature" class="form-label fw-bold">Digital Signature *</label>
+                                <input type="text" name="accepted_signature" id="accepted_signature" 
+                                       class="form-control" required 
+                                       placeholder="Type your full name to digitally sign and accept this quote">
+                                <small class="text-muted">By typing your name, you are digitally signing and accepting this quote.</small>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="fas fa-check me-2"></i>Accept Quote & Convert to Jobcard
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @elseif($jobcard->quote_accepted_at)
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-success">
+                    <h5><i class="fas fa-check-circle me-2"></i>Quote Accepted & Converted to Jobcard</h5>
+                    <p class="mb-1"><strong>Accepted by user ID:</strong> {{ $jobcard->accepted_by }}</p>
+                    <p class="mb-1"><strong>Accepted at:</strong> {{ $jobcard->quote_accepted_at->format('Y-m-d H:i:s') }}</p>
+                    <p class="mb-0"><strong>Signature:</strong> {{ $jobcard->accepted_signature }}</p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <form method="POST" action="{{ route('jobcard.update', $jobcard->id) }}" enctype="multipart/form-data">
         @csrf
         @method('PUT')
@@ -103,11 +143,7 @@
                                             <a href="{{ Storage::url($photo->file_path) }}" target="_blank">
                                                 <img src="{{ Storage::url($photo->file_path) }}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb; margin:0.2rem;">
                                             </a>
-                                            <form method="POST" action="{{ route('mobile-jobcard-photos.destroy', $photo->id) }}" style="position:absolute; top:2px; right:2px;">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-danger" style="border-radius:50%; padding:0.2em 0.5em; font-size:0.9em;">&times;</button>
-                                            </form>
+                                            <button type="button" onclick="deletePhoto({{ $photo->id }})" class="btn btn-sm btn-danger" style="position:absolute; top:2px; right:2px; border-radius:50%; padding:0.2em 0.5em; font-size:0.9em;">&times;</button>
                                         </div>
                                     @endforeach
                                 </div>
@@ -115,26 +151,12 @@
                                 <div class="text-muted">No photos uploaded for this jobcard.</div>
                             @endif
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-muted">
-                                <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
-                            </label>
-                        </div>
-                        @if($jobcard->is_quote && !$jobcard->quote_accepted_at)
-                            <div class="alert alert-info">
-                                <form method="POST" action="{{ route('jobcard.acceptQuote', $jobcard->id) }}">
-                                    @csrf
-                                    <div class="mb-2">
-                                        <label for="accepted_signature" class="form-label">Signature (type your name to accept):</label>
-                                        <input type="text" name="accepted_signature" id="accepted_signature" class="form-control" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-success">Accept Quote</button>
-                                </form>
-                            </div>
-                        @elseif($jobcard->quote_accepted_at)
-                            <div class="alert alert-success">
-                                Quote accepted by user ID: {{ $jobcard->accepted_by }} at {{ $jobcard->quote_accepted_at }}<br>
-                                Signature: {{ $jobcard->accepted_signature }}
+                        
+                        @if(!$jobcard->quote_accepted_at)
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-muted">
+                                    <input type="checkbox" name="is_quote" value="1" {{ old('is_quote', $jobcard->is_quote) ? 'checked' : '' }}> This is a quote
+                                </label>
                             </div>
                         @endif
                     </div>
@@ -895,6 +917,48 @@ function updateRateDisplays() {
             <option value="call_out">Call Out (R${companyRates.call_out_rate.toFixed(0)}/hr)</option>
         `;
     }
+}
+
+// Function to delete photos without form nesting issues
+function deletePhoto(photoId) {
+    if (!confirm('Delete this photo?')) return;
+    
+    // Get CSRF token from meta tag or form input
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.querySelector('input[name="_token"]')?.value;
+    
+    if (!csrfToken) {
+        alert('CSRF token not found. Please refresh the page.');
+        return;
+    }
+    
+    fetch('/mobile-jobcard-photos/' + photoId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(res => {
+        if (res.ok) {
+            return res.json();
+        } else {
+            throw new Error('Network response was not ok');
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            // Remove the photo element from the DOM
+            document.querySelector(`button[onclick="deletePhoto(${photoId})"]`).closest('div').remove();
+        } else {
+            alert('Error deleting photo');
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('Error deleting photo: ' + err.message);
+    });
 }
 </script>
 @endsection

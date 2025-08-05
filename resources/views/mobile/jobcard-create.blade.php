@@ -8,7 +8,8 @@
     <!-- Job Info Card -->
     <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.2rem 1rem 1rem 1rem; margin-bottom: 1.2rem;">
         <div style="font-size: 1.1rem; font-weight: bold; color: #2563eb; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-briefcase"></i> Jobcard #{{ $jobcard_number ?? 'Auto' }}
+            <i class="fas fa-briefcase"></i> Jobcard #<span class="jobcard-number">Select Category First</span>
+    <input type="hidden" name="jobcard_number" id="jobcard_number_input" value="{{ old('jobcard_number', '') }}">
         </div>
         <div style="font-weight: 500; color: #059669; margin-bottom: 0.7rem;">New Jobcard</div>
         <div style="display: flex; gap: 0.7rem; margin-bottom: 0.7rem;">
@@ -18,7 +19,16 @@
             </div>
             <div style="flex:1;">
                 <label style="font-weight: 500; color: #64748b;">Category</label>
-                <input type="text" name="category" class="form-control" value="{{ old('category') }}" style="width: 100%;">
+                <select name="category" class="form-control" onchange="generateJobcardNumber()" style="width: 100%;">
+                    <option value="">Select Category</option>
+                    <option value="General Maintenance" {{ old('category') == 'General Maintenance' ? 'selected' : '' }}>General Maintenance</option>
+                    <option value="Emergency Repair" {{ old('category') == 'Emergency Repair' ? 'selected' : '' }}>Emergency Repair</option>
+                    <option value="Installation" {{ old('category') == 'Installation' ? 'selected' : '' }}>Installation</option>
+                    <option value="Call Out" {{ old('category') == 'Call Out' ? 'selected' : '' }}>Call Out</option>
+                    <option value="Preventive Maintenance" {{ old('category') == 'Preventive Maintenance' ? 'selected' : '' }}>Preventive Maintenance</option>
+                    <option value="Inspection" {{ old('category') == 'Inspection' ? 'selected' : '' }}>Inspection</option>
+                    <option value="Quote" {{ old('category') == 'Quote' ? 'selected' : '' }}>Quote</option>
+                </select>
             </div>
         </div>
         <div style="margin-bottom: 0.7rem;">
@@ -28,11 +38,6 @@
         <div style="margin-bottom: 0.7rem;">
             <label style="font-weight: 500; color: #64748b;">Special Instructions</label>
             <input type="text" name="special_request" class="form-control" value="{{ old('special_request') }}" style="width: 100%;">
-        </div>
-        <div style="margin-bottom: 0.7rem;">
-            <label style="font-weight: 500; color: #64748b;">
-                <input type="checkbox" name="is_quote" value="1" {{ old('is_quote') ? 'checked' : '' }} style="margin-right: 0.5em;"> This is a quote
-            </label>
         </div>
     </div>
     <!-- Client Details Card -->
@@ -150,12 +155,86 @@
             <option value="completed">Completed</option>
         </select>
     </div>
-    <button type="submit" style="width: 100%; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 0.9rem 0; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;">Create Jobcard</button>
+    
+    <button type="submit" onclick="return validateForm()" style="width: 100%; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 0.9rem 0; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;">Create Jobcard</button>
 </form>
 
 <script>
+function generateJobcardNumber() {
+    const categorySelect = document.querySelector('select[name="category"]');
+    const category = categorySelect.value;
+    
+    if (!category) {
+        document.querySelector('.jobcard-number').textContent = 'Select Category First';
+        document.getElementById('jobcard_number_input').value = '';
+        return;
+    }
+    
+    // Generate timestamp: year/month/day/hour/minute
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    
+    const timestamp = `${year}${month}${day}${hour}${minute}`;
+    
+    // Get 2-letter abbreviation based on category
+    let abbreviation = '';
+    switch(category) {
+        case 'General Maintenance':
+            abbreviation = 'gm';
+            break;
+        case 'Emergency Repair':
+            abbreviation = 'er';
+            break;
+        case 'Installation':
+            abbreviation = 'in';
+            break;
+        case 'Call Out':
+            abbreviation = 'ca';
+            break;
+        case 'Preventive Maintenance':
+            abbreviation = 'pm';
+            break;
+        case 'Inspection':
+            abbreviation = 'is';
+            break;
+        case 'Quote':
+            abbreviation = 'qt';
+            break;
+        default:
+            abbreviation = 'xx';
+    }
+    
+    // Create jobcard number: abbreviation-timestamp
+    const jobcardNumber = `${abbreviation}-${timestamp}`;
+    
+    // Update display and hidden input
+    document.querySelector('.jobcard-number').textContent = jobcardNumber;
+    document.getElementById('jobcard_number_input').value = jobcardNumber;
+}
+
 function toggleTempClientFields(select) {
     document.getElementById('temp_client_fields').style.display = select.value === 'temp' ? 'block' : 'none';
+}
+
+function validateForm() {
+    const category = document.querySelector('select[name="category"]').value;
+    const jobcardNumber = document.getElementById('jobcard_number_input').value;
+    
+    if (!category) {
+        alert('Please select a category to generate a jobcard number.');
+        return false;
+    }
+    
+    if (!jobcardNumber) {
+        alert('Jobcard number was not generated. Please select a category.');
+        return false;
+    }
+    
+    return true;
 }
 
 // --- EMPLOYEES ---
@@ -238,5 +317,13 @@ function renderInventory() {
     });
 }
 window.removeInventory = function(i) { inventory.splice(i,1); renderInventory(); };
+
+// Generate jobcard number on page load if category is already selected
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.querySelector('select[name="category"]');
+    if (categorySelect.value) {
+        generateJobcardNumber();
+    }
+});
 </script>
 @endsection

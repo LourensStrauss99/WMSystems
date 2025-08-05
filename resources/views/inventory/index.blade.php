@@ -119,7 +119,7 @@
                 <tr>
                     <th>Status</th>
                     <th>Code</th>
-                    <th>Name</th>
+                    <th>Department</th>
                     <th>Description</th>
                     <th>Supplier</th>
                     <th>Stock Level</th>
@@ -144,11 +144,18 @@
                     
                     <td><strong>{{ $item->short_code }}</strong></td>
                     
+                    <td>
+                        @if($item->department)
+                            <span class="badge bg-secondary">{{ $item->department }}</span>
+                            <small class="text-muted d-block">{{ \App\Models\Inventory::getDepartmentOptions()[$item->department] ?? 'Unknown' }}</small>
+                        @else
+                            <span class="text-muted">Not Set</span>
+                        @endif
+                    </td>
+                    
                     <td>{{ $item->description }}</td>
                     
-                    <td>{{ $item->short_description }}</td>
-                    
-                    <td>{{ $item->supplier }}</td>
+                    <td>{{ $item->vendor }}</td>
                     
                     <td>
                         <span class="stock-level {{ $item->isAtMinLevel() ? 'text-danger' : 'text-success' }}">
@@ -174,7 +181,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center py-4">
+                    <td colspan="10" class="text-center py-4">
                         <div class="alert alert-info mb-0">
                             <h5>No inventory items found</h5>
                             <p class="mb-0">

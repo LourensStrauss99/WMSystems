@@ -419,5 +419,16 @@ function renderItems() {
         loadPurchaseOrder();
     });
 @endif
+
+// Ensure form submission is not blocked and log submit event
+document.addEventListener('DOMContentLoaded', function() {
+    var grvForm = document.getElementById('createGrvForm');
+    if (grvForm) {
+        grvForm.addEventListener('submit', function(e) {
+            console.log('GRV form submit event fired');
+            // Remove any event.preventDefault() to allow normal submission
+        });
+    }
+});
 </script>
 @endsection

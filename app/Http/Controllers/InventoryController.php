@@ -113,7 +113,7 @@ class InventoryController extends Controller
      */
     public function getLowStockAlerts()
     {
-        $lowStock = Inventory::whereRaw('stock_level <= min_level')
+        $lowStock = Inventory::whereRaw('stock_level <= min_quantity')
                             ->orderBy('stock_level')
                             ->get()
                             ->map(function($item) {
@@ -122,12 +122,57 @@ class InventoryController extends Controller
                                     'name' => $item->name,
                                     'short_code' => $item->short_code,
                                     'current_stock' => $item->stock_level,
-                                    'min_level' => $item->min_level,
+                                    'min_quantity' => $item->min_quantity,
                                     'status' => $item->getStockStatus()
                                 ];
                             });
 
         return response()->json($lowStock);
+    }
+
+    /**
+     * Search inventory items for PO creation
+     */
+    public function searchForPO(Request $request)
+    {
+        $query = $request->get('q', '');
+        $department = $request->get('department', '');
+        
+        $inventoryQuery = Inventory::query();
+        
+        if (!empty($query)) {
+            $inventoryQuery->where(function($q) use ($query) {
+                $q->where('description', 'LIKE', "%{$query}%")
+                  ->orWhere('short_code', 'LIKE', "%{$query}%")
+                  ->orWhere('vendor', 'LIKE', "%{$query}%");
+            });
+        }
+        
+        if (!empty($department)) {
+            $inventoryQuery->where('department', $department);
+        }
+        
+        $items = $inventoryQuery->select('id', 'description', 'short_code', 'department', 'vendor', 'buying_price', 'quantity', 'min_quantity')
+                               ->orderBy('description')
+                               ->limit(20)
+                               ->get()
+                               ->map(function($item) {
+                                   $departments = Inventory::getDepartmentOptions();
+                                   return [
+                                       'id' => $item->id,
+                                       'description' => $item->description,
+                                       'short_code' => $item->short_code,
+                                       'department' => $item->department,
+                                       'department_name' => $departments[$item->department] ?? 'Unknown',
+                                       'vendor' => $item->vendor,
+                                       'buying_price' => $item->buying_price,
+                                       'current_stock' => $item->quantity,
+                                       'min_quantity' => $item->min_quantity,
+                                       'needs_replenishment' => $item->quantity <= $item->min_quantity,
+                                   ];
+                               });
+        
+        return response()->json($items);
     }
 
     public function create()
@@ -138,12 +183,10 @@ class InventoryController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name' => 'required|string|max:255',
             'description' => 'required|string',
-            'short_description' => 'nullable|string|max:255',
-            'short_code' => 'required|string|max:50|unique:inventory,short_code',
+            'department' => 'required|string|max:2', // Validate department prefix
+            'short_code' => 'nullable|string|max:50|unique:inventory,short_code',
             'vendor' => 'nullable|string|max:255',
-            'supplier' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:255',
             'receipt_number' => 'nullable|string|max:255',
             'purchase_date' => 'nullable|date',
@@ -153,17 +196,22 @@ class InventoryController extends Controller
             'selling_price' => 'required|numeric|min:0',
             'goods_received_voucher' => 'nullable|string|max:255',
             'stock_level' => 'required|integer|min:0',
-            'min_level' => 'required|integer|min:0',
+            'min_quantity' => 'required|integer|min:0',
             'stock_update_reason' => 'nullable|string|max:255',
             'is_replenishment' => 'nullable|boolean',
             'original_item_id' => 'nullable|integer',
         ]);
 
+        // Generate inventory code if not provided
+        if (empty($data['short_code'])) {
+            $data['short_code'] = \App\Models\Inventory::generateInventoryCode($data['department']);
+        }
+
         // Set default values for nullable fields
         $data['nett_price'] = $data['buying_price'];
         $data['sell_price'] = $data['selling_price'];
         $data['quantity'] = $data['stock_level'];
-        $data['min_quantity'] = $data['min_level'];
+        // min_quantity is now directly required and used
         $data['stock_added'] = $data['stock_level'];
         $data['last_stock_update'] = $data['purchase_date'] ?? now()->toDateString();
 
@@ -194,14 +242,75 @@ class InventoryController extends Controller
                     $successMessage = "New inventory item added (original item not found for replenishment): {$item->short_code}";
                 }
             } else {
-                $successMessage = "New inventory item '{$item->description}' added successfully! Stock: {$item->quantity}, Code: {$item->short_code}";
+                $departmentName = \App\Models\Inventory::getDepartmentOptions()[$data['department']] ?? 'Unknown';
+                $successMessage = "New inventory item '{$item->description}' added successfully! Department: {$departmentName}, Stock: {$item->quantity}, Code: {$item->short_code}";
             }
             
-            return redirect()->back()->with('success', $successMessage);
-            
+            return redirect()->route('inventory.index')->with('success', $successMessage);
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Error adding inventory: ' . $e->getMessage())->withInput();
+            \Illuminate\Support\Facades\Log::error('Inventory creation failed: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Failed to create inventory item: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * API endpoint to generate inventory code for a department
+     */
+    public function generateCode($departmentPrefix)
+    {
+        try {
+            $code = \App\Models\Inventory::generateInventoryCode($departmentPrefix);
+            return response()->json([
+                'success' => true,
+                'code' => $code,
+                'department' => $departmentPrefix
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * API endpoint to get company markup percentage
+     */
+    public function getCompanyMarkup()
+    {
+        $companyDetails = \App\Models\CompanyDetail::first();
+        return response()->json([
+            'markup_percentage' => $companyDetails ? $companyDetails->markup_percentage : 30
+        ]);
+    }
+
+    /**
+     * API endpoint to get inventory item details
+     */
+    public function getItemDetails($id)
+    {
+        $item = Inventory::find($id);
+        
+        if (!$item) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Item not found'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'item' => [
+                'id' => $item->id,
+                'description' => $item->description,
+                'short_code' => $item->short_code,
+                'vendor' => $item->vendor,
+                'buying_price' => $item->buying_price,
+                'selling_price' => $item->selling_price,
+                'min_quantity' => $item->min_quantity,
+                'department' => $item->department
+            ]
+        ]);
     }
 
     public function adminPanel()
@@ -221,27 +330,29 @@ class InventoryController extends Controller
         $item = Inventory::findOrFail($id);
         
         $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'short_description' => 'nullable|string|max:255',
+            'description' => 'required|string|max:255', // Changed from 'name' to 'description'
             'short_code' => 'required|string|max:50|unique:inventory,short_code,' . $id,
+            'department' => 'required|string|max:2|in:' . implode(',', array_keys(Inventory::getDepartmentOptions())), // Make required
             'vendor' => 'nullable|string|max:255',
-            'supplier' => 'nullable|string|max:255',
             'buying_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
-            'stock_level' => 'required|integer|min:0',
-            'min_level' => 'required|integer|min:0',
+            'quantity' => 'required|integer|min:0', // Changed from 'stock_level' to 'quantity'
+            'min_quantity' => 'required|integer|min:0',
+            // Purchase tracking fields
+            'invoice_number' => 'nullable|string|max:255',
+            'receipt_number' => 'nullable|string|max:255',
+            'purchase_date' => 'nullable|date',
+            'purchase_order_number' => 'nullable|string|max:255',
+            'purchase_notes' => 'nullable|string',
         ]);
 
-        // Update derived fields
+        // Update derived fields for backward compatibility
         $data['nett_price'] = $data['buying_price'];
         $data['sell_price'] = $data['selling_price'];
-        $data['quantity'] = $data['stock_level'];
-        $data['min_quantity'] = $data['min_level'];
 
         try {
             $item->update($data);
-            return redirect('/inventory')->with('success', 'Inventory item updated successfully!');
+            return redirect('/inventory')->with('success', 'Inventory item updated successfully! Department: ' . $data['department']);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error updating inventory: ' . $e->getMessage())->withInput();
         }

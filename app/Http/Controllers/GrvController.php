@@ -42,7 +42,7 @@ class GrvController extends Controller
         Log::info('GRV Create accessed', [
             'url' => $request->fullUrl(),
             'method' => $request->method(),
-            'user' => auth()->id(),
+            'user' => Auth::id(),
             'request_data' => $request->all()
         ]);
         
@@ -71,33 +71,42 @@ class GrvController extends Controller
         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Store method called\n", FILE_APPEND);
         file_put_contents(storage_path('logs/debug.log'), "Request data: " . json_encode($request->all()) . "\n", FILE_APPEND);
         
-        $validated = $request->validate([
-            'purchase_order_id' => 'required|exists:purchase_orders,id',
-            'received_date' => 'required|date',
-            'received_time' => 'required',
-            'delivery_note_number' => 'nullable|string|max:255',
-            'vehicle_registration' => 'nullable|string|max:255',
-            'driver_name' => 'nullable|string|max:255',
-            'delivery_company' => 'nullable|string|max:255',
-            'overall_status' => 'required|string',
-            'quality_check_passed' => 'nullable|boolean',
-            'delivery_note_received' => 'nullable|boolean',
-            'invoice_received' => 'nullable|boolean',
-            'general_notes' => 'nullable|string',
-            'discrepancies' => 'nullable|string',
-            'quality_notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.purchase_order_item_id' => 'required|exists:purchase_order_items,id',
-            'items.*.quantity_received' => 'required|integer|min:0',
-            'items.*.quantity_rejected' => 'nullable|integer|min:0',
-            'items.*.quantity_damaged' => 'nullable|integer|min:0',
-            'items.*.condition' => 'required|string',
-            'items.*.batch_number' => 'nullable|string',
-            'items.*.expiry_date' => 'nullable|date',
-            'items.*.storage_location' => 'nullable|string',
-            'items.*.item_notes' => 'nullable|string',
-            'items.*.rejection_reason' => 'nullable|string',
-        ]);
+        // Debug: log all incoming request data
+        file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - GRV store called\n", FILE_APPEND);
+        file_put_contents(storage_path('logs/debug.log'), "Request data: " . json_encode($request->all()) . "\n", FILE_APPEND);
+
+        try {
+            $validated = $request->validate([
+                'purchase_order_id' => 'required|exists:purchase_orders,id',
+                'received_date' => 'required|date',
+                'received_time' => 'required',
+                'delivery_note_number' => 'nullable|string|max:255',
+                'vehicle_registration' => 'nullable|string|max:255',
+                'driver_name' => 'nullable|string|max:255',
+                'delivery_company' => 'nullable|string|max:255',
+                'overall_status' => 'required|string',
+                'quality_check_passed' => 'nullable|boolean',
+                'delivery_note_received' => 'nullable|boolean',
+                'invoice_received' => 'nullable|boolean',
+                'general_notes' => 'nullable|string',
+                'discrepancies' => 'nullable|string',
+                'quality_notes' => 'nullable|string',
+                'items' => 'required|array|min:1',
+                'items.*.purchase_order_item_id' => 'required|exists:purchase_order_items,id',
+                'items.*.quantity_received' => 'required|integer|min:0',
+                'items.*.quantity_rejected' => 'nullable|integer|min:0',
+                'items.*.quantity_damaged' => 'nullable|integer|min:0',
+                'items.*.condition' => 'required|string',
+                'items.*.batch_number' => 'nullable|string',
+                'items.*.expiry_date' => 'nullable|date',
+                'items.*.storage_location' => 'nullable|string',
+                'items.*.item_notes' => 'nullable|string',
+                'items.*.rejection_reason' => 'nullable|string',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Validation error: " . json_encode($e->errors()) . "\n", FILE_APPEND);
+            throw $e;
+        }
 
         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Validation passed\n", FILE_APPEND);
 
@@ -145,9 +154,16 @@ class GrvController extends Controller
                     if (!$inventory) {
                         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Creating new inventory item for: {$poItem->item_name}\n", FILE_APPEND);
                         
+                        // Determine department from item name or default to General
+                        $department = $this->determineDepartmentFromItemName($poItem->item_name);
+                        
+                        // Generate proper department-based inventory code
+                        $inventoryCode = Inventory::generateInventoryCode($department);
+                        
                         $inventory = Inventory::create([
                             'description' => $poItem->item_name,
-                            'short_code' => $poItem->item_code ?: 'AUTO-' . time(),
+                            'short_code' => $inventoryCode, // Use proper department-based code
+                            'department' => $department, // Add department field
                             'vendor' => $grv->purchaseOrder->supplier->name ?? 'Unknown',
                             'nett_price' => $poItem->unit_price,
                             'buying_price' => $poItem->unit_price, // <-- Set buying_price from PO item
@@ -164,10 +180,11 @@ class GrvController extends Controller
                             'stock_update_reason' => 'Initial creation from GRV',
                         ]);
                         
-                        Log::info("Created new inventory item", [
+                        Log::info("Created new inventory item with department code", [
                             'id' => $inventory->id,
                             'description' => $inventory->description,
-                            'short_code' => $inventory->short_code
+                            'short_code' => $inventory->short_code,
+                            'department' => $inventory->department
                         ]);
                     }
 
@@ -409,39 +426,81 @@ class GrvController extends Controller
      */
     public function forceUpdateInventory($id)
     {
-        $grv = GoodsReceivedVoucher::with(['items.inventory'])->findOrFail($id);
+        try {
+            $grv = GoodsReceivedVoucher::with(['items.inventory'])->findOrFail($id);
+            
+            $results = [];
+            
+            foreach ($grv->items as $item) {
+                if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
+                    
+                    // Direct database update - FIXED TABLE NAME
+                    $affected = DB::table('inventory')
+                        ->where('id', $item->inventory_id)
+                        ->update([
+                            'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),
+                            'last_stock_update' => now(),
+                            'stock_added' => $item->getAcceptedQuantity(),
+                            'stock_update_reason' => "Force update via GRV: {$grv->grv_number}"
+                        ]);
+                    
+                    // Mark item as updated
+                    $item->update(['stock_updated' => true]);
+                    
+                    $results[] = [
+                        'grv_item_id' => $item->id,
+                        'inventory_id' => $item->inventory_id,
+                        'quantity_added' => $item->getAcceptedQuantity(),
+                        'rows_affected' => $affected,
+                        'new_stock' => $item->inventory->fresh()->stock_level
+                    ];
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock updated successfully',
+                'results' => $results
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Force update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Update failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+     * Determine department from item name using keywords
+     */
+    private function determineDepartmentFromItemName($itemName)
+    {
+        $itemNameLower = strtolower($itemName);
         
-        $results = [];
+        // Department keyword mapping
+        $departmentKeywords = [
+            'EL' => ['electric', 'electrical', 'wire', 'cable', 'switch', 'socket', 'plug', 'led', 'bulb', 'light', 'amp', 'volt'],
+            'PL' => ['plumb', 'pipe', 'tap', 'valve', 'drain', 'toilet', 'sink', 'basin', 'shower', 'bath', 'water'],
+            'MC' => ['mechanical', 'gear', 'bearing', 'shaft', 'motor', 'engine', 'pump', 'compressor'],
+            'TL' => ['tool', 'hammer', 'screwdriver', 'wrench', 'drill', 'saw', 'spanner'],
+            'HV' => ['hvac', 'air conditioning', 'heating', 'ventilation', 'fan', 'duct'],
+            'HW' => ['screw', 'bolt', 'nut', 'washer', 'nail', 'fastener', 'hardware'],
+            'CH' => ['chemical', 'acid', 'solvent', 'cleaner', 'oil', 'grease'],
+            'SF' => ['safety', 'helmet', 'glove', 'goggle', 'mask', 'harness'],
+            'CL' => ['clean', 'detergent', 'soap', 'sanitizer', 'disinfectant'],
+            'PP' => ['fitting', 'elbow', 'joint', 'coupling', 'adapter'],
+        ];
         
-        foreach ($grv->items as $item) {
-            if ($item->inventory_id && $item->getAcceptedQuantity() > 0) {
-                
-                // Direct database update - FIXED TABLE NAME
-                $affected = DB::table('inventory')
-                    ->where('id', $item->inventory_id)
-                    ->update([
-                        'quantity' => DB::raw('quantity + ' . $item->getAcceptedQuantity()),
-                        'last_stock_update' => now(),
-                        'stock_added' => $item->getAcceptedQuantity(),
-                        'stock_update_reason' => "Force update via GRV: {$grv->grv_number}"
-                    ]);
-                
-                // Mark item as updated
-                $item->update(['stock_updated' => true]);
-                
-                $results[] = [
-                    'grv_item_id' => $item->id,
-                    'inventory_id' => $item->inventory_id,
-                    'quantity_added' => $item->getAcceptedQuantity(),
-                    'rows_affected' => $affected,
-                    'new_stock' => $item->inventory->fresh()->stock_level
-                ];
+        // Check for keyword matches
+        foreach ($departmentKeywords as $dept => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (strpos($itemNameLower, $keyword) !== false) {
+                    return $dept;
+                }
             }
         }
         
-        return response()->json([
-            'message' => 'Force update completed',
-            'results' => $results
-        ], 200, [], JSON_PRETTY_PRINT);
+        // Default to General if no match found
+        return 'GE';
     }
 }

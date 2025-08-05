@@ -17,6 +17,7 @@ class Inventory extends Model
         'description',
         'short_code',
         'vendor',
+        'department', // <-- Added for inventory categorization
         
         // Pricing
         'nett_price',
@@ -53,6 +54,63 @@ class Inventory extends Model
         'min_level' => 'integer',
         'stock_added' => 'integer',
     ];
+
+    // Department prefixes for inventory codes
+    public static function getDepartmentOptions()
+    {
+        return [
+            'EL' => 'Electrical',
+            'PL' => 'Plumbing', 
+            'SU' => 'Sundries',
+            'WS' => 'Workshop',
+            'TL' => 'Tools',
+            'OF' => 'Office Supplies',
+            'TR' => 'Transport',
+            'MC' => 'Mechanical',
+            'IC' => 'Electronics',
+            'EQ' => 'Equipment',
+            'SF' => 'Safety Equipment',
+            'CL' => 'Cleaning Supplies',
+            'GE' => 'General',
+            'HV' => 'HVAC',
+            'PP' => 'Pipes & Fittings',
+            'CA' => 'Cables & Wiring',
+            'HW' => 'Hardware',
+            'CH' => 'Chemicals',
+            'LU' => 'Lubricants',
+            'SP' => 'Spare Parts'
+        ];
+    }
+
+    /**
+     * Generate next available inventory code for a department
+     */
+    public static function generateInventoryCode($departmentPrefix)
+    {
+        // Validate department prefix
+        $departments = self::getDepartmentOptions();
+        if (!array_key_exists($departmentPrefix, $departments)) {
+            throw new \InvalidArgumentException("Invalid department prefix: {$departmentPrefix}");
+        }
+
+        // Find the highest existing number for this department
+        $pattern = $departmentPrefix . '-%';
+        $lastItem = self::where('short_code', 'LIKE', $pattern)
+                       ->orderBy('short_code', 'desc')
+                       ->first();
+
+        $nextNumber = 1;
+        if ($lastItem) {
+            // Extract the number from the code (e.g., EL-00123 -> 123)
+            $lastCode = $lastItem->short_code;
+            if (preg_match('/^' . $departmentPrefix . '-(\d+)$/', $lastCode, $matches)) {
+                $nextNumber = intval($matches[1]) + 1;
+            }
+        }
+
+        // Format with leading zeros (5 digits)
+        return $departmentPrefix . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+    }
 
     // Accessor to get the selling price (prioritize selling_price over sell_price)
     public function getSellingPriceAttribute($value)
