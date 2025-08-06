@@ -7,16 +7,20 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Jobcard;
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
+    use TenantDatabaseSwitch;
     /**
      * Show payment form for a specific client
      */
     public function create($clientId)
     {
+        $this->switchToTenantDatabase();
+        
         $client = Client::findOrFail($clientId);
         
         // Get unpaid and partially paid invoices for this client

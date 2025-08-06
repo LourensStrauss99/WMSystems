@@ -59,6 +59,25 @@
     </style>
 </head>
 <body class="bg-light">
+    <!-- DEBUG INFORMATION -->
+    @if(isset($debug))
+    <div class="alert alert-info m-3">
+        <h5>🔍 Debug Information:</h5>
+        <p><strong>Before DB:</strong> {{ $debug['before_db'] ?? 'Not set' }}</p>
+        <p><strong>After DB:</strong> {{ $debug['after_db'] ?? 'Not set' }}</p>
+        <p><strong>Tenant Session:</strong> {{ $debug['tenant_session'] ?? 'Not set' }}</p>
+        <p><strong>Current User:</strong> {{ $debug['current_user'] ?? 'Not set' }}</p>
+        <p><strong>Current User ID:</strong> {{ $debug['current_user_id'] ?? 'Not set' }}</p>
+        <p><strong>Auth Guard:</strong> {{ $debug['auth_guard'] ?? 'Not set' }}</p>
+        <p><strong>Users Count:</strong> {{ $users->count() ?? 0 }}</p>
+        <p><strong>Employees Count:</strong> {{ $employees->count() ?? 0 }}</p>
+        <p><strong>GRVs Count:</strong> {{ $debug['grvs_count'] ?? 0 }}</p>
+        <p><strong>Actual DB Query:</strong> {{ $debug['actual_db_query'] ?? 'Not set' }}</p>
+        <p><strong>Users Emails:</strong> {{ implode(', ', $debug['users_emails'] ?? []) }}</p>
+        <p><strong>Employees Emails:</strong> {{ implode(', ', $debug['employees_emails'] ?? []) }}</p>
+    </div>
+    @endif
+    
     <!-- Navigation Bar -->
   
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">

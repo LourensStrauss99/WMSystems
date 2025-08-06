@@ -5,11 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Employee;
+use App\Traits\TenantDatabaseSwitch;
 
 class MobileAuthController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function login(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',

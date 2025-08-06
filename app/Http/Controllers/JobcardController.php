@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Invoice;
 use App\Models\Client;
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     /**
      * Show the form for creating a new jobcard (mobile version).
      */
@@ -92,6 +95,9 @@ class JobcardController extends Controller
 
     public function index(Request $request)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $query = Jobcard::with('client');
         
         // Search by client name

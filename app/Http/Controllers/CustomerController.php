@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Mail\StatementMailable;
@@ -11,8 +12,13 @@ use Illuminate\Support\Facades\Mail;
 
 class CustomerController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function index(Request $request)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $search = $request->input('search');
         $filter = $request->input('filter'); // Add this
         $perPage = $request->input('perPage', 10);

@@ -7,9 +7,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use App\Traits\TenantDatabaseSwitch;
 
 class UserController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function __construct()
     {
         $this->middleware('auth');
@@ -23,6 +26,8 @@ class UserController extends Controller
 
     public function index()
     {
+        $this->switchToTenantDatabase();
+        
         $users = \App\Models\User::paginate(15);
         $employees = \App\Models\Employee::paginate(15);
         return view('admin.users.index', compact('users', 'employees'));
@@ -30,6 +35,8 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
@@ -79,6 +86,8 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check if user can edit this user
         if (!Auth::user() || !Auth::user()->canManageUsers()) {
             abort(403, 'You do not have permission to edit users.');
@@ -94,6 +103,8 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check permissions
         if (!Auth::user()->canManageUsers()) {
             abort(403, 'You do not have permission to edit users.');
@@ -142,6 +153,8 @@ class UserController extends Controller
 
     public function changePassword(Request $request, User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check permissions
         if (!auth()->user()->canManageUsers() && $user->id !== auth()->id()) {
             abort(403, 'You can only change your own password or you need user management permissions.');
@@ -163,6 +176,8 @@ class UserController extends Controller
      */
     public function toggleStatus(User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check permissions
         if (!auth()->user()->canManageUsers()) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -192,6 +207,8 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check permissions
         if (!auth()->user()->canManageUsers()) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -226,6 +243,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
+        $this->switchToTenantDatabase();
+        
         // Check permissions
         if (!auth()->user()->canManageUsers()) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
