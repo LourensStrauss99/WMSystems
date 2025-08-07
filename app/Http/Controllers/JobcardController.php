@@ -12,7 +12,6 @@ use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -25,9 +24,6 @@ class JobcardController extends Controller
      */
     public function createMobile()
     {
-        // Switch to tenant database for mobile user
-        $this->switchToTenantDatabase();
-        
         $employees = \App\Models\Employee::all();
         $inventory = \App\Models\Inventory::all();
         $clients = \App\Models\Client::all();
@@ -162,13 +158,6 @@ class JobcardController extends Controller
 
     public function show(Jobcard $jobcard)
     {
-        // Only switch to tenant database if user is in tenant context
-        if (session('tenant_database') && session('tenant_database') !== 'main') {
-            $this->switchToTenantDatabase();
-            // Re-fetch the jobcard from the correct tenant database
-            $jobcard = Jobcard::findOrFail($jobcard->id);
-        }
-        
         // Load relationships carefully
         $jobcard->load(['client', 'inventory']);
         
@@ -194,11 +183,6 @@ class JobcardController extends Controller
 
     public function create()
     {
-        // Only switch to tenant database if user is in tenant context
-        if (session('tenant_database') && session('tenant_database') !== 'main') {
-            $this->switchToTenantDatabase();
-        }
-        
         $employees = Employee::all();
         $inventory = Inventory::all();
         return view('jobcard.create', compact('employees', 'inventory'));
@@ -206,40 +190,11 @@ class JobcardController extends Controller
 
     public function store(Request $request)
     {
-        try {
-            // Basic validation
-            $request->validate([
-                'client_id' => 'required',
-                'category' => 'required|string',
-                'job_date' => 'required|date',
-                'work_request' => 'nullable|string',
-                'special_request' => 'nullable|string',
-                'photos.*' => 'nullable|image|max:15360' // 15MB max per photo
-            ]);
-            
-            // Additional validation for mobile
-            if ($request->session()->get('mobile_employee_id')) {
-                $request->validate([
-                    'jobcard_number' => 'required|string'
-                ]);
-            }
-            
-            // Switch to tenant database (handles both admin and mobile users)
-            $this->switchToTenantDatabase();
 
-            DB::transaction(function () use ($request) {
-                $mobileEmployeeId = $request->session()->get('mobile_employee_id');
-                $clientId = $request->input('client_id');
-                
-                // Log the incoming data for debugging
-                Log::info('Creating jobcard with data:', [
-                    'client_id' => $clientId,
-                    'category' => $request->input('category'),
-                    'mobile_employee_id' => $mobileEmployeeId,
-                    'tenant_database' => session('tenant_database')
-                ]);
-                
-                // Handle temporary client creation
+        DB::transaction(function () use ($request) {
+            $mobileEmployeeId = $request->session()->get('mobile_employee_id');
+            $clientId = $request->input('client_id');
+            // Handle temporary client creation
             if ($clientId === 'temp') {
                 $client = new \App\Models\Client();
                 $client->name = $request->input('temp_client_name');
@@ -272,11 +227,6 @@ class JobcardController extends Controller
             if (empty($data['category'])) {
                 $data['category'] = 'General Maintenance';
             }
-            
-            // Ensure status has a default value if null or empty
-            if (empty($data['status'])) {
-                $data['status'] = 'assigned';
-            }
 
             // Ensure jobcard number exists - if not, generate one based on category
             if (empty($data['jobcard_number'])) {
@@ -301,42 +251,9 @@ class JobcardController extends Controller
             // Jobcard number is now generated on the frontend based on category
             // No need for backend generation
 
-            // Ensure required fields are present
-            if (empty($clientId)) {
-                throw new \Exception('Client ID is required but missing');
-            }
-            if (empty($data['category'])) {
-                throw new \Exception('Category is required but missing');
-            }
-            if (empty($data['job_date'])) {
-                throw new \Exception('Job date is required but missing');
-            }
-            if (empty($data['jobcard_number'])) {
-                throw new \Exception('Jobcard number is required but missing');
-            }
-
-            // Log the data being used to create the jobcard
-            Log::info('Creating jobcard with data:', [
-                'data' => array_merge($data, ['client_id' => $clientId]),
-                'tenant_database' => session('tenant_database'),
-                'mobile_employee_id' => $mobileEmployeeId
-            ]);
-
             $jobcard = Jobcard::create(array_merge($data, ['client_id' => $clientId]));
-            
-            // Log successful creation
-            Log::info('Jobcard created successfully:', [
-                'jobcard_id' => $jobcard->id,
-                'jobcard_number' => $jobcard->jobcard_number
-            ]);
 
             // --- EMPLOYEES ---
-            Log::info('Processing employees data:', [
-                'has_employees' => $request->has('employees'),
-                'employees_data' => $request->input('employees', []),
-                'mobile_employee_id' => $mobileEmployeeId
-            ]);
-            
             $syncData = [];
             if ($request->has('employees')) {
                 foreach ($request->input('employees', []) as $employee) {
@@ -355,19 +272,11 @@ class JobcardController extends Controller
                     'hour_type' => 'normal',
                 ];
             }
-            
-            Log::info('Employee sync data:', ['syncData' => $syncData]);
-            
             if (!empty($syncData)) {
                 $jobcard->employees()->sync($syncData);
-                Log::info('Employee sync completed');
             }
 
             // --- TRAVELING ---
-            Log::info('Processing traveling data:', [
-                'has_traveling' => $request->has('traveling'),
-                'traveling_data' => $request->input('traveling', [])
-            ]);
             if ($request->has('traveling')) {
                 foreach ($request->input('traveling', []) as $travel) {
                     if (!empty($travel['id'])) {
@@ -396,51 +305,14 @@ class JobcardController extends Controller
                 }
                 $jobcard->inventory()->sync($syncData);
             }
-            
-            // Handle photo uploads for mobile jobcard creation
-            if ($request->hasFile('photos')) {
-                foreach ($request->file('photos') as $photo) {
-                    $path = $photo->store('jobcards/' . $jobcard->id, 'public');
-                    \App\Models\MobileJobcardPhoto::create([
-                        'jobcard_id' => $jobcard->id,
-                        'file_path' => $path,
-                        'uploaded_at' => now(),
-                        'uploaded_by' => $mobileEmployeeId ?? Auth::id(),
-                    ]);
-                }
-            }
         });
 
-        Log::info('Jobcard creation completed, redirecting to mobile index');
-        
         // Redirect to mobile jobcard list after creation
         return redirect()->route('mobile.jobcards.index')->with('success', 'Jobcard created!');
-        
-        } catch (\Exception $e) {
-            Log::error('Error creating jobcard: ' . $e->getMessage(), [
-                'request_data' => $request->except(['_token', 'photos']), // Exclude large photo data from logs
-                'trace' => $e->getTraceAsString(),
-                'tenant_database' => session('tenant_database'),
-                'mobile_employee_id' => $request->session()->get('mobile_employee_id')
-            ]);
-            
-            if ($request->session()->get('mobile_employee_id')) {
-                return redirect()->back()->withErrors(['error' => 'Error saving jobcard. Please try again.'])->withInput();
-            } else {
-                return redirect()->back()->withErrors(['error' => 'Error saving jobcard: ' . $e->getMessage()])->withInput();
-            }
-        }
     }
 
     public function edit(Jobcard $jobcard)
     {
-        // Only switch to tenant database if user is in tenant context
-        if (session('tenant_database') && session('tenant_database') !== 'main') {
-            $this->switchToTenantDatabase();
-            // Re-fetch the jobcard from the correct tenant database
-            $jobcard = Jobcard::findOrFail($jobcard->id);
-        }
-        
         $jobcard->load(['client', 'employees', 'inventory']);
         $employees = Employee::all();
         $inventory = Inventory::all();
@@ -458,9 +330,6 @@ class JobcardController extends Controller
 
     public function editMobile($id)
     {
-        // Switch to tenant database for mobile user
-        $this->switchToTenantDatabase();
-        
         $jobcard = Jobcard::with(['client', 'inventory', 'mobilePhotos'])->findOrFail($id);
         $inventory = Inventory::all();
         $assignedInventory = $jobcard->inventory->map(function($item) {
@@ -484,22 +353,12 @@ class JobcardController extends Controller
 
     public function showMobile($id)
     {
-        // Switch to tenant database for mobile user
-        $this->switchToTenantDatabase();
-        
         $jobcard = Jobcard::with('client', 'inventory')->findOrFail($id);
         return view('mobile.jobcard-view', compact('jobcard'));
     }
 
     public function update(Request $request, Jobcard $jobcard)
     {
-        // Only switch to tenant database if user is in tenant context
-        if (session('tenant_database') && session('tenant_database') !== 'main') {
-            $this->switchToTenantDatabase();
-            // Re-fetch the jobcard from the correct tenant database
-            $jobcard = Jobcard::findOrFail($jobcard->id);
-        }
-        
         DB::transaction(function () use ($request, $jobcard) {
             // Update basic jobcard fields
             $jobcard->update($request->only([
@@ -755,9 +614,6 @@ class JobcardController extends Controller
 
     public function mobileIndex(Request $request)
     {
-        // Switch to tenant database for mobile user
-        $this->switchToTenantDatabase();
-        
         // Require mobile employee login
         $employeeId = $request->session()->get('mobile_employee_id');
         if (!$employeeId) {
@@ -810,40 +666,5 @@ class JobcardController extends Controller
         $jobcard->update(['visible_on_mobile' => false]);
         
         return response()->json(['success' => 'Jobcard removed from mobile view']);
-    }
-    
-    /**
-     * Update jobcard from mobile interface
-     */
-    public function mobileUpdate(Request $request, $id)
-    {
-        try {
-            // Switch to tenant database for mobile user
-            $this->switchToTenantDatabase();
-            
-            // Find the jobcard in the tenant database
-            $jobcard = Jobcard::findOrFail($id);
-            
-            // Update the jobcard with the provided data
-            $jobcard->update($request->only([
-                'jobcard_number', 'job_date', 'client_id', 'category', 
-                'work_request', 'special_request', 'status', 'work_done',
-                'normal_hours', 'overtime_hours', 'weekend_hours', 
-                'public_holiday_hours', 'call_out_hours', 'total_labour_cost',
-                'is_quote'
-            ]));
-            
-            return response()->json(['success' => true, 'message' => 'Jobcard updated successfully!']);
-            
-        } catch (\Exception $e) {
-            Log::error('Error updating mobile jobcard: ' . $e->getMessage(), [
-                'jobcard_id' => $id,
-                'request_data' => $request->except(['_token']),
-                'tenant_database' => session('tenant_database'),
-                'mobile_employee_id' => $request->session()->get('mobile_employee_id')
-            ]);
-            
-            return response()->json(['success' => false, 'message' => 'Error updating jobcard: ' . $e->getMessage()], 500);
-        }
     }
 }
