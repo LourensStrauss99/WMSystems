@@ -93,16 +93,65 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="mb-2"><i class="fas fa-link text-primary me-2"></i>Share Mobile Login Link</h5>
-            <div class="input-group mb-2">
-                <input type="text" id="mobile-login-link" class="form-control" readonly value="{{ url('/mobile-app/login?email=' . urlencode($employee->email)) }}">
-                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('mobile-login-link').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy', 1500);">Copy</button>
+            <div class="input-group">
+                <input type="text" id="mobile-login-link" class="form-control" readonly value="{{ url('/mobile-app/login?email=' . urlencode($employee->email) . '&tenant=' . urlencode(session('tenant_database', ''))) }}">
+                <button class="btn btn-outline-secondary" type="button" id="copy-link-btn">Copy</button>
             </div>
             <small class="text-muted">Send this link to the employee. It will pre-fill their email on the mobile login page.</small>
-            <div class="mt-3 text-center">
-                {!! QrCode::size(180)->generate(url('/mobile-app/login?email=' . $employee->email)) !!}
+            <div class="text-center mt-3">
+                {!! QrCode::size(180)->generate(url('/mobile-app/login?email=' . $employee->email . '&tenant=' . urlencode(session('tenant_database', '')))) !!}
                 <div class="small text-muted mt-1">Scan to open mobile login link</div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const copyBtn = document.getElementById('copy-link-btn');
+    const linkInput = document.getElementById('mobile-login-link');
+    
+    if (copyBtn && linkInput) {
+        copyBtn.addEventListener('click', async function() {
+            try {
+                // Try modern clipboard API first
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(linkInput.value);
+                } else {
+                    // Fallback for older browsers or non-HTTPS
+                    linkInput.select();
+                    linkInput.setSelectionRange(0, 99999); // For mobile devices
+                    document.execCommand('copy');
+                }
+                
+                // Show success feedback
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('btn-success');
+                copyBtn.classList.remove('btn-outline-secondary');
+                
+                // Reset after 1.5 seconds
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('btn-success');
+                    copyBtn.classList.add('btn-outline-secondary');
+                }, 1500);
+                
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                // Show error feedback
+                copyBtn.textContent = 'Error!';
+                copyBtn.classList.add('btn-danger');
+                copyBtn.classList.remove('btn-outline-secondary');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('btn-danger');
+                    copyBtn.classList.add('btn-outline-secondary');
+                }, 1500);
+            }
+        });
+    }
+});
+</script>
 @endsection
