@@ -47,6 +47,22 @@
             Master Settings
         </a>
 
+        <!-- Landlord Button (Only for Super Admin Level 10) -->
+        @auth
+            @if(auth()->user()->admin_level == 10 && auth()->user()->is_landlord == 1)
+                <a href="{{ route('landlord.tenants.index') }}"
+                   class="inline-flex items-center bg-purple-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-purple-700 mb-4 ml-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                    </svg>
+                    Landlord Portal
+                </a>
+            @endif
+        @endauth
+
         @if(session('admin_error'))
             <div class="alert alert-danger text-red-600 font-bold mb-4">
                 {{ session('admin_error') }}
