@@ -50,7 +50,7 @@
         <!-- Landlord Button (Only for Super Admin Level 10) -->
         @auth
             @if(auth()->user()->admin_level == 10 && auth()->user()->is_landlord == 1)
-                <a href="{{ route('landlord.tenants.index') }}"
+                <a href="{{ route('landlord.dashboard') }}"
                    class="inline-flex items-center bg-purple-600 text-white px-6 py-3 rounded-lg shadow-md hover:bg-purple-700 mb-4 ml-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -28,7 +28,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'email_verified_at' => 'datetime',
         'subscription_expires_at' => 'datetime',
         'last_payment_date' => 'datetime',
-        'next_payment_due' => 'date',
+        'next_payment_due' => 'datetime',
     ];
 
     protected $hidden = [
@@ -69,5 +69,21 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         $slug = Str::slug($name);
         $count = static::where('slug', 'like', $slug . '%')->count();
         return $count > 0 ? $slug . '-' . ($count + 1) : $slug;
+    }
+
+    // Relationships for landlord management
+    public function landlordInvoices()
+    {
+        return $this->hasMany(\App\Models\LandlordInvoice::class);
+    }
+
+    public function landlordPayments()
+    {
+        return $this->hasMany(\App\Models\LandlordPayment::class);
+    }
+
+    public function communications()
+    {
+        return $this->hasMany(\App\Models\TenantCommunication::class);
     }
 }

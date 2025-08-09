@@ -28,6 +28,7 @@ use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
+use App\Http\Controllers\LandlordDashboardController;
 use App\Http\Controllers\ReportController;
 use App\Models\Tenant;
 
@@ -81,117 +82,33 @@ Route::get('/dashboard', function () {
 })->middleware(['auth'])->name('dashboard');
 
 // Landlord routes (restricted to admin_level 10 + is_landlord = 1)
-Route::middleware(['auth', 'landlord'])->group(function () {
-    Route::get('/landlord/tenants', function () {
-        $tenants = \App\Models\Tenant::with('domains')->get();
-        return view('landlord.tenants', compact('tenants'));
-    })->name('landlord.tenants.index');
+Route::middleware(['auth', 'landlord'])->prefix('landlord')->name('landlord.')->group(function () {
+    // Redirect old tenants page to new dashboard
+    Route::redirect('/', '/landlord/dashboard');
     
-    Route::post('/landlord/tenants', function () {
-        $data = request()->validate([
-            'name' => 'required|string|max:255',
-            'tenant_id' => 'required|string|max:255|unique:tenants,id',
-            'domain' => 'nullable|string|max:255|unique:domains,domain',
-            'owner_name' => 'required|string|max:255',
-            'owner_email' => 'required|email|max:255',
-            'owner_password' => 'required|string|min:8',
-            'owner_phone' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'monthly_fee' => 'nullable|numeric|min:0',
-            'subscription_plan' => 'nullable|string|in:basic,standard,premium,enterprise',
-        ]);
-        
-        // Generate slug and database name
-        $data['slug'] = \App\Models\Tenant::generateSlug($data['name']);
-        $data['database_name'] = 'tenant_' . $data['tenant_id'];
-    $data['status'] = 'active';
-    $data['is_active'] = true;
-    $data['payment_status'] = 'active';
-        
-        // Set default domain if not provided
-        if (empty($data['domain'])) {
-            $data['domain'] = $data['tenant_id'] . '.workflow-management.test';
-        } else {
-            // Normalize: accept bare label and expand to FQDN if needed
-            if (strpos($data['domain'], '.') === false) {
-                $data['domain'] = strtolower($data['domain']) . '.workflow-management.test';
-            }
-        }
-        
-        // Prevent duplicate domains (handles when domain was blank and defaulted)
-        if (\Stancl\Tenancy\Database\Models\Domain::where('domain', $data['domain'])->exists()) {
-            return back()->withErrors(['domain' => 'This domain is already in use.'])->withInput();
-        }
-
-        // Create tenant
-        $tenant = \App\Models\Tenant::create([
-            'id' => $data['tenant_id'],
-            'name' => $data['name'],
-            'slug' => $data['slug'],
-            'database_name' => $data['database_name'],
-            'owner_name' => $data['owner_name'],
-            'owner_email' => $data['owner_email'],
-            'owner_password' => $data['owner_password'], // Will be hashed by model
-            'owner_phone' => $data['owner_phone'] ?? null,
-            'address' => $data['address'] ?? null,
-            'city' => $data['city'] ?? null,
-            'country' => $data['country'] ?? 'South Africa',
-            'status' => $data['status'],
-            'is_active' => $data['is_active'],
-            'payment_status' => $data['payment_status'],
-            'monthly_fee' => $data['monthly_fee'] ?? 0.00,
-            'subscription_plan' => $data['subscription_plan'] ?? 'basic',
-        ]);
-        
-        // Create domain
-        $tenant->domains()->create(['domain' => $data['domain']]);
-
-        // Initialize tenancy and bootstrap the owner inside the tenant DB
-        try {
-            tenancy()->initialize($tenant);
-
-            // Create initial owner as super admin level 5
-            \App\Models\User::query()->updateOrCreate(
-                ['email' => $data['owner_email']],
-                [
-                    'name' => $data['owner_name'],
-                    'password' => bcrypt($data['owner_password']),
-                    'role' => 'admin',
-                    'admin_level' => 5,
-                    'is_superuser' => 1,
-                    'is_active' => 1,
-                    'email_verified_at' => now(),
-                ]
-            );
-
-        } catch (\Throwable $e) {
-            // Don't fail the whole flow; log and continue
-            Log::error('Tenant bootstrap failed: ' . $e->getMessage());
-        } finally {
-            tenancy()->end();
-        }
-
-        // Optional: record initial payment in CENTRAL DB if monthly_fee provided
-        if (!empty($data['monthly_fee'])) {
-            DB::table('tenant_payments')->insert([
-                'tenant_id' => $tenant->id,
-                'amount' => $data['monthly_fee'],
-                'method' => 'manual',
-                'status' => 'paid',
-                'paid_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        return redirect()->route('landlord.tenants.index')
-            ->with('success', "Tenant '{$data['name']}' created. Domain: {$data['domain']}. Owner provisioned as super admin.");
-    })->name('landlord.tenants.store');
-
+    // Dashboard routes
+    Route::get('/dashboard', [App\Http\Controllers\LandlordDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/income', [App\Http\Controllers\LandlordDashboardController::class, 'income'])->name('income');
+    Route::get('/communications', [App\Http\Controllers\LandlordDashboardController::class, 'communications'])->name('communications');
+    
+    // Package management routes
+    Route::get('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'packages'])->name('packages');
+    Route::get('/packages/create', [App\Http\Controllers\LandlordDashboardController::class, 'createPackage'])->name('packages.create');
+    Route::post('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'storePackage'])->name('packages.store');
+    Route::get('/packages/{package}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'editPackage'])->name('packages.edit');
+    Route::put('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'destroyPackage'])->name('packages.destroy');
+    
+    // Tenant management routes
+    Route::get('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'tenants'])->name('tenants');
+    Route::get('/tenants/create', [App\Http\Controllers\LandlordDashboardController::class, 'create'])->name('tenants.create');
+    Route::post('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'store'])->name('tenants.store');
+    Route::get('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'show'])->name('tenants.show');
+    Route::get('/tenants/{tenant}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'edit'])->name('tenants.edit');
+    Route::put('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'update'])->name('tenants.update');
+    
     // View tenant payment history (central DB)
-    Route::get('/landlord/tenants/{tenant}/payments', function (\App\Models\Tenant $tenant) {
+    Route::get('/tenants/{tenant}/payments', function (\App\Models\Tenant $tenant) {
         $payments = DB::table('tenant_payments')
             ->where('tenant_id', $tenant->id)
             ->orderByDesc('paid_at')
@@ -199,10 +116,10 @@ Route::middleware(['auth', 'landlord'])->group(function () {
             ->get();
 
         return view('landlord.tenant_payments', compact('tenant', 'payments'));
-    })->name('landlord.tenants.payments');
+    })->name('tenants.payments');
 
     // Impersonate owner: redirect to tenant domain with a short-lived signed SSO token
-    Route::get('/landlord/tenants/{tenant}/impersonate', function (\App\Models\Tenant $tenant) {
+    Route::get('/tenants/{tenant}/impersonate', function (\App\Models\Tenant $tenant) {
         $domain = optional($tenant->domains()->first())->domain;
         if (!$domain) {
             return back()->withErrors(['domain' => 'No domain configured for this tenant.']);
@@ -225,10 +142,10 @@ Route::middleware(['auth', 'landlord'])->group(function () {
         ]);
 
         return redirect("http://{$domain}/sso?{$query}");
-    })->name('landlord.tenants.impersonate');
+    })->name('tenants.impersonate');
 
     // Diagnostics: check tenant initialization and DB connectivity
-    Route::get('/landlord/tenants/{tenant}/check', function (\App\Models\Tenant $tenant) {
+    Route::get('/tenants/{tenant}/check', function (\App\Models\Tenant $tenant) {
         $out = [ 'tenant_id' => $tenant->id ];
         try {
             tenancy()->initialize($tenant);
@@ -244,7 +161,7 @@ Route::middleware(['auth', 'landlord'])->group(function () {
         } finally {
             tenancy()->end();
         }
-    })->name('landlord.tenants.check');
+    })->name('tenants.check');
 });
 
 // Settings (protected, using Volt)
