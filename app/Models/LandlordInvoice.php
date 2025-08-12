@@ -11,6 +11,8 @@ class LandlordInvoice extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql'; // Always use central database
+
     protected $fillable = [
         'invoice_number',
         'tenant_id',
@@ -29,9 +31,9 @@ class LandlordInvoice extends Model
 
     protected $casts = [
         'line_items' => 'array',
-        'invoice_date' => 'date',
-        'due_date' => 'date',
-        'paid_date' => 'date',
+        'invoice_date' => 'datetime',
+        'due_date' => 'datetime',
+        'paid_date' => 'datetime',
         'amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
@@ -49,7 +51,7 @@ class LandlordInvoice extends Model
 
     public function isOverdue(): bool
     {
-        return $this->status === 'pending' && $this->due_date->isPast();
+        return $this->status === 'pending' && $this->due_date->lt(now());
     }
 
     public function generateInvoiceNumber(): string

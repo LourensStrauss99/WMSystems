@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 
 class Employee extends Authenticatable
 {
@@ -152,5 +153,16 @@ class Employee extends Authenticatable
     public function routeNotificationForFcm()
     {
         return $this->fcm_token;
+    }
+
+    protected static function booted()
+    {
+        static::created(function ($employee) {
+            Log::info('Employee created', [
+                'connection' => $employee->getConnectionName(),
+                'database' => $employee->getConnection()->getDatabaseName(),
+                'id' => $employee->id,
+            ]);
+        });
     }
 }

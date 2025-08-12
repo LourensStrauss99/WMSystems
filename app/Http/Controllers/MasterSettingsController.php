@@ -8,9 +8,22 @@ use App\Models\Inventory;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class MasterSettingsController extends Controller
 {
+    // Debug route to check tenancy and connection info
+    public function debug(Request $request)
+    {
+        return response()->json([
+            'tenant_id' => tenant('id'),
+            'default_connection' => DB::getDefaultConnection(),
+            'database_name' => DB::getDatabaseName(),
+            'request_host' => $request->getHost(),
+            'route_name' => $request->route() ? $request->route()->getName() : null,
+        ]);
+    }
     public function index()
     {
         $users = User::orderBy('is_superuser', 'desc')
@@ -30,6 +43,16 @@ class MasterSettingsController extends Controller
 
     public function store(Request $request)
     {
+        // Debug: Check which database connection is being used
+        Log::info('MasterSettingsController@store - Database info', [
+            'default_connection' => DB::getDefaultConnection(),
+            'database_name' => DB::getDatabaseName(),
+            'tenant_id' => tenant('id'),
+            'request_host' => $request->getHost(),
+            'route_name' => $request->route() ? $request->route()->getName() : null,
+            'middleware' => method_exists($request, 'route') ? $request->route()->gatherMiddleware() : [],
+        ]);
+
         // You can branch logic based on account_type if needed
         if ($request->account_type === 'employee') {
             // Validate and create employee
@@ -43,11 +66,13 @@ class MasterSettingsController extends Controller
                 'telephone' => 'nullable|string|max:20',
                 'password' => 'required|string|confirmed|min:8',
             ]);
-            $validated['password'] = \Hash::make($validated['password']);
+            $validated['password'] = Hash::make($validated['password']);
             $validated['created_by'] = auth()->id();
+            
+            // Create employee - the tenancy package should handle database switching automatically
             \App\Models\Employee::create($validated);
 
-            return redirect()->route('master.settings')->with('success', 'Employee created successfully!');
+            return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'Employee created successfully!');
         } else {
             // Validate and create user
             $validated = $request->validate([
@@ -61,12 +86,14 @@ class MasterSettingsController extends Controller
                 'telephone' => 'nullable|string|max:20',
                 'password' => 'required|string|confirmed|min:8',
             ]);
-            $validated['password'] = \Hash::make($validated['password']);
+            $validated['password'] = Hash::make($validated['password']);
             $validated['created_by'] = auth()->id();
             $validated['is_active'] = true;
+            
+            // Create user - the tenancy package should handle database switching automatically
             \App\Models\User::create($validated);
 
-            return redirect()->route('master.settings')->with('success', 'User created successfully!');
+            return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'User created successfully!');
         }
     }
 

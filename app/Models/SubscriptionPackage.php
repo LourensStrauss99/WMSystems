@@ -10,6 +10,8 @@ class SubscriptionPackage extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql'; // Always use central database
+
     protected $fillable = [
         'name',
         'slug',

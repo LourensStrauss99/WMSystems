@@ -24,6 +24,30 @@
         </div>
     </div>
 
+    {{-- Company Details Check --}}
+    @if(!$company)
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning d-flex align-items-center" role="alert">
+                    <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
+                    <div>
+                        <h4 class="alert-heading mb-2">Company Details Required</h4>
+                        <p class="mb-2">
+                            Before reports can be displayed, you need to set up your company details including VAT percentage and other business information.
+                        </p>
+                        <p class="mb-0">
+                            Please go to <strong>Master Settings</strong> and complete your company details setup first.
+                        </p>
+                        <hr class="my-3">
+                        <a href="{{ route('master.settings') }}" class="btn btn-warning">
+                            <i class="fas fa-cog me-2"></i>Go to Master Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @else
+
     @php
         $currentData = $viewMode == 'ytd' ? $ytdData : $monthlyData;
         $currentRevenue = $viewMode == 'ytd' ? $ytdRevenue : $monthlyRevenue;
@@ -90,7 +114,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title mb-1">VAT ({{ $company->vat_percentage }}%)</h6>
+                            <h6 class="card-title mb-1">VAT ({{ $company ? $company->vat_percentage : 15 }}%)</h6>
                             <h4 class="mb-0">R {{ number_format($currentRevenue['vat_amount'], 2) }}</h4>
                             <small class="opacity-75">
                                 On R {{ number_format($currentRevenue['subtotal'], 2) }}
@@ -209,7 +233,7 @@
                         <div class="col-6">
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
-                                    <span>Normal (R{{ number_format($company->standard_labour_rate, 2) }}/hr)</span>
+                                    <span>Normal (R{{ number_format($company ? $company->standard_labour_rate : 150, 2) }}/hr)</span>
                                     <strong>{{ number_format($currentRevenue['hours_detail']['normal'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
@@ -218,7 +242,7 @@
                             </div>
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
-                                    <span>Overtime (R{{ number_format($company->standard_labour_rate * $company->overtime_multiplier, 2) }}/hr)</span>
+                                    <span>Overtime (R{{ number_format(($company ? $company->standard_labour_rate : 150) * ($company ? $company->overtime_multiplier : 1.5), 2) }}/hr)</span>
                                     <strong>{{ number_format($currentRevenue['hours_detail']['overtime'] ?? 0) }}h</strong>
                                 </div>
                                 <div class="progress" style="height: 5px;">
@@ -325,6 +349,8 @@
         <div class="text-xs text-gray-500">Total Employees</div>
     </div>
 </div>
+
+@endif
 
 <script>
 function updateReport() {

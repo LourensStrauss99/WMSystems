@@ -244,7 +244,7 @@
             
            
             
-           <form action="{{ route('master_settings.store') }}" method="POST" id="userEmployeeForm">
+           <form action="{{ tenant() ? route('settings.store') : route('master_settings.store') }}" method="POST" id="userEmployeeForm">
     @csrf
     <div class="row g-3">
         {{-- Type Selection Dropdown --}}

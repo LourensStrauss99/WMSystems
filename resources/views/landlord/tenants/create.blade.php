@@ -13,14 +13,14 @@
                         <a href="{{ route('landlord.dashboard') }}" class="text-decoration-none">Dashboard</a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a href="{{ route('landlord.tenants') }}" class="text-decoration-none">Tenants</a>
+                        <a href="{{ route('landlord.tenants.index') }}" class="text-decoration-none">Tenants</a>
                     </li>
                     <li class="breadcrumb-item active" aria-current="page">Add New</li>
                 </ol>
             </nav>
         </div>
         <div>
-            <a href="{{ route('landlord.tenants') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('landlord.tenants.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Tenants
             </a>
         </div>
@@ -208,7 +208,7 @@
                             <button type="submit" class="btn btn-success">
                                 <i class="fas fa-plus"></i> Create Tenant
                             </button>
-                            <a href="{{ route('landlord.tenants') }}" class="btn btn-secondary">
+                            <a href="{{ route('landlord.tenants.index') }}" class="btn btn-secondary">
                                 Cancel
                             </a>
                         </div>

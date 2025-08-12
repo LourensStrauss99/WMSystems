@@ -13,7 +13,7 @@
                         <a href="{{ route('landlord.dashboard') }}" class="text-decoration-none">Dashboard</a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a href="{{ route('landlord.tenants') }}" class="text-decoration-none">Tenants</a>
+                        <a href="{{ route('landlord.tenants.index') }}" class="text-decoration-none">Tenants</a>
                     </li>
                     <li class="breadcrumb-item">
                         <a href="{{ route('landlord.tenants.show', $tenant) }}" class="text-decoration-none">{{ $tenant->name }}</a>
@@ -92,6 +92,19 @@
                                     @error('owner_phone')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                </div>
+                                <div class="form-group">
+                                    <label for="owner_password">New Password</label>
+                                    <input type="password" class="form-control @error('owner_password') is-invalid @enderror" 
+                                           id="owner_password" name="owner_password" autocomplete="new-password">
+                                    @error('owner_password')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="form-group">
+                                    <label for="owner_password_confirmation">Confirm New Password</label>
+                                    <input type="password" class="form-control" 
+                                           id="owner_password_confirmation" name="owner_password_confirmation" autocomplete="new-password">
                                 </div>
                             </div>
                         </div>

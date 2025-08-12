@@ -54,12 +54,6 @@ use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\ClientStatementController;
 use Illuminate\Support\Facades\Log;
 
-// If this is NOT a central domain, don't register central routes here.
-// Tenant routes are loaded separately from routes/tenant.php in bootstrap/app.php
-if (! in_array(request()->getHost(), config('tenancy.central_domains', []))) {
-    return;
-}
-
 // Tenant Registration Routes (Public - no auth required)
 Route::get('/tenant/register', [\App\Http\Controllers\TenantController::class, 'showRegistration'])->name('tenant.show-registration');
 Route::post('/tenant/register', [\App\Http\Controllers\TenantController::class, 'register'])->name('tenant.register');
@@ -95,25 +89,23 @@ Route::middleware(['auth', 'landlord'])->prefix('landlord')->name('landlord.')->
     // Dashboard routes
     Route::get('/dashboard', [App\Http\Controllers\LandlordDashboardController::class, 'dashboard'])->name('dashboard');
     Route::get('/income', [App\Http\Controllers\LandlordDashboardController::class, 'income'])->name('income');
-    Route::get('/communications', [App\Http\Controllers\LandlordDashboardController::class, 'communications'])->name('communications.index');
+    Route::get('/communications', [App\Http\Controllers\LandlordDashboardController::class, 'communications'])->name('communications');
     
     // Package management routes
-    Route::get('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'packages'])->name('packages.index');
+    Route::get('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'packages'])->name('packages');
     Route::get('/packages/create', [App\Http\Controllers\LandlordDashboardController::class, 'createPackage'])->name('packages.create');
     Route::post('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'storePackage'])->name('packages.store');
-    Route::get('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'showPackage'])->name('packages.show');
     Route::get('/packages/{package}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'editPackage'])->name('packages.edit');
     Route::put('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'updatePackage'])->name('packages.update');
     Route::delete('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'destroyPackage'])->name('packages.destroy');
     
     // Tenant management routes
-    Route::get('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'tenants'])->name('tenants.index');
-    Route::get('/tenants/create', [App\Http\Controllers\LandlordDashboardController::class, 'createTenant'])->name('tenants.create');
+    Route::get('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'tenants'])->name('tenants');
+    Route::get('/tenants/create', [App\Http\Controllers\LandlordDashboardController::class, 'create'])->name('tenants.create');
     Route::post('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'store'])->name('tenants.store');
-    Route::get('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'showTenant'])->name('tenants.show');
-    Route::get('/tenants/{tenant}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'editTenant'])->name('tenants.edit');
-    Route::put('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'updateTenant'])->name('tenants.update');
-    Route::delete('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'destroyTenant'])->name('tenants.destroy');
+    Route::get('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'show'])->name('tenants.show');
+    Route::get('/tenants/{tenant}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'edit'])->name('tenants.edit');
+    Route::put('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'update'])->name('tenants.update');
     
     // View tenant payment history (central DB)
     Route::get('/tenants/{tenant}/payments', function (\App\Models\Tenant $tenant) {
@@ -172,76 +164,65 @@ Route::middleware(['auth', 'landlord'])->prefix('landlord')->name('landlord.')->
     })->name('tenants.check');
 });
 
-// Settings (protected, using Volt) - central landlord version
+// Settings (protected, using Volt)
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
-    Livewire\Volt\Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
-    Livewire\Volt\Volt::route('settings/password', 'settings.password')->name('settings.password');
-    Livewire\Volt\Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
+    Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
+    Volt::route('settings/password', 'settings.password')->name('settings.password');
+    Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 
-// Inventory - central landlord version
-Route::get('/inventory', [App\Http\Controllers\InventoryController::class, 'index'])->name('inventory.index');
+// Inventory
+Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
 Route::get('/admin/inventory/create', function () {
     return view('inventory.create');
 })->name('inventory.create');
-Route::post('/admin/inventory', [App\Http\Controllers\InventoryController::class, 'store'])->name('admin.inventory.store');
-Route::post('/inventory/check-stock', [App\Http\Controllers\InventoryController::class, 'checkStock'])->name('inventory.check-stock');
-Route::get('/inventory/stock-alerts', [App\Http\Controllers\InventoryController::class, 'getLowStockAlerts']);
-Route::get('/inventory/{id}/edit', [App\Http\Controllers\InventoryController::class, 'edit'])->name('inventory.edit');
-Route::put('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 'update'])->name('inventory.update');
-Route::get('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 'show'])->name('inventory.show');
+Route::post('/admin/inventory', [InventoryController::class, 'store'])->name('admin.inventory.store');
+Route::post('/inventory/check-stock', [InventoryController::class, 'checkStock'])->name('inventory.check-stock');
+Route::get('/inventory/stock-alerts', [InventoryController::class, 'getLowStockAlerts']);
+Route::get('/inventory/{id}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
+Route::put('/inventory/{id}', [InventoryController::class, 'update'])->name('inventory.update');
+Route::get('/inventory/{id}', [InventoryController::class, 'show'])->name('inventory.show');
 
-// Inventory API endpoints for code generation and markup - central landlord version
-Route::get('/api/inventory/generate-code/{departmentPrefix}', [App\Http\Controllers\InventoryController::class, 'generateCode']);
-Route::get('/api/inventory/search-for-po', [App\Http\Controllers\InventoryController::class, 'searchForPO']);
-Route::get('/api/company/markup-percentage', [App\Http\Controllers\InventoryController::class, 'getCompanyMarkup']);
-Route::get('/api/inventory/{id}/details', [App\Http\Controllers\InventoryController::class, 'getItemDetails']);
+// Inventory API endpoints for code generation and markup
+Route::get('/api/inventory/generate-code/{departmentPrefix}', [InventoryController::class, 'generateCode']);
+Route::get('/api/inventory/search-for-po', [InventoryController::class, 'searchForPO']);
+Route::get('/api/company/markup-percentage', [InventoryController::class, 'getCompanyMarkup']);
+Route::get('/api/inventory/{id}/details', [InventoryController::class, 'getItemDetails']);
 
-// Admin panel (central landlord)
-Route::get('/admin-panel', [App\Http\Controllers\InventoryController::class, 'adminPanel'])->name('admin.panel');
+// Admin panel
+Route::get('/admin-panel', [InventoryController::class, 'adminPanel'])->name('admin.panel');
 
-// User management (central landlord helpers)
-Route::post('/admin/users', [App\Http\Controllers\AdminController::class, 'storeUser'])->name('admin.users.store');
-Route::post('/admin/employees', [App\Http\Controllers\EmployeeController::class, 'store'])->name('admin.employees.store');
+// User management
+Route::post('/admin/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
+Route::post('/admin/employees', [EmployeeController::class, 'store'])->name('admin.employees.store');
 
-// Static pages - central landlord convenience routes
+// Static pages
 Route::view('/client', 'client')->name('client');
 Route::view('/invoice', 'invoice')->name('invoice');
 Route::view('/settings', 'settings')->name('settings');
+//Route::view('/reports', 'reports')->name('reports');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 
-// Jobcard routes - central landlord version
-Route::resource('jobcard', App\Http\Controllers\JobcardController::class)->except(['destroy']);
-Route::post('/jobcard', [App\Http\Controllers\JobcardController::class, 'store'])->name('jobcard.store');
-Route::get('/jobcard/{jobcard}', [App\Http\Controllers\JobcardController::class, 'show'])->name('jobcard.show');
-Route::post('/jobcard/{id}/submit-invoice', [App\Http\Controllers\JobcardController::class, 'submitForInvoice'])->name('jobcard.submitInvoice');
-Route::post('/jobcard/{id}/remove-from-mobile', [App\Http\Controllers\JobcardController::class, 'removeFromMobile'])->name('jobcard.removeFromMobile');
-
-// Redirect old .html route if needed
-Route::get('/Inventory.html', function () {
-    return redirect('/inventory');
-});
-
-// Inventory routes are tenant-scoped (see routes/tenant.php)
-
-// Inventory APIs are tenant-scoped (see routes/tenant.php)
-
-// Admin panel within tenant is tenant-scoped (see routes/tenant.php)
-
-// User/employee management for tenants is tenant-scoped (see routes/tenant.php)
-
-// Tenant static pages are tenant-scoped (see routes/tenant.php)
-
-// Jobcard routes are tenant-scoped (see routes/tenant.php)
+// Jobcard resource (RESTful) - exclude destroy method
+Route::resource('jobcard', JobcardController::class)->except(['destroy']);
+//Route::view('/jobcard', 'jobcard')->name('jobcard.index');
+//Route::get('/jobcard/create/{client}', [JobcardController::class, 'create'])->name('jobcard.create');
+Route::post('/jobcard', [JobcardController::class, 'store'])->name('jobcard.store');
+Route::get('/jobcard/{jobcard}', [JobcardController::class, 'show'])->name('jobcard.show');
+Route::post('/jobcard/{id}/submit-invoice', [JobcardController::class, 'submitForInvoice'])->name('jobcard.submitInvoice');
+Route::post('/jobcard/{id}/remove-from-mobile', [JobcardController::class, 'removeFromMobile'])->name('jobcard.removeFromMobile');
 
 // Home after login (default Laravel redirect)
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('home.index');
 
-// Old inventory redirects are tenant-specific. Remove from central.
+// Redirect old .html route if needed
+Route::get('/Inventory.html', function () {
+    return redirect('/inventory');
+});
 
 // Admin Authentication Routes
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
@@ -557,11 +538,7 @@ Route::get('/test-inventory-update', function() {
 
 // In web.php
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-
-// Landlord-specific route for master settings
-Route::middleware(['web'])->group(function () {
-    Route::post('/master_settings', [MasterSettingsController::class, 'store'])->name('master_settings.store');
-});
+Route::post('/master_settings', [MasterSettingsController::class, 'store'])->name('master_settings.store');
 
 // Add this to your web.php routes file
 Route::post('/jobcard/calculate-hours', [JobcardController::class, 'calculateHourCosts'])->name('jobcard.calculate-hours');

@@ -9,7 +9,7 @@
         <div class="col-md-8">
             <h2 class="text-dark fw-bold mb-1">
                 <i class="fas fa-edit text-primary me-2"></i>
-                Edit Jobcard
+                Edit Jobcard 
             </h2>
             <p class="text-muted">Update jobcard details and manage resources</p>
         </div>

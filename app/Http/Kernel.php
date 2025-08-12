@@ -47,5 +47,10 @@ class Kernel extends HttpKernel
         'company.access' => \App\Http\Middleware\CompanyAccessMiddleware::class,
         'employee' => \App\Http\Middleware\EmployeeAuth::class,
         'landlord' => \App\Http\Middleware\LandlordMiddleware::class,
+        
+        // Tenancy middleware
+        'tenant.init' => \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
+        'tenant.subdomain' => \Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain::class,
+        'tenant.prevent_central' => \Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains::class,
     ];
 }

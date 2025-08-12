@@ -10,16 +10,16 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h1 class="h3 mb-0 text-gray-800">Landlord Dashboard</h1>
                 <div class="btn-group" role="group">
-                    <a href="{{ route('landlord.packages') }}" class="btn btn-outline-primary">
+                    <a href="{{ route('landlord.packages.index') }}" class="btn btn-outline-primary">
                         <i class="fas fa-cube"></i> Packages
                     </a>
                     <a href="{{ route('landlord.income') }}" class="btn btn-outline-primary">
                         <i class="fas fa-chart-line"></i> Income Reports
                     </a>
-                    <a href="{{ route('landlord.tenants') }}" class="btn btn-outline-primary">
+                    <a href="{{ route('landlord.tenants.index') }}" class="btn btn-outline-primary">
                         <i class="fas fa-users"></i> Manage Tenants
                     </a>
-                    <a href="{{ route('landlord.communications') }}" class="btn btn-outline-primary">
+                    <a href="{{ route('landlord.communications.index') }}" class="btn btn-outline-primary">
                         <i class="fas fa-comments"></i> Communications
                     </a>
                 </div>
@@ -177,7 +177,7 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Recent Communications</h6>
-                    <a href="{{ route('landlord.communications') }}" class="btn btn-sm btn-primary">View All</a>
+                    <a href="{{ route('landlord.communications.index') }}" class="btn btn-sm btn-primary">View All</a>
                 </div>
                 <div class="card-body">
                     @if($recentCommunications->count() > 0)

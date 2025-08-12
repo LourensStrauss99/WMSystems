@@ -10,6 +10,8 @@ class CommunicationMessage extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql'; // Always use central database
+
     protected $fillable = [
         'tenant_communication_id',
         'user_id',

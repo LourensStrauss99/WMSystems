@@ -11,6 +11,8 @@ class TenantCommunication extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql'; // Always use central database
+
     protected $fillable = [
         'tenant_id',
         'initiated_by_user_id',

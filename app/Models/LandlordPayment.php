@@ -11,6 +11,8 @@ class LandlordPayment extends Model
 {
     use HasFactory;
 
+    protected $connection = 'mysql'; // Always use central database
+
     protected $fillable = [
         'tenant_id',
         'landlord_invoice_id',

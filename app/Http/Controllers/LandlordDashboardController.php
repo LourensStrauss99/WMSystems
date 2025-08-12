@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\TenantCommunication;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -18,6 +19,11 @@ class LandlordDashboardController extends Controller
     public function __construct()
     {
         $this->middleware(['auth', 'landlord']);
+    }
+
+    public function index()
+    {
+        return $this->dashboard();
     }
 
     public function dashboard()
@@ -229,7 +235,7 @@ class LandlordDashboardController extends Controller
 
         $tenant->update($request->all());
 
-        return redirect()->route('landlord.tenants')->with('success', 'Tenant updated successfully!');
+        return redirect()->route('landlord.tenants.index')->with('success', 'Tenant updated successfully!');
     }
 
     public function store(Request $request)
@@ -344,7 +350,7 @@ class LandlordDashboardController extends Controller
             ]);
         }
 
-        return redirect()->route('landlord.tenants')
+        return redirect()->route('landlord.tenants.index')
             ->with('success', "Tenant '{$data['name']}' created successfully! Tenant ID: {$data['tenant_id']}, Domain: {$data['domain']}. Owner provisioned as super admin.");
     }
 
@@ -391,7 +397,7 @@ class LandlordDashboardController extends Controller
 
         SubscriptionPackage::create($data);
 
-        return redirect()->route('landlord.packages')->with('success', 'Package created successfully!');
+        return redirect()->route('landlord.packages.index')->with('success', 'Package created successfully!');
     }
 
     public function editPackage(SubscriptionPackage $package)
@@ -432,7 +438,7 @@ class LandlordDashboardController extends Controller
 
         $package->update($data);
 
-        return redirect()->route('landlord.packages')->with('success', 'Package updated successfully!');
+        return redirect()->route('landlord.packages.index')->with('success', 'Package updated successfully!');
     }
 
     public function destroyPackage(SubscriptionPackage $package)
@@ -441,13 +447,13 @@ class LandlordDashboardController extends Controller
         $tenantsUsingPackage = Tenant::where('subscription_plan', $package->name)->count();
         
         if ($tenantsUsingPackage > 0) {
-            return redirect()->route('landlord.packages')
+            return redirect()->route('landlord.packages.index')
                 ->with('error', "Cannot delete package '{$package->name}' as it is currently being used by {$tenantsUsingPackage} tenant(s).");
         }
 
         $package->delete();
 
-        return redirect()->route('landlord.packages')->with('success', 'Package deleted successfully!');
+        return redirect()->route('landlord.packages.index')->with('success', 'Package deleted successfully!');
     }
 
     public function communications()
@@ -480,5 +486,78 @@ class LandlordDashboardController extends Controller
         } while (Tenant::where('id', $nextNumber)->exists());
         
         return $nextNumber;
+    }
+
+    public function createTenant()
+    {
+        return $this->create();
+    }
+
+    public function showTenant(Tenant $tenant)
+    {
+        return $this->show($tenant);
+    }
+
+    public function editTenant(Tenant $tenant)
+    {
+        return $this->edit($tenant);
+    }
+
+    public function updateTenant(Request $request, Tenant $tenant)
+    {
+        return $this->update($request, $tenant);
+    }
+
+    public function destroyTenant(Tenant $tenant)
+    {
+        // Add tenant deletion logic here
+        try {
+            // Delete tenant domain records
+            $tenant->domains()->delete();
+            
+            // Drop tenant database
+            $databaseName = $tenant->database()->getName();
+            DB::statement("DROP DATABASE IF EXISTS `{$databaseName}`");
+            
+            // Delete tenant record
+            $tenant->delete();
+            
+            return redirect()->route('landlord.tenants.index')
+                ->with('success', 'Tenant deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error('Error deleting tenant: ' . $e->getMessage());
+            return redirect()->route('landlord.tenants.index')
+                ->with('error', 'Error deleting tenant: ' . $e->getMessage());
+        }
+    }
+
+    public function showPackage(SubscriptionPackage $package)
+    {
+        $tenants = Tenant::where('subscription_plan', $package->name)->get();
+        return view('landlord.packages.show', compact('package', 'tenants'));
+    }
+
+    public function ssoToTenant(Request $request, Tenant $tenant)
+    {
+        // Generate SSO token for tenant access
+        $user = Auth::user();
+        $expires = now()->addMinutes(5)->timestamp;
+        
+        $key = config('app.key');
+        if (is_string($key) && str_starts_with($key, 'base64:')) {
+            $key = base64_decode(substr($key, 7));
+        }
+        
+        $payload = $tenant->id . '|' . $user->email . '|' . $expires;
+        $signature = hash_hmac('sha256', $payload, $key ?? '');
+        
+        $ssoUrl = 'http://' . $tenant->domains()->first()->domain . '/sso?' . http_build_query([
+            'tenant' => $tenant->id,
+            'email' => $user->email,
+            'expires' => $expires,
+            'sig' => $signature,
+        ]);
+        
+        return redirect($ssoUrl);
     }
 }

@@ -39,7 +39,7 @@
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('landlord.tenants') }}" class="row align-items-end">
+                    <form method="GET" action="{{ route('landlord.tenants.index') }}" class="row align-items-end">
                         <div class="col-md-3">
                             <label for="search" class="form-label">Search</label>
                             <input type="text" name="search" id="search" class="form-control" 
@@ -69,7 +69,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> Search
                             </button>
-                            <a href="{{ route('landlord.tenants') }}" class="btn btn-outline-secondary">
+                            <a href="{{ route('landlord.tenants.index') }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-times"></i> Clear
                             </a>
                         </div>
@@ -114,7 +114,10 @@
                                                 <div>
                                                     <strong>{{ $tenant->name }}</strong>
                                                     @if($tenant->domains->count() > 0)
-                                                        <br><small class="text-muted">{{ $tenant->domains->first()->domain }}</small>
+                                                        <br>
+                                                        <a href="http://{{ $tenant->domains->first()->domain }}" target="_blank" class="text-primary text-decoration-underline">
+                                                            {{ $tenant->domains->first()->domain }}
+                                                        </a>
                                                     @endif
                                                 </div>
                                             </td>
@@ -184,11 +187,15 @@
                                                                 </a>
                                                             @endif
                                                             <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-danger" href="#" onclick="deleteTenant({{ $tenant->id }})">
+                                                            <a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); if(confirm('Are you sure you want to delete this tenant?')) document.getElementById('delete-tenant-form-{{ $tenant->id }}').submit();">
                                                                 <i class="fas fa-trash"></i> Delete
                                                             </a>
                                                         </div>
                                                     </div>
+                                                    <form id="delete-tenant-form-{{ $tenant->id }}" action="{{ route('landlord.tenants.destroy', $tenant) }}" method="POST" style="display: none;">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                    </form>
                                                 </div>
                                             </td>
                                         </tr>
@@ -381,7 +388,13 @@ function deleteTenant(tenantId) {
 }
 
 // Simple form validation and submission
+
 console.log('JavaScript loaded successfully');
+
+// Add Bootstrap JS and jQuery for dropdown functionality
+</script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
 // Show modal if there are validation errors
 @if ($errors->any())

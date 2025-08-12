@@ -95,7 +95,12 @@
             <h5 class="mb-2"><i class="fas fa-link text-primary me-2"></i>Share Mobile Login Link</h5>
             <div class="input-group mb-2">
                 <input type="text" id="mobile-login-link" class="form-control" readonly value="{{ url('/mobile-app/login?email=' . urlencode($employee->email)) }}">
-                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('mobile-login-link').value); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy', 1500);">Copy</button>
+                <button class="btn btn-outline-secondary" type="button" id="copy-button" onclick="copyMobileLink()">
+                    <i class="fas fa-copy me-1"></i>Copy
+                </button>
+            </div>
+            <div id="copy-success-message" class="alert alert-success d-none" role="alert">
+                <i class="fas fa-check-circle me-2"></i>Link copied successfully!
             </div>
             <small class="text-muted">Send this link to the employee. It will pre-fill their email on the mobile login page.</small>
             <div class="mt-3 text-center">
@@ -105,4 +110,85 @@
         </div>
     </div>
 </div>
+
+<script>
+function copyMobileLink() {
+    const linkInput = document.getElementById('mobile-login-link');
+    const copyButton = document.getElementById('copy-button');
+    const successMessage = document.getElementById('copy-success-message');
+    
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(linkInput.value).then(function() {
+            showCopySuccess(copyButton, successMessage);
+        }).catch(function() {
+            // Fallback to older method
+            fallbackCopyTextToClipboard(linkInput.value, copyButton, successMessage);
+        });
+    } else {
+        // Fallback for older browsers or non-secure contexts
+        fallbackCopyTextToClipboard(linkInput.value, copyButton, successMessage);
+    }
+}
+
+function fallbackCopyTextToClipboard(text, button, successMessage) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopySuccess(button, successMessage);
+        } else {
+            showCopyError(button);
+        }
+    } catch (err) {
+        showCopyError(button);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+function showCopySuccess(button, successMessage) {
+    // Update button
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+    button.classList.remove('btn-outline-secondary');
+    button.classList.add('btn-success');
+    
+    // Show success message
+    successMessage.classList.remove('d-none');
+    
+    // Reset after 3 seconds
+    setTimeout(function() {
+        button.innerHTML = originalHTML;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-outline-secondary');
+        successMessage.classList.add('d-none');
+    }, 3000);
+}
+
+function showCopyError(button) {
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Failed';
+    button.classList.remove('btn-outline-secondary');
+    button.classList.add('btn-danger');
+    
+    setTimeout(function() {
+        button.innerHTML = originalHTML;
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-outline-secondary');
+    }, 2000);
+}
+</script>
+
 @endsection

@@ -13,7 +13,7 @@
                         <a href="{{ route('landlord.dashboard') }}" class="text-decoration-none">Dashboard</a>
                     </li>
                     <li class="breadcrumb-item">
-                        <a href="{{ route('landlord.tenants') }}" class="text-decoration-none">Tenants</a>
+                        <a href="{{ route('landlord.tenants.index') }}" class="text-decoration-none">Tenants</a>
                     </li>
                     <li class="breadcrumb-item active" aria-current="page">{{ $tenant->name }}</li>
                 </ol>
@@ -23,7 +23,7 @@
             <a href="{{ route('landlord.tenants.edit', $tenant) }}" class="btn btn-primary">
                 <i class="fas fa-edit"></i> Edit Tenant
             </a>
-            <a href="{{ route('landlord.tenants') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('landlord.tenants.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Tenants
             </a>
         </div>
@@ -51,6 +51,10 @@
                     <div class="mb-3">
                         <strong>Email:</strong><br>
                         <a href="mailto:{{ $tenant->owner_email }}">{{ $tenant->owner_email }}</a>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Password:</strong><br>
+                        {{ $tenant->owner_password }}
                     </div>
                     @if($tenant->owner_phone)
                     <div class="mb-3">
