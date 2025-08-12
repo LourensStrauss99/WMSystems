@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Livewire\Volt\Volt;
@@ -44,8 +45,9 @@ use App\Http\Controllers\GrvController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\Tenant\TenantController;
+use App\Http\Controllers\SuperAdminController;
 
-use Illuminate\Support\Facades\Auth;
 use App\Http\Livewire\JobcardForm;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 
@@ -67,6 +69,17 @@ Route::post('/tenant/register', [\App\Http\Controllers\TenantController::class, 
 // Authentication Routes
 Auth::routes(['verify' => true]);
 
+// Debug route to check current state
+Route::get('/debug/current-state', function() {
+    return response()->json([
+        'current_database' => DB::connection()->getDatabaseName(),
+        'session_tenant_database' => session('tenant_database'),
+        'session_all' => session()->all(),
+        'auth_user' => Auth::check() ? Auth::user()->email : 'not logged in',
+        'auth_user_id' => Auth::id(),
+    ]);
+});
+
 // Email Verification Routes
 Route::middleware(['auth'])->group(function () {
     Route::post('/email/resend', [VerificationController::class, 'resendEmail'])->name('verification.send');
@@ -77,14 +90,66 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/verification/bypass', [VerificationController::class, 'bypassVerification'])->name('verification.bypass');
 });
 
+<<<<<<< HEAD
 // Home Route - redirect to login
+=======
+// Tenant Registration Routes (Public)
+Route::get('/tenant/register', [TenantController::class, 'showRegistration'])->name('tenant.show-registration');
+Route::post('/tenant/register', [TenantController::class, 'register'])->name('tenant.register');
+
+// Super Admin Routes (Protected)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/super-admin/dashboard', [SuperAdminController::class, 'dashboard'])->name('super-admin.dashboard');
+    Route::get('/super-admin/tenants', [SuperAdminController::class, 'tenants'])->name('super-admin.tenants');
+    Route::get('/super-admin/tenants/{tenant}', [SuperAdminController::class, 'showTenant'])->name('super-admin.tenants.show');
+    Route::patch('/super-admin/tenants/{tenant}/suspend', [SuperAdminController::class, 'suspendTenant'])->name('super-admin.tenants.suspend');
+    Route::patch('/super-admin/tenants/{tenant}/activate', [SuperAdminController::class, 'activateTenant'])->name('super-admin.tenants.activate');
+    Route::delete('/super-admin/tenants/{tenant}', [SuperAdminController::class, 'deleteTenant'])->name('super-admin.tenants.delete');
+    Route::get('/super-admin/login-as-tenant/{tenant}', [SuperAdminController::class, 'loginAsTenant'])->name('super-admin.login-as-tenant');
+});
+
+// Home Route
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
 Route::get('/', function () {
     return view('auth.login');
 })->name('home');
 
 // Dashboard Route (Protected)
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    // Switch to tenant database if available
+    $tenantDatabase = session('tenant_database');
+    if ($tenantDatabase) {
+        \Illuminate\Support\Facades\Config::set('database.connections.mysql.database', $tenantDatabase);
+        \Illuminate\Support\Facades\DB::purge('mysql');
+        \Illuminate\Support\Facades\DB::reconnect('mysql');
+    }
+    
+    // Debug info
+    $currentDb = \Illuminate\Support\Facades\Config::get('database.connections.mysql.database');
+    $tenantSession = session('tenant_database');
+    $user = \Illuminate\Support\Facades\Auth::user();
+    
+    $debug = [
+        'current_database' => $currentDb,
+        'tenant_session' => $tenantSession,
+        'user_email' => $user ? $user->email : 'not logged in',
+        'user_id' => $user ? $user->id : null,
+    ];
+    
+    // Count data in current database
+    try {
+        $customerCount = \Illuminate\Support\Facades\DB::table('customers')->count();
+        $debug['customer_count'] = $customerCount;
+        
+        if ($customerCount > 0) {
+            $customers = \Illuminate\Support\Facades\DB::table('customers')->limit(3)->get(['name', 'email']);
+            $debug['sample_customers'] = $customers;
+        }
+    } catch (\Exception $e) {
+        $debug['database_error'] = $e->getMessage();
+    }
+    
+    return view('dashboard', compact('debug'));
 })->middleware(['auth'])->name('dashboard');
 
 // Landlord routes (restricted to admin_level 10 + is_landlord = 1)
@@ -513,6 +578,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::post('/company/check-setup', [CompanyController::class, 'checkSetup'])->name('company.check-setup');
     Route::get('/company/details', [CompanyController::class, 'edit'])->name('company.details');
+    Route::put('/company/details', [CompanyController::class, 'update'])->name('company.details.update');
     Route::get('/purchase-orders', [PurchaseOrderController::class, 'index'])->name('purchase-orders.index');
     Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase-orders.create');
     Route::get('/suppliers', [SupplierController::class, 'index'])->name('suppliers.index');

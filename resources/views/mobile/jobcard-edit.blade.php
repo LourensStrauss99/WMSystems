@@ -352,7 +352,7 @@ if (jobcardForm) {
         // Force the _method to be PUT
         data.set('_method', 'PUT');
         
-        fetch("{{ route('jobcard.update', $jobcard->id) }}", {
+        fetch("{{ route('mobile.jobcards.update', $jobcard->id) }}", {
             method: 'POST',
             headers: { 
                 'X-CSRF-TOKEN': csrfInput.value

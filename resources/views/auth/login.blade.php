@@ -63,6 +63,11 @@ use Illuminate\Support\Facades\Route;
                         @if (isset($superuserExists) && !$superuserExists)
                             <a href="{{ route('register') }}">Need an account? Sign up!</a>
                         @endif
+                        <div class="mt-2">
+                            <a href="{{ route('tenant.show-registration') }}" class="text-decoration-none">
+                                <i class="fas fa-building me-1"></i>Register Your Company
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

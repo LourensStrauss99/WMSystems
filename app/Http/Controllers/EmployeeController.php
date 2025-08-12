@@ -4,18 +4,26 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee; // <-- Use Employee model
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function index()
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $employees = \App\Models\Employee::paginate(15);
         return view('admin.employees.index', compact('employees'));
     }
 
     public function store(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'surname' => 'required|string|max:255',
@@ -42,18 +50,19 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
+        $this->switchToTenantDatabase();
+        
         $employee = \App\Models\Employee::findOrFail($id);
         return view('admin.employees.edit', compact('employee'));
     }
     
     public function update(Request $request, $id)
     {
+        $this->switchToTenantDatabase();
+        
         $employee = \App\Models\Employee::findOrFail($id);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'surname' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:employees,email,' . $employee->id,
             // ...other validation...
         ]);
 
@@ -64,23 +73,25 @@ class EmployeeController extends Controller
 
     public function toggleStatus($id)
     {
+        $this->switchToTenantDatabase();
+        
         $employee = \App\Models\Employee::findOrFail($id);
         $employee->is_active = !$employee->is_active;
         $employee->save();
 
         return response()->json([
-            'success' => true,
             'message' => 'Employee status updated successfully.',
         ]);
     }
 
     public function destroy($id)
     {
+        $this->switchToTenantDatabase();
+        
         $employee = \App\Models\Employee::findOrFail($id);
         $employee->delete();
 
         return response()->json([
-            'success' => true,
             'message' => 'Employee deleted successfully.',
         ]);
     }

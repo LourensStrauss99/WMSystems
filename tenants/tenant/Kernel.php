@@ -18,7 +18,7 @@ class Kernel extends HttpKernel
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\TenantMiddleware::class, // Auto-switch tenant database
         ],
 
         'api' => [
@@ -43,15 +43,9 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \App\Http\Middleware\ConfirmPassword::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'tenant' => \App\Http\Middleware\TenantMiddleware::class,
         
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'company.access' => \App\Http\Middleware\CompanyAccessMiddleware::class,
-        'employee' => \App\Http\Middleware\EmployeeAuth::class,
-        'landlord' => \App\Http\Middleware\LandlordMiddleware::class,
-        
-        // Tenancy middleware
-        'tenant.init' => \Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
-        'tenant.subdomain' => \Stancl\Tenancy\Middleware\InitializeTenancyBySubdomain::class,
-        'tenant.prevent_central' => \Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains::class,
     ];
 }

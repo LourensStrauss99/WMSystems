@@ -6,8 +6,12 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Inventory;
 use App\Models\Employee;
+use App\Models\PurchaseOrder;
+use App\Models\Supplier;
+use App\Models\GoodsReceivedVoucher;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+<<<<<<< HEAD
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -24,25 +28,43 @@ class MasterSettingsController extends Controller
             'route_name' => $request->route() ? $request->route()->getName() : null,
         ]);
     }
+=======
+use App\Traits\TenantDatabaseSwitch;
+
+class MasterSettingsController extends Controller
+{
+    use TenantDatabaseSwitch;
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function index()
     {
-        $users = User::orderBy('is_superuser', 'desc')
-                    ->orderBy('admin_level', 'desc')
-                    ->orderBy('created_at', 'asc')
-                    ->get();
-
-        // Add employees to the data
-        $employees = Employee::orderBy('admin_level', 'desc')
-                            ->orderBy('created_at', 'desc')
-                            ->get();
-
-        $inventory = Inventory::orderBy('description', 'asc')->get();
-
-        return view('master-settings', compact('users', 'employees', 'inventory'));
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
+        // Force re-authentication to ensure user is loaded from correct database
+        $tenantSession = session('tenant_database');
+        if ($tenantSession && \Illuminate\Support\Facades\Auth::check()) {
+            $userId = \Illuminate\Support\Facades\Auth::id();
+            \Illuminate\Support\Facades\Auth::logout();
+            $tenantUser = User::find($userId);
+            if ($tenantUser) {
+                \Illuminate\Support\Facades\Auth::login($tenantUser);
+            }
+        }
+        
+        $users = User::orderBy('created_at', 'desc')->get();
+        $employees = Employee::orderBy('created_at', 'desc')->get();
+        
+        // Check if models exist before querying
+        $purchaseOrders = class_exists('App\Models\PurchaseOrder') ? PurchaseOrder::orderBy('created_at', 'desc')->get() : collect();
+        $suppliers = class_exists('App\Models\Supplier') ? Supplier::orderBy('created_at', 'desc')->get() : collect();
+        $grvs = class_exists('App\Models\GoodsReceivedVoucher') ? GoodsReceivedVoucher::orderBy('created_at', 'desc')->get() : collect();
+        
+        return view('master-settings', compact('users', 'employees', 'purchaseOrders', 'suppliers', 'grvs'));
     }
 
     public function store(Request $request)
     {
+<<<<<<< HEAD
         // Debug: Check which database connection is being used
         Log::info('MasterSettingsController@store - Database info', [
             'default_connection' => DB::getDefaultConnection(),
@@ -53,6 +75,11 @@ class MasterSettingsController extends Controller
             'middleware' => method_exists($request, 'route') ? $request->route()->gatherMiddleware() : [],
         ]);
 
+=======
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
         // You can branch logic based on account_type if needed
         if ($request->account_type === 'employee') {
             // Validate and create employee
@@ -68,9 +95,13 @@ class MasterSettingsController extends Controller
             ]);
             $validated['password'] = Hash::make($validated['password']);
             $validated['created_by'] = auth()->id();
+<<<<<<< HEAD
             
             // Create employee - the tenancy package should handle database switching automatically
             \App\Models\Employee::create($validated);
+=======
+            Employee::create($validated);
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
 
             return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'Employee created successfully!');
         } else {
@@ -89,9 +120,13 @@ class MasterSettingsController extends Controller
             $validated['password'] = Hash::make($validated['password']);
             $validated['created_by'] = auth()->id();
             $validated['is_active'] = true;
+<<<<<<< HEAD
             
             // Create user - the tenancy package should handle database switching automatically
             \App\Models\User::create($validated);
+=======
+            User::create($validated);
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
 
             return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'User created successfully!');
         }
@@ -99,6 +134,9 @@ class MasterSettingsController extends Controller
 
     public function updateUser(Request $request, $id)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $user = User::findOrFail($id);
         
         // Check permissions
@@ -134,6 +172,9 @@ class MasterSettingsController extends Controller
 
     public function toggleUserStatus($id)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $user = User::findOrFail($id);
         
         if (!Auth::user()->canManageUsers()) {

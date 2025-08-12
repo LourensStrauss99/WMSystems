@@ -7,11 +7,16 @@ use App\Models\MobileJobcardPhoto;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Traits\TenantDatabaseSwitch;
 
 class MobileJobcardPhotoController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function store(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         Log::info('Photo upload hit', $request->all());
         $request->validate([
             'jobcard_id' => 'required|exists:jobcards,id',
@@ -35,6 +40,8 @@ class MobileJobcardPhotoController extends Controller
 
     public function destroy($id)
     {
+        $this->switchToTenantDatabase();
+        
         $photo = MobileJobcardPhoto::findOrFail($id);
         Storage::disk('public')->delete($photo->file_path);
         $photo->delete();

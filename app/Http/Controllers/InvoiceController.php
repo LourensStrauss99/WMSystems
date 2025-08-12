@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use App\Models\Jobcard;
 use App\Models\CompanyDetail; // <- CHANGE THIS (not Company)
 use Illuminate\Support\Facades\Mail;
@@ -13,8 +14,11 @@ use App\Mail\InvoiceReminderMailable;
 
 class InvoiceController extends Controller
 {
+    use TenantDatabaseSwitch;
     public function index(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $query = Jobcard::with('client')->where('status', 'invoiced');
 
         if ($request->filled('client')) {
@@ -37,6 +41,8 @@ class InvoiceController extends Controller
 
     public function show($jobcardId)
     {
+        $this->switchToTenantDatabase();
+        
         $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
         $company = CompanyDetail::first(); // <- FIXED
         return view('invoice_view', compact('jobcard', 'company'));
@@ -44,6 +50,8 @@ class InvoiceController extends Controller
 
     public function email($jobcardId)
     {
+        $this->switchToTenantDatabase();
+        
         $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
         $company = CompanyDetail::first(); // <- FIXED
 
@@ -55,6 +63,8 @@ class InvoiceController extends Controller
 
     public function generatePDF($id)
     {
+        $this->switchToTenantDatabase();
+        
         try {
             $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->findOrFail($id);
             $company = CompanyDetail::first(); // <- FIXED
@@ -138,6 +148,8 @@ class InvoiceController extends Controller
 
     public function store(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $validated = $request->validate([
             'jobcard_id' => 'required|exists:jobcards,id',
             'due_date' => 'nullable|date',
@@ -208,6 +220,8 @@ class InvoiceController extends Controller
 
     public function sendReminder($invoiceId)
     {
+        $this->switchToTenantDatabase();
+        
         $invoice = \App\Models\Invoice::with(['client', 'jobcard'])->findOrFail($invoiceId);
         $company = \App\Models\CompanyDetail::first();
         // Send reminder email

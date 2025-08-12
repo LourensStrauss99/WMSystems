@@ -11,85 +11,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
-    /**
-     * Show the form for creating a new jobcard (mobile version).
-     */
-    public function createMobile()
-    {
-        $employees = \App\Models\Employee::all();
-        $inventory = \App\Models\Inventory::all();
-        $clients = \App\Models\Client::all();
-        // Jobcard number will be generated dynamically based on category selection
-        return view('mobile.jobcard-create', compact('employees', 'inventory', 'clients'));
-    }
-    // API: List jobcards assigned to an employee (by phone or employee_id)
-    public function apiAssignedJobcards(Request $request)
-    {
-        $phone = $request->input('phone');
-        $employeeId = $request->input('employee_id');
-        $employee = Employee::query()
-            ->when($phone, fn($q) => $q->where('telephone', $phone))
-            ->when($employeeId, fn($q) => $q->orWhere('employee_id', $employeeId))
-            ->first();
-        if (!$employee) {
-            return response()->json(['error' => 'Employee not found'], 404);
-        }
-        $jobcards = $employee->jobcards()->with(['client', 'inventory', 'employees'])->get();
-        return response()->json(['jobcards' => $jobcards]);
-    }
-
-    // API: View a single jobcard (by jobcard id)
-    public function apiViewJobcard($id)
-    {
-        $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->find($id);
-        if (!$jobcard) {
-            return response()->json(['error' => 'Jobcard not found'], 404);
-        }
-        return response()->json(['jobcard' => $jobcard]);
-    }
-
-    // API: Update a jobcard (by jobcard id)
-    public function apiUpdateJobcard(Request $request, $id)
-    {
-        $jobcard = Jobcard::find($id);
-        if (!$jobcard) {
-            return response()->json(['error' => 'Jobcard not found'], 404);
-        }
-        $jobcard->update($request->only([
-            'status', 'work_done', 'progress_note', 'normal_hours', 'overtime_hours', 'weekend_hours', 'public_holiday_hours',
-            'call_out_fee', 'mileage_km', 'mileage_cost', 'total_labour_cost'
-        ]));
-        // Optionally update employees/inventory if provided
-        if ($request->has('employees')) {
-            $syncData = [];
-            foreach ($request->employees as $employee) {
-                $syncData[$employee['id']] = [
-                    'hours_worked' => $employee['hours_worked'] ?? 0,
-                    'hour_type' => $employee['hour_type'] ?? 'normal'
-                ];
-            }
-            $jobcard->employees()->sync($syncData);
-        }
-        if ($request->has('inventory')) {
-            $syncData = [];
-            foreach ($request->inventory as $item) {
-                $inventory = Inventory::find($item['id']);
-                $syncData[$item['id']] = [
-                    'quantity' => $item['quantity'] ?? 1,
-                    'buying_price' => $inventory ? $inventory->buying_price : null,
-                    'selling_price' => $inventory ? $inventory->selling_price : null,
-                ];
-            }
-            $jobcard->inventory()->sync($syncData);
-        }
-        return response()->json(['success' => true, 'jobcard' => $jobcard->fresh(['client', 'inventory', 'employees'])]);
-    }
-
     public function index(Request $request)
     {
         $query = Jobcard::with('client');
@@ -184,9 +111,17 @@ class JobcardController extends Controller
 
     public function store(Request $request)
     {
+        // Basic validation
+        $request->validate([
+            'client_id' => 'required',
+            'category' => 'required|string',
+            'job_date' => 'required|date',
+            'work_request' => 'nullable|string',
+            'special_request' => 'nullable|string',
+            'photos.*' => 'nullable|image|max:15360' // 15MB max per photo
+        ]);
 
         DB::transaction(function () use ($request) {
-            $mobileEmployeeId = $request->session()->get('mobile_employee_id');
             $clientId = $request->input('client_id');
             // Handle temporary client creation
             if ($clientId === 'temp') {
@@ -259,13 +194,7 @@ class JobcardController extends Controller
                     }
                 }
             }
-            // Always link the logged-in mobile employee
-            if ($mobileEmployeeId && !isset($syncData[$mobileEmployeeId])) {
-                $syncData[$mobileEmployeeId] = [
-                    'hours_worked' => 0,
-                    'hour_type' => 'normal',
-                ];
-            }
+            
             if (!empty($syncData)) {
                 $jobcard->employees()->sync($syncData);
             }
@@ -301,8 +230,7 @@ class JobcardController extends Controller
             }
         });
 
-        // Redirect to mobile jobcard list after creation
-        return redirect()->route('mobile.jobcards.index')->with('success', 'Jobcard created!');
+        return redirect()->route('jobcard.index')->with('success', 'Jobcard created successfully!');
     }
 
     public function edit(Jobcard $jobcard)
@@ -320,35 +248,6 @@ class JobcardController extends Controller
             ];
         })->toArray();
         return view('livewire.jobcard-editor', compact('jobcard', 'employees', 'inventory', 'clients', 'assignedInventory'));
-    }
-
-    public function editMobile($id)
-    {
-        $jobcard = Jobcard::with(['client', 'inventory', 'mobilePhotos'])->findOrFail($id);
-        $inventory = Inventory::all();
-        $assignedInventory = $jobcard->inventory->map(function($item) {
-            return [
-                'id' => $item->id,
-                'name' => $item->description ?? $item->name ?? '',
-                'quantity' => $item->pivot->quantity ?? 1,
-            ];
-        });
-
-        // Fetch all employees
-        $employees = \App\Models\Employee::all();
-
-        return view('mobile.jobcard-edit', [
-            'jobcard' => $jobcard,
-            'inventory' => $inventory,
-            'assignedInventory' => $assignedInventory,
-            'employees' => $employees,
-        ]);
-    }
-
-    public function showMobile($id)
-    {
-        $jobcard = Jobcard::with('client', 'inventory')->findOrFail($id);
-        return view('mobile.jobcard-view', compact('jobcard'));
     }
 
     public function update(Request $request, Jobcard $jobcard)
@@ -604,61 +503,5 @@ class JobcardController extends Controller
         $jobcard->calculateLaborCosts();
         
         return redirect()->back()->with('success', 'Employee added to jobcard successfully!');
-    }
-
-    public function mobileIndex(Request $request)
-    {
-        // Require mobile employee login
-        $employeeId = $request->session()->get('mobile_employee_id');
-        if (!$employeeId) {
-            return redirect('/mobile-app/login');
-        }
-        // Only show jobcards assigned to this employee that are visible on mobile
-        $jobcards = \App\Models\Jobcard::with('client')
-            ->whereHas('employees', function($q) use ($employeeId) {
-                $q->where('employees.id', $employeeId);
-            })
-            ->where('visible_on_mobile', true) // Only show mobile-visible jobcards
-            ->whereNotIn('status', ['invoiced']) // Remove completed from exclusion since they can still be worked on
-            ->orderBy('job_date', 'desc')
-            ->paginate(15);
-        return view('mobile.jobcard-list', compact('jobcards'));
-    }
-
-    public function acceptQuote(Request $request, Jobcard $jobcard)
-    {
-        if (!$jobcard->is_quote || $jobcard->quote_accepted_at) {
-            return redirect()->back()->with('error', 'This quote cannot be accepted.');
-        }
-        
-        $request->validate([
-            'accepted_signature' => 'required|string|max:255',
-        ]);
-        
-        $jobcard->update([
-            'quote_accepted_at' => now(),
-            'accepted_by' => $request->user()->id,
-            'accepted_signature' => $request->accepted_signature,
-            'is_quote' => false, // Now becomes a jobcard
-        ]);
-        
-        return redirect()->route('jobcard.edit', $jobcard->id)->with('success', 'Quote accepted and converted to jobcard!');
-    }
-
-    /**
-     * Remove completed jobcard from mobile view (doesn't delete the jobcard)
-     */
-    public function removeFromMobile($id)
-    {
-        $jobcard = Jobcard::findOrFail($id);
-        
-        // Only allow removing completed jobcards from mobile
-        if ($jobcard->status !== 'completed') {
-            return response()->json(['error' => 'Only completed jobcards can be removed from mobile view'], 400);
-        }
-        
-        $jobcard->update(['visible_on_mobile' => false]);
-        
-        return response()->json(['success' => 'Jobcard removed from mobile view']);
     }
 }

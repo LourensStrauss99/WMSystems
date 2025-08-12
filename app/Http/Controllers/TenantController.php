@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+<<<<<<< HEAD
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,14 +95,30 @@ class TenantController extends Controller
     /**
      * Show the form for creating a new tenant
      */
+=======
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class TenantController extends Controller
+{
+    public function index()
+    {
+        $tenants = Tenant::all();
+        return view('tenants.index', compact('tenants'));
+    }
+
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function create()
     {
         return view('tenants.create');
     }
 
+<<<<<<< HEAD
     /**
      * Store a newly created tenant
      */
+=======
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function store(Request $request)
     {
         $request->validate([
@@ -118,17 +135,23 @@ class TenantController extends Controller
         return redirect()->route('tenants.index')->with('success', 'Tenant created successfully!');
     }
 
+<<<<<<< HEAD
     /**
      * Display the specified tenant
      */
+=======
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function show(Tenant $tenant)
     {
         return view('tenants.show', compact('tenant'));
     }
 
+<<<<<<< HEAD
     /**
      * Remove the specified tenant
      */
+=======
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function destroy(Tenant $tenant)
     {
         $tenant->delete();

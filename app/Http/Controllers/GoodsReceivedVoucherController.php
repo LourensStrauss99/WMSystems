@@ -13,11 +13,16 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Traits\TenantDatabaseSwitch;
 
 class GoodsReceivedVoucherController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function index()
     {
+        $this->switchToTenantDatabase();
+        
         $grvs = GoodsReceivedVoucher::with(['purchaseOrder', 'receivedBy', 'checkedBy'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
@@ -27,6 +32,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function create(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $poId = $request->get('po_id');
         $purchaseOrders = PurchaseOrder::where('status', '!=', 'completed')
             ->with('items')
@@ -44,6 +51,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function store(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $request->validate([
             'po_id' => 'required|exists:purchase_orders,id',
             'received_by' => 'required|exists:users,id',
@@ -74,6 +83,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function show(GoodsReceivedVoucher $grv)
     {
+        $this->switchToTenantDatabase();
+        
         $grv->load(['purchaseOrder', 'receivedBy', 'checkedBy', 'items.item']);
         
         return view('grv.show', compact('grv'));
@@ -81,6 +92,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function edit(GoodsReceivedVoucher $grv)
     {
+        $this->switchToTenantDatabase();
+        
         $grv->load(['purchaseOrder', 'receivedBy', 'checkedBy', 'items.item']);
         
         $purchaseOrders = PurchaseOrder::where('status', '!=', 'completed')
@@ -93,6 +106,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function update(Request $request, GoodsReceivedVoucher $grv)
     {
+        $this->switchToTenantDatabase();
+        
         $request->validate([
             'po_id' => 'required|exists:purchase_orders,id',
             'received_by' => 'required|exists:users,id',
@@ -129,6 +144,8 @@ class GoodsReceivedVoucherController extends Controller
 
     public function destroy(GoodsReceivedVoucher $grv)
     {
+        $this->switchToTenantDatabase();
+        
         $grv->delete();
         
         return redirect()->route('grv.index')->with('success', 'Goods Received Voucher deleted successfully.');

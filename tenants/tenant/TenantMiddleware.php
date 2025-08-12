@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+
+class TenantMiddleware
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     */
+    public function handle(Request $request, Closure $next)
+    {
+        // Skip tenant switching for certain routes
+        if ($this->shouldSkipTenantSwitching($request)) {
+            return $next($request);
+        }
+
+        // Check if user is authenticated
+        if (!Auth::check()) {
+            return $next($request);
+        }
+
+        $user = Auth::user();
+
+        // If user belongs to a tenant, switch to tenant database
+        if ($user->tenant_id && $user->tenant) {
+            $this->switchToTenantDatabase($user->tenant->database_name);
+        }
+
+        return $next($request);
+    }
+
+    /**
+     * Switch to tenant database
+     */
+    private function switchToTenantDatabase($databaseName)
+    {
+        // Create tenant database connection config
+        $tenantConnection = array_merge(
+            config('database.connections.mysql'),
+            ['database' => $databaseName]
+        );
+
+        // Set tenant connection
+        Config::set('database.connections.tenant', $tenantConnection);
+        
+        // Switch default connection to tenant
+        Config::set('database.default', 'tenant');
+        
+        // Purge and reconnect
+        DB::purge('tenant');
+        DB::reconnect('tenant');
+    }
+
+    /**
+     * Check if tenant switching should be skipped
+     */
+    private function shouldSkipTenantSwitching(Request $request)
+    {
+        $skipRoutes = [
+            'tenant.register',
+            'tenant.show-registration',
+            'login',
+            'register',
+            'password.*',
+            'verification.*',
+            'admin.tenants.*', // Admin tenant management
+        ];
+
+        $currentRoute = $request->route()?->getName();
+        
+        foreach ($skipRoutes as $pattern) {
+            if (fnmatch($pattern, $currentRoute)) {
+                return true;
+            }
+        }
+
+        // Skip for API routes that shouldn't use tenant database
+        if ($request->is('api/system/*')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Reset to main database connection
+     */
+    public static function resetToMainDatabase()
+    {
+        Config::set('database.default', 'mysql');
+        DB::purge('tenant');
+        DB::reconnect('mysql');
+    }
+}

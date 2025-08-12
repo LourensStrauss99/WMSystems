@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use App\Models\Jobcard;
 
 class ProgressController extends Controller
 {
+    use TenantDatabaseSwitch;
     public function index(Request $request)
     {
+        $this->switchToTenantDatabase();
+        
         $assignedJobcards = Jobcard::where('status', 'assigned')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'assigned_page');
         $inProgressJobcards = Jobcard::where('status', 'in progress')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'inprogress_page');
         $completedJobcards = Jobcard::where('status', 'completed')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'completed_page');
@@ -19,6 +23,8 @@ class ProgressController extends Controller
 
     public function show($id)
     {
+        $this->switchToTenantDatabase();
+        
         $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
         
         // Ensure inventory is properly loaded with pivot data
@@ -30,6 +36,8 @@ class ProgressController extends Controller
     }
     public function ajaxShow($id)
     {
+        $this->switchToTenantDatabase();
+        
         try {
             $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
             return response()->json($jobcard);
@@ -39,6 +47,8 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
+        $this->switchToTenantDatabase();
+        
         Log::info('updateProgress called', $request->all());
         $jobcard = Jobcard::with(['employees', 'inventory'])->findOrFail($id);
 

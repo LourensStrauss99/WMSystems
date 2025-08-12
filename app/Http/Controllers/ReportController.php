@@ -10,13 +10,19 @@ use App\Models\Invoice;
 use App\Models\Inventory;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function index(Request $request)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $selectedMonth = $request->get('month', Carbon::now()->format('Y-m'));
         $selectedYear = $request->get('year', Carbon::now()->year);
         $viewMode = $request->get('view', 'monthly'); // monthly or ytd

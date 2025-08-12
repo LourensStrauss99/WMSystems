@@ -4,12 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use Illuminate\Http\Request;
+use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Routing\Controller;
 
 class InventoryController extends Controller
 {
+    use TenantDatabaseSwitch;
+    
     public function index(Request $request)
     {
+        // Switch to tenant database
+        $this->switchToTenantDatabase();
+        
         $query = Inventory::query();
 
         // Handle the new 'filter' parameter from clickable cards

@@ -7,9 +7,47 @@ use Illuminate\Http\Request;
 use App\Models\CompanyDetail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use App\Models\Tenant;
+use App\Traits\TenantDatabaseSwitch;
 
 class CompanyController extends Controller
 {
+    use TenantDatabaseSwitch;
+    /**
+     * Switch to the correct database for the current user
+     */
+    private function switchToCorrectDatabase()
+    {
+        $user = Auth::user();
+        
+        // Check if we have tenant database info in session
+        $tenantDatabase = session('tenant_database');
+        if ($tenantDatabase) {
+            Config::set('database.connections.mysql.database', $tenantDatabase);
+            DB::reconnect('mysql');
+            return;
+        }
+
+        // Find tenant by user email
+        if ($user && $user->email) {
+            // Ensure we start on main database
+            Config::set('database.connections.mysql.database', env('DB_DATABASE'));
+            DB::reconnect('mysql');
+            
+            $tenant = Tenant::where('owner_email', $user->email)
+                          ->where('status', 'active')
+                          ->first();
+            
+            if ($tenant) {
+                Config::set('database.connections.mysql.database', $tenant->database_name);
+                DB::reconnect('mysql');
+                session(['tenant_database' => $tenant->database_name]);
+            }
+        }
+    }
+
     /**
      * Show company details (redirects to edit form)
      */
@@ -23,8 +61,11 @@ class CompanyController extends Controller
      */
     public function edit()
     {
+        // Switch to correct database first
+        $this->switchToTenantDatabase();
+        
         // Check if user has access to company settings
-        if (!Auth::user()->canAccessCompanySettings()) {
+        if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {
             abort(403, 'Access denied. Administrator privileges required to access company settings.');
         }
 
@@ -43,8 +84,11 @@ class CompanyController extends Controller
      */
     public function update(Request $request)
     {
+        // Switch to correct database first
+        $this->switchToTenantDatabase();
+        
         // Check permissions
-        if (!Auth::user()->canAccessCompanySettings()) {
+        if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {
             abort(403, 'Access denied. Administrator privileges required.');
         }
 
@@ -89,8 +133,8 @@ class CompanyController extends Controller
      */
     public function removeLogo()
     {
-        if (!Auth::user()->canAccessCompanySettings()) {
-            abort(403);
+        if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {
+            abort(403, 'Access denied. Administrator privileges required to access company settings.');
         }
 
         $company = CompanyDetail::first();

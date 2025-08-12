@@ -19,7 +19,11 @@
         "livewire/livewire": "^3.6",
         "livewire/volt": "^1.7.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
+<<<<<<< HEAD
         "stancl/tenancy": "^3.9"
+=======
+        "spatie/laravel-multitenancy": "^4.0"
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
