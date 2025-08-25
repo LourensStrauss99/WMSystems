@@ -1,7 +1,0 @@
-tenancy()->initialize(21);
-$tables = DB::select('SHOW TABLES');
-echo "Tables:\n";
-foreach ($tables as $table) {
-    $tableName = array_values((array) $table)[0];
-    echo "- $tableName\n";
-}
