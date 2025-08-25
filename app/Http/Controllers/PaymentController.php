@@ -7,19 +7,19 @@ use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Jobcard;
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     /**
      * Show payment form for a specific client
      */
     public function create($clientId)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $client = Client::findOrFail($clientId);
         

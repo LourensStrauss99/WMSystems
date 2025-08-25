@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Routing\Controller;
 
 class InventoryController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     
     public function index(Request $request)
     {
         // Switch to tenant database
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $query = Inventory::query();
 

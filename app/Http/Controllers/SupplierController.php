@@ -6,12 +6,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     public function __construct()
     {
         $this->middleware('auth');
@@ -22,7 +22,7 @@ class SupplierController extends Controller
      */
     public function index(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $query = Supplier::query();
 
@@ -63,7 +63,7 @@ class SupplierController extends Controller
      */
     public function store(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $validated = $request->validate(
             Supplier::validationRules(),
@@ -93,7 +93,7 @@ class SupplierController extends Controller
      */
     public function show(Supplier $supplier)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         // Only load purchase orders if the model exists
         if (class_exists('App\Models\PurchaseOrder')) {
@@ -118,7 +118,7 @@ class SupplierController extends Controller
      */
     public function update(Request $request, Supplier $supplier)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $validated = $request->validate(
             Supplier::validationRules($supplier->id),
@@ -142,7 +142,7 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         try {
             // Check if supplier is used in any inventory items
@@ -174,7 +174,7 @@ class SupplierController extends Controller
      */
     public function toggleStatus(Supplier $supplier)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $supplier->update(['active' => !$supplier->active]);
         
@@ -188,7 +188,7 @@ class SupplierController extends Controller
      */
     public function getActive()
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $suppliers = Supplier::active()
             ->select(['id', 'name', 'contact_person', 'email', 'phone', 'payment_terms'])

@@ -13,15 +13,15 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 
 class GoodsReceivedVoucherController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     
     public function index()
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $grvs = GoodsReceivedVoucher::with(['purchaseOrder', 'receivedBy', 'checkedBy'])
             ->orderBy('created_at', 'desc')

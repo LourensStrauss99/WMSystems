@@ -10,21 +10,12 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        then: function () {
-            // Only load tenant routes for non-central domains
-            if (!in_array(request()->getHost(), config('tenancy.central_domains', []))) {
-                Route::middleware([
-                    'web',
-                    Stancl\Tenancy\Middleware\InitializeTenancyByDomain::class,
-                    Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains::class,
-                ])->group(base_path('routes/tenant.php'));
-            }
-        },
+    // Reference: No tenant routes loaded (routes/tenant.php removed)
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Register custom middleware aliases
+        // Register custom middleware aliases (none currently)
         $middleware->alias([
-            'landlord' => \App\Http\Middleware\LandlordMiddleware::class,
+            // No custom aliases
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

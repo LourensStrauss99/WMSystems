@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tenant;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 
 class CompanyController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     /**
      * Switch to the correct database for the current user
      */
@@ -62,7 +62,7 @@ class CompanyController extends Controller
     public function edit()
     {
         // Switch to correct database first
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         // Check if user has access to company settings
         if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {

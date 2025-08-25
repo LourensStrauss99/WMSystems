@@ -11,75 +11,27 @@ use App\Models\Supplier;
 use App\Models\GoodsReceivedVoucher;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-<<<<<<< HEAD
+
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class MasterSettingsController extends Controller
 {
-    // Debug route to check tenancy and connection info
-    public function debug(Request $request)
-    {
-        return response()->json([
-            'tenant_id' => tenant('id'),
-            'default_connection' => DB::getDefaultConnection(),
-            'database_name' => DB::getDatabaseName(),
-            'request_host' => $request->getHost(),
-            'route_name' => $request->route() ? $request->route()->getName() : null,
-        ]);
-    }
-=======
-use App\Traits\TenantDatabaseSwitch;
+    // Debug route removed: tenant logic
 
-class MasterSettingsController extends Controller
-{
-    use TenantDatabaseSwitch;
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
     public function index()
     {
-        // Switch to tenant database
-        $this->switchToTenantDatabase();
-        
-        // Force re-authentication to ensure user is loaded from correct database
-        $tenantSession = session('tenant_database');
-        if ($tenantSession && \Illuminate\Support\Facades\Auth::check()) {
-            $userId = \Illuminate\Support\Facades\Auth::id();
-            \Illuminate\Support\Facades\Auth::logout();
-            $tenantUser = User::find($userId);
-            if ($tenantUser) {
-                \Illuminate\Support\Facades\Auth::login($tenantUser);
-            }
-        }
-        
+        // Removed tenant database switching logic
         $users = User::orderBy('created_at', 'desc')->get();
         $employees = Employee::orderBy('created_at', 'desc')->get();
-        
-        // Check if models exist before querying
         $purchaseOrders = class_exists('App\Models\PurchaseOrder') ? PurchaseOrder::orderBy('created_at', 'desc')->get() : collect();
         $suppliers = class_exists('App\Models\Supplier') ? Supplier::orderBy('created_at', 'desc')->get() : collect();
-        $grvs = class_exists('App\Models\GoodsReceivedVoucher') ? GoodsReceivedVoucher::orderBy('created_at', 'desc')->get() : collect();
-        
-        return view('master-settings', compact('users', 'employees', 'purchaseOrders', 'suppliers', 'grvs'));
+    return view('master-settings', compact('users', 'employees', 'purchaseOrders', 'suppliers'));
     }
 
     public function store(Request $request)
     {
-<<<<<<< HEAD
-        // Debug: Check which database connection is being used
-        Log::info('MasterSettingsController@store - Database info', [
-            'default_connection' => DB::getDefaultConnection(),
-            'database_name' => DB::getDatabaseName(),
-            'tenant_id' => tenant('id'),
-            'request_host' => $request->getHost(),
-            'route_name' => $request->route() ? $request->route()->getName() : null,
-            'middleware' => method_exists($request, 'route') ? $request->route()->gatherMiddleware() : [],
-        ]);
 
-=======
-        // Switch to tenant database
-        $this->switchToTenantDatabase();
-        
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
         // You can branch logic based on account_type if needed
         if ($request->account_type === 'employee') {
             // Validate and create employee
@@ -94,19 +46,11 @@ class MasterSettingsController extends Controller
                 'password' => 'required|string|confirmed|min:8',
             ]);
             $validated['password'] = Hash::make($validated['password']);
-            $validated['created_by'] = auth()->id();
-<<<<<<< HEAD
-            
-            // Create employee - the tenancy package should handle database switching automatically
-            \App\Models\Employee::create($validated);
-=======
+            $validated['created_by'] = Auth::id();
             Employee::create($validated);
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
 
-            return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'Employee created successfully!');
-        } else {
             // Validate and create user
-            $validated = $request->validate([
+            $userValidated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
                 'role' => 'required|string',
@@ -117,38 +61,27 @@ class MasterSettingsController extends Controller
                 'telephone' => 'nullable|string|max:20',
                 'password' => 'required|string|confirmed|min:8',
             ]);
-            $validated['password'] = Hash::make($validated['password']);
-            $validated['created_by'] = auth()->id();
-            $validated['is_active'] = true;
-<<<<<<< HEAD
-            
-            // Create user - the tenancy package should handle database switching automatically
-            \App\Models\User::create($validated);
-=======
-            User::create($validated);
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
+            $userValidated['password'] = Hash::make($userValidated['password']);
+            $userValidated['is_active'] = true;
+            User::create($userValidated);
 
-            return redirect()->route(tenant('id') ? 'settings.index' : 'master.settings')->with('success', 'User created successfully!');
+            // Removed tenant route logic
+            return redirect()->route('master.settings')->with('success', 'User created successfully!');
         }
     }
 
     public function updateUser(Request $request, $id)
     {
-        // Switch to tenant database
-        $this->switchToTenantDatabase();
-        
         $user = User::findOrFail($id);
-        
         // Check permissions
-        if (!Auth::user()->canManageUsers()) {
+        // Basic permission check: only allow admins (admin_level >= 1) to manage users
+        if (!Auth::user() || Auth::user()->admin_level < 1) {
             abort(403, 'Access denied. User management privileges required.');
         }
-
-        // Prevent editing superusers unless you are one
-        if ($user->is_superuser && !Auth::user()->isSuperUser()) {
+        // Only allow users with admin_level >= 5 to edit superuser accounts
+        if ($user->is_superuser && (!Auth::user() || Auth::user()->admin_level < 5)) {
             abort(403, 'Only superusers can edit superuser accounts.');
         }
-
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
@@ -156,38 +89,30 @@ class MasterSettingsController extends Controller
             'admin_level' => 'required|integer|min:0|max:5',
             'is_active' => 'boolean',
         ]);
-
         // Prevent privilege escalation
-        if (!Auth::user()->isSuperUser() && $request->admin_level >= Auth::user()->admin_level) {
+        // Prevent privilege escalation
+        if ($request->admin_level >= Auth::user()->admin_level) {
             return back()->withErrors(['admin_level' => 'You cannot set admin level equal or higher than your own.']);
         }
-
         $user->update($request->only([
             'name', 'email', 'role', 'admin_level', 'is_active', 
             'department', 'position', 'phone'
         ]));
-
         return back()->with('success', 'User updated successfully!');
     }
 
     public function toggleUserStatus($id)
     {
-        // Switch to tenant database
-        $this->switchToTenantDatabase();
-        
         $user = User::findOrFail($id);
-        
-        if (!Auth::user()->canManageUsers()) {
+        // Basic permission check: only allow admins (admin_level >= 1) to manage users
+        if (!Auth::user() || Auth::user()->admin_level < 1) {
             abort(403, 'Access denied.');
         }
-
-        // Prevent deactivating superusers
-        if ($user->is_superuser && !Auth::user()->isSuperUser()) {
+        // Prevent deactivating superusers unless current user is admin_level >= 5
+        if ($user->is_superuser && (!Auth::user() || Auth::user()->admin_level < 5)) {
             return back()->withErrors(['error' => 'Cannot deactivate superuser accounts.']);
         }
-
         $user->update(['is_active' => !$user->is_active]);
-        
         $status = $user->is_active ? 'activated' : 'deactivated';
         return back()->with('success', "User {$status} successfully!");
     }

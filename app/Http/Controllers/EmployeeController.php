@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee; // <-- Use Employee model
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     
     public function index()
     {
         // Switch to tenant database
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $employees = \App\Models\Employee::paginate(15);
         return view('admin.employees.index', compact('employees'));

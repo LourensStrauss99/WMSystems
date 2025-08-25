@@ -12,11 +12,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 
 class GrvController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     
     public function __construct()
     {
@@ -29,7 +29,7 @@ class GrvController extends Controller
      */
     public function index()
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $grvs = GoodsReceivedVoucher::with(['purchaseOrder.supplier', 'receivedBy'])
             ->orderBy('created_at', 'desc')
@@ -248,7 +248,7 @@ class GrvController extends Controller
      */
     public function show($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $grv = GoodsReceivedVoucher::with([
             'purchaseOrder.supplier',

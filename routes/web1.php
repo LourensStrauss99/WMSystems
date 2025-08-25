@@ -9,6 +9,17 @@ use Livewire\Volt\Volt;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\EmployeeController;
+
+// Debug route for domain testing
+Route::get('/debug-domain', function () {
+    return response()->json([
+        'request_host' => request()->getHost(),
+        'request_url' => request()->url(),
+        'server_name' => $_SERVER['SERVER_NAME'] ?? 'not set',
+        'http_host' => $_SERVER['HTTP_HOST'] ?? 'not set',
+        'all_headers' => request()->headers->all(),
+    ]);
+});
 use App\Http\Controllers\JobcardController;
 use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\AdminPanelController;
@@ -18,9 +29,11 @@ use App\Http\Controllers\MasterSettingsController;
 use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
+use App\Http\Controllers\LandlordDashboardController;
 use App\Http\Controllers\ReportController;
+use App\Models\Tenant;
 
-
+// ========================================
 // EXISTING ROUTES CONTINUE BELOW
 // ========================================
 // use App\Http\Controllers\ProfileController;
@@ -32,8 +45,8 @@ use App\Http\Controllers\GrvController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VerificationController;
-
-
+use App\Http\Controllers\Tenant\TenantController;
+use App\Http\Controllers\SuperAdminController;
 
 use App\Http\Livewire\JobcardForm;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -43,14 +56,29 @@ use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\ClientStatementController;
 use Illuminate\Support\Facades\Log;
 
+// If this is NOT a central domain, don't register central routes here.
+// Tenant routes are loaded separately from routes/tenant.php in bootstrap/app.php
+if (! in_array(request()->getHost(), config('tenancy.central_domains', []))) {
+    return;
+}
+
+// Tenant Registration Routes (Public - no auth required)
+Route::get('/tenant/register', [\App\Http\Controllers\TenantController::class, 'showRegistration'])->name('tenant.show-registration');
+Route::post('/tenant/register', [\App\Http\Controllers\TenantController::class, 'register'])->name('tenant.register');
 
 // Authentication Routes
 Auth::routes(['verify' => true]);
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->name('dashboard');
-
+// Debug route to check current state
+Route::get('/debug/current-state', function() {
+    return response()->json([
+        'current_database' => DB::connection()->getDatabaseName(),
+        'session_tenant_database' => session('tenant_database'),
+        'session_all' => session()->all(),
+        'auth_user' => Auth::check() ? Auth::user()->email : 'not logged in',
+        'auth_user_id' => Auth::id(),
+    ]);
+});
 
 // Email Verification Routes
 Route::middleware(['auth'])->group(function () {
@@ -62,19 +90,154 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/verification/bypass', [VerificationController::class, 'bypassVerification'])->name('verification.bypass');
 });
 
-
+<<<<<<< HEAD
 // Home Route - redirect to login
+=======
+// Tenant Registration Routes (Public)
+Route::get('/tenant/register', [TenantController::class, 'showRegistration'])->name('tenant.show-registration');
+Route::post('/tenant/register', [TenantController::class, 'register'])->name('tenant.register');
 
-
+// Super Admin Routes (Protected)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/super-admin/dashboard', [SuperAdminController::class, 'dashboard'])->name('super-admin.dashboard');
+    Route::get('/super-admin/tenants', [SuperAdminController::class, 'tenants'])->name('super-admin.tenants');
+    Route::get('/super-admin/tenants/{tenant}', [SuperAdminController::class, 'showTenant'])->name('super-admin.tenants.show');
+    Route::patch('/super-admin/tenants/{tenant}/suspend', [SuperAdminController::class, 'suspendTenant'])->name('super-admin.tenants.suspend');
+    Route::patch('/super-admin/tenants/{tenant}/activate', [SuperAdminController::class, 'activateTenant'])->name('super-admin.tenants.activate');
+    Route::delete('/super-admin/tenants/{tenant}', [SuperAdminController::class, 'deleteTenant'])->name('super-admin.tenants.delete');
+    Route::get('/super-admin/login-as-tenant/{tenant}', [SuperAdminController::class, 'loginAsTenant'])->name('super-admin.login-as-tenant');
+});
 
 // Home Route
-
+>>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
 Route::get('/', function () {
     return view('auth.login');
 })->name('home');
 
+// Dashboard Route (Protected)
+Route::get('/dashboard', function () {
+    // Switch to tenant database if available
+    $tenantDatabase = session('tenant_database');
+    if ($tenantDatabase) {
+        \Illuminate\Support\Facades\Config::set('database.connections.mysql.database', $tenantDatabase);
+        \Illuminate\Support\Facades\DB::purge('mysql');
+        \Illuminate\Support\Facades\DB::reconnect('mysql');
+    }
+    
+    // Debug info
+    $currentDb = \Illuminate\Support\Facades\Config::get('database.connections.mysql.database');
+    $tenantSession = session('tenant_database');
+    $user = \Illuminate\Support\Facades\Auth::user();
+    
+    $debug = [
+        'current_database' => $currentDb,
+        'tenant_session' => $tenantSession,
+        'user_email' => $user ? $user->email : 'not logged in',
+        'user_id' => $user ? $user->id : null,
+    ];
+    
+    // Count data in current database
+    try {
+        $customerCount = \Illuminate\Support\Facades\DB::table('customers')->count();
+        $debug['customer_count'] = $customerCount;
+        
+        if ($customerCount > 0) {
+            $customers = \Illuminate\Support\Facades\DB::table('customers')->limit(3)->get(['name', 'email']);
+            $debug['sample_customers'] = $customers;
+        }
+    } catch (\Exception $e) {
+        $debug['database_error'] = $e->getMessage();
+    }
+    
+    return view('dashboard', compact('debug'));
+})->middleware(['auth'])->name('dashboard');
 
-// [Removed logic] Settings (protected, using Volt) - central landlord version
+// Landlord routes (restricted to admin_level 10 + is_landlord = 1)
+Route::middleware(['auth', 'landlord'])->prefix('landlord')->name('landlord.')->group(function () {
+    // Redirect old tenants page to new dashboard
+    Route::redirect('/', '/landlord/dashboard');
+    
+    // Dashboard routes
+    Route::get('/dashboard', [App\Http\Controllers\LandlordDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/income', [App\Http\Controllers\LandlordDashboardController::class, 'income'])->name('income');
+    Route::get('/communications', [App\Http\Controllers\LandlordDashboardController::class, 'communications'])->name('communications.index');
+    
+    // Package management routes
+    Route::get('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'packages'])->name('packages.index');
+    Route::get('/packages/create', [App\Http\Controllers\LandlordDashboardController::class, 'createPackage'])->name('packages.create');
+    Route::post('/packages', [App\Http\Controllers\LandlordDashboardController::class, 'storePackage'])->name('packages.store');
+    Route::get('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'showPackage'])->name('packages.show');
+    Route::get('/packages/{package}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'editPackage'])->name('packages.edit');
+    Route::put('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'updatePackage'])->name('packages.update');
+    Route::delete('/packages/{package}', [App\Http\Controllers\LandlordDashboardController::class, 'destroyPackage'])->name('packages.destroy');
+    
+    // Tenant management routes
+    Route::get('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'tenants'])->name('tenants.index');
+    Route::get('/tenants/create', [App\Http\Controllers\LandlordDashboardController::class, 'createTenant'])->name('tenants.create');
+    Route::post('/tenants', [App\Http\Controllers\LandlordDashboardController::class, 'store'])->name('tenants.store');
+    Route::get('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'showTenant'])->name('tenants.show');
+    Route::get('/tenants/{tenant}/edit', [App\Http\Controllers\LandlordDashboardController::class, 'editTenant'])->name('tenants.edit');
+    Route::put('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'updateTenant'])->name('tenants.update');
+    Route::delete('/tenants/{tenant}', [App\Http\Controllers\LandlordDashboardController::class, 'destroyTenant'])->name('tenants.destroy');
+    
+    // View tenant payment history (central DB)
+    Route::get('/tenants/{tenant}/payments', function (\App\Models\Tenant $tenant) {
+        $payments = DB::table('tenant_payments')
+            ->where('tenant_id', $tenant->id)
+            ->orderByDesc('paid_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('landlord.tenant_payments', compact('tenant', 'payments'));
+    })->name('tenants.payments');
+
+    // Impersonate owner: redirect to tenant domain with a short-lived signed SSO token
+    Route::get('/tenants/{tenant}/impersonate', function (\App\Models\Tenant $tenant) {
+        $domain = optional($tenant->domains()->first())->domain;
+        if (!$domain) {
+            return back()->withErrors(['domain' => 'No domain configured for this tenant.']);
+        }
+
+        $email = $tenant->owner_email;
+        $expires = now()->addMinutes(5)->timestamp;
+        $payload = $tenant->id . '|' . $email . '|' . $expires;
+        $key = config('app.key');
+        if (is_string($key) && str_starts_with($key, 'base64:')) {
+            $key = base64_decode(substr($key, 7));
+        }
+        $sig = hash_hmac('sha256', $payload, $key ?? '');
+
+        $query = http_build_query([
+            'tenant' => $tenant->id,
+            'email' => $email,
+            'expires' => $expires,
+            'sig' => $sig,
+        ]);
+
+        return redirect("http://{$domain}/sso?{$query}");
+    })->name('tenants.impersonate');
+
+    // Diagnostics: check tenant initialization and DB connectivity
+    Route::get('/tenants/{tenant}/check', function (\App\Models\Tenant $tenant) {
+        $out = [ 'tenant_id' => $tenant->id ];
+        try {
+            tenancy()->initialize($tenant);
+            $out['tenancy'] = 'initialized';
+            // Simple DB smoke test on tenant connection
+            $out['db_name'] = DB::getDatabaseName();
+            $out['users_count'] = \App\Models\User::count();
+            return response()->json($out);
+        } catch (\Throwable $e) {
+            $out['error'] = $e->getMessage();
+            $out['trace_top'] = collect(explode("\n", $e->getTraceAsString()))->take(5);
+            return response()->json($out, 500);
+        } finally {
+            tenancy()->end();
+        }
+    })->name('tenants.check');
+});
+
+// Settings (protected, using Volt) - central landlord version
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
     Livewire\Volt\Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
@@ -82,7 +245,7 @@ Route::middleware(['auth'])->group(function () {
     Livewire\Volt\Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 
-// [Removed logic] Inventory - central landlord version
+// Inventory - central landlord version
 Route::get('/inventory', [App\Http\Controllers\InventoryController::class, 'index'])->name('inventory.index');
 Route::get('/admin/inventory/create', function () {
     return view('inventory.create');
@@ -94,27 +257,27 @@ Route::get('/inventory/{id}/edit', [App\Http\Controllers\InventoryController::cl
 Route::put('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 'update'])->name('inventory.update');
 Route::get('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 'show'])->name('inventory.show');
 
-// [Removed logic] Inventory API endpoints for code generation and markup - central landlord version
+// Inventory API endpoints for code generation and markup - central landlord version
 Route::get('/api/inventory/generate-code/{departmentPrefix}', [App\Http\Controllers\InventoryController::class, 'generateCode']);
 Route::get('/api/inventory/search-for-po', [App\Http\Controllers\InventoryController::class, 'searchForPO']);
 Route::get('/api/company/markup-percentage', [App\Http\Controllers\InventoryController::class, 'getCompanyMarkup']);
 Route::get('/api/inventory/{id}/details', [App\Http\Controllers\InventoryController::class, 'getItemDetails']);
 
-// [Removed logic] Admin panel (central landlord)
+// Admin panel (central landlord)
 Route::get('/admin-panel', [App\Http\Controllers\InventoryController::class, 'adminPanel'])->name('admin.panel');
 
-// [Removed logic] User management (central landlord helpers)
+// User management (central landlord helpers)
 Route::post('/admin/users', [App\Http\Controllers\AdminController::class, 'storeUser'])->name('admin.users.store');
 Route::post('/admin/employees', [App\Http\Controllers\EmployeeController::class, 'store'])->name('admin.employees.store');
 
-// [Removed logic] Static pages - central landlord convenience routes
+// Static pages - central landlord convenience routes
 Route::view('/client', 'client')->name('client');
 Route::view('/invoice', 'invoice')->name('invoice');
 Route::view('/settings', 'settings')->name('settings');
 Route::view('/progress', 'progress')->name('progress');
 Route::view('/artisanprogress', 'artisanprogress')->name('artisanprogress');
 
-// [Removed logic] Jobcard routes - central landlord version
+// Jobcard routes - central landlord version
 Route::resource('jobcard', App\Http\Controllers\JobcardController::class)->except(['destroy']);
 Route::post('/jobcard', [App\Http\Controllers\JobcardController::class, 'store'])->name('jobcard.store');
 Route::get('/jobcard/{jobcard}', [App\Http\Controllers\JobcardController::class, 'show'])->name('jobcard.show');
@@ -126,22 +289,24 @@ Route::get('/Inventory.html', function () {
     return redirect('/inventory');
 });
 
-// [Removed logic] Inventory routes are tenant-scoped (see routes/tenant.php)
+// Inventory routes are tenant-scoped (see routes/tenant.php)
 
-// [Removed logic] Inventory APIs are tenant-scoped (see routes/tenant.php)
+// Inventory APIs are tenant-scoped (see routes/tenant.php)
 
-// [Removed logic] Admin panel within tenant is tenant-scoped (see routes/tenant.php)
+// Admin panel within tenant is tenant-scoped (see routes/tenant.php)
 
-// [Removed logic] User/employee management for tenants is tenant-scoped (see routes/tenant.php)
+// User/employee management for tenants is tenant-scoped (see routes/tenant.php)
 
-// [Removed logic] Tenant static pages are tenant-scoped (see routes/tenant.php)
+// Tenant static pages are tenant-scoped (see routes/tenant.php)
 
-// [Removed logic] Jobcard routes are tenant-scoped (see routes/tenant.php)
+// Jobcard routes are tenant-scoped (see routes/tenant.php)
 
 // Home after login (default Laravel redirect)
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->middleware(['auth', 'verified'])->name('home.index');
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('home.index');
 
-// [Removed logic] Old inventory redirects are tenant-specific. Remove from central.
+// Old inventory redirects are tenant-specific. Remove from central.
 
 // Admin Authentication Routes
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
@@ -198,6 +363,28 @@ Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])-
 Route::get('/progress', [ProgressController::class, 'index'])->name('progress');
 Route::get('/progress/jobcard/{id}', [ProgressController::class, 'show'])->name('progress.jobcard.show');
 
+// Add this temporary route at the end:
+Route::get('/fix-susan-reference', function() {
+    // First, let's add the column if it doesn't exist
+    try {
+        if (!Schema::hasColumn('clients', 'payment_reference')) {
+            Schema::table('clients', function (Blueprint $table) {
+                $table->string('payment_reference', 8)->nullable()->unique();
+            });
+        }
+    } catch (Exception $e) {
+        // Column might already exist
+    }
+    
+    // Generate reference for Susan
+    $reference = 'STR' . str_pad(random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+    
+    DB::table('clients')->where('id', 5)->update([
+        'payment_reference' => $reference
+    ]);
+    
+    return "Susan's payment reference updated to: " . $reference;
+});
 
 // Add these payment routes:
 
@@ -437,7 +624,7 @@ Route::get('/test-inventory-update', function() {
 // In web.php
 Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');
 
-// [Removed logic] Landlord-specific route for master settings
+// Landlord-specific route for master settings
 Route::middleware(['web'])->group(function () {
     Route::post('/master_settings', [MasterSettingsController::class, 'store'])->name('master_settings.store');
 });

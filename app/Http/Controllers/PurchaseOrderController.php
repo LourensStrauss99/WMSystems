@@ -9,7 +9,7 @@ use App\Models\Inventory;
 use App\Models\User;
 use App\Mail\PurchaseOrderMail;
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseOrderController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     public function __construct()
     {
         $this->middleware('auth');
@@ -29,7 +29,7 @@ class PurchaseOrderController extends Controller
      */
     public function index()
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $purchaseOrders = PurchaseOrder::with(['supplier', 'submittedBy', 'approvedBy'])
             ->orderBy('created_at', 'desc')

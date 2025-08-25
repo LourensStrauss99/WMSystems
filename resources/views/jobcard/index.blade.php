@@ -1,7 +1,7 @@
 @extends('layouts.app')  
 
 @section('content')
-<link href="{{ global_asset('style.css') }}" rel="stylesheet">
+<link href="{{ asset('style.css') }}" rel="stylesheet">
 <div class="container">
     <h2>Jobcard Search</h2>
     

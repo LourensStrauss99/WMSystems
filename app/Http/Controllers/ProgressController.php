@@ -4,15 +4,15 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use App\Models\Jobcard;
 
 class ProgressController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     public function index(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $assignedJobcards = Jobcard::where('status', 'assigned')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'assigned_page');
         $inProgressJobcards = Jobcard::where('status', 'in progress')->with('client')->orderByDesc('job_date')->paginate(8, ['*'], 'inprogress_page');
@@ -23,7 +23,7 @@ class ProgressController extends Controller
 
     public function show($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);
         
@@ -36,7 +36,7 @@ class ProgressController extends Controller
     }
     public function ajaxShow($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         try {
             $jobcard = Jobcard::with(['client', 'employees', 'inventory'])->findOrFail($id);

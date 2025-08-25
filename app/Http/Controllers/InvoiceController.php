@@ -2,7 +2,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Traits\TenantDatabaseSwitch;
+// Removed: use App\Traits\TenantDatabaseSwitch;
 use App\Models\Jobcard;
 use App\Models\CompanyDetail; // <- CHANGE THIS (not Company)
 use Illuminate\Support\Facades\Mail;
@@ -14,10 +14,10 @@ use App\Mail\InvoiceReminderMailable;
 
 class InvoiceController extends Controller
 {
-    use TenantDatabaseSwitch;
+    // Removed: use TenantDatabaseSwitch
     public function index(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $query = Jobcard::with('client')->where('status', 'invoiced');
 
@@ -41,7 +41,7 @@ class InvoiceController extends Controller
 
     public function show($jobcardId)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
         $company = CompanyDetail::first(); // <- FIXED
@@ -50,7 +50,7 @@ class InvoiceController extends Controller
 
     public function email($jobcardId)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $jobcard = Jobcard::with(['client', 'inventory'])->findOrFail($jobcardId);
         $company = CompanyDetail::first(); // <- FIXED
@@ -63,7 +63,7 @@ class InvoiceController extends Controller
 
     public function generatePDF($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         try {
             $jobcard = Jobcard::with(['client', 'inventory', 'employees'])->findOrFail($id);
