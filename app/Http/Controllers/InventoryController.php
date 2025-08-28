@@ -190,68 +190,30 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'description' => 'required|string',
-            'department' => 'required|string|max:2', // Validate department prefix
-            'short_code' => 'nullable|string|max:50|unique:inventory,short_code',
+            'department' => 'required|string|max:2',
+            'short_code' => 'required|string|max:50|unique:inventory,short_code',
             'vendor' => 'nullable|string|max:255',
-            'invoice_number' => 'nullable|string|max:255',
-            'receipt_number' => 'nullable|string|max:255',
             'purchase_date' => 'nullable|date',
-            'purchase_order_number' => 'nullable|string|max:255',
-            'purchase_notes' => 'nullable|string',
             'buying_price' => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
-            'goods_received_voucher' => 'nullable|string|max:255',
-            'stock_level' => 'required|integer|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
             'min_quantity' => 'required|integer|min:0',
             'stock_update_reason' => 'nullable|string|max:255',
-            'is_replenishment' => 'nullable|boolean',
-            'original_item_id' => 'nullable|integer',
         ]);
 
-        // Generate inventory code if not provided
-        if (empty($data['short_code'])) {
-            $data['short_code'] = \App\Models\Inventory::generateInventoryCode($data['department']);
-        }
-
-        // Set default values for nullable fields
-        $data['nett_price'] = $data['buying_price'];
-        $data['sell_price'] = $data['selling_price'];
-        $data['quantity'] = $data['stock_level'];
-        // min_quantity is now directly required and used
-        $data['stock_added'] = $data['stock_level'];
-        $data['last_stock_update'] = $data['purchase_date'] ?? now()->toDateString();
-
-        // Get company markup percentage
+        // Auto-calculate selling price if not provided
         $companyDetails = \App\Models\CompanyDetail::first();
         $markupPercent = $companyDetails ? $companyDetails->markup_percentage : 25;
-    
-        // Calculate selling price if not provided
-        if (empty($data['sell_price']) && !empty($data['nett_price'])) {
-            $data['sell_price'] = $data['nett_price'] * (1 + ($markupPercent / 100));
-        }
+        $data['nett_price'] = $data['buying_price'];
+        $data['sell_price'] = $data['selling_price'] ?? ($data['buying_price'] * (1 + $markupPercent / 100));
+        $data['stock_added'] = $data['quantity'];
+        $data['last_stock_update'] = $data['purchase_date'] ?? now()->toDateString();
+        $data['stock_update_reason'] = $data['stock_update_reason'] ?? 'Initial stock entry';
 
         try {
             $item = Inventory::create($data);
-            
-            // If this is a replenishment, also update the original item's stock
-            if ($request->input('is_replenishment') && $request->input('original_item_id')) {
-                $originalItem = Inventory::find($request->input('original_item_id'));
-                if ($originalItem) {
-                    $originalItem->quantity += $data['stock_level'];           // Use quantity, not stock_level
-                    $originalItem->last_stock_update = now()->toDateString();
-                    $originalItem->stock_added = $data['stock_level'];
-                    $originalItem->stock_update_reason = 'Stock replenished - linked to ' . $item->short_code;
-                    $originalItem->save();
-                    
-                    $successMessage = "Stock replenishment successful! Added {$data['stock_level']} units to '{$originalItem->description}'. New total stock: {$originalItem->quantity}. Replenishment record: {$item->short_code}";
-                } else {
-                    $successMessage = "New inventory item added (original item not found for replenishment): {$item->short_code}";
-                }
-            } else {
-                $departmentName = \App\Models\Inventory::getDepartmentOptions()[$data['department']] ?? 'Unknown';
-                $successMessage = "New inventory item '{$item->description}' added successfully! Department: {$departmentName}, Stock: {$item->quantity}, Code: {$item->short_code}";
-            }
-            
+            $departmentName = \App\Models\Inventory::getDepartmentOptions()[$data['department']] ?? 'Unknown';
+            $successMessage = "New inventory item '{$item->description}' added successfully! Department: {$departmentName}, Stock: {$item->quantity}, Code: {$item->short_code}";
             return redirect()->route('inventory.index')->with('success', $successMessage);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Inventory creation failed: ' . $e->getMessage());

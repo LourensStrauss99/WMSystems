@@ -79,160 +79,142 @@
 
     <!-- Enhanced Invoice Table -->
     <div class="bg-white rounded-lg shadow-lg">
-        <div class="p-4 border-b border-gray-200">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-800">
-                    <i class="fas fa-list mr-2 text-blue-600"></i>Invoice List
-                </h3>
-                <div class="text-sm text-gray-600">
-                    Showing {{ $jobcards->count() }} of {{ $jobcards->total() }} invoices
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2 class="text-dark fw-bold">
+                <i class="fas fa-file-invoice me-2 text-primary"></i>
+                Invoice Directory
+            </h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <div class="btn-group" role="group">
+                <a href="{{ route('invoice.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-refresh me-1"></i>Reset
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>
+                        Invoice List
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-light text-dark">
+                        {{ $jobcards->total() }} Total
+                    </span>
                 </div>
             </div>
         </div>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                            <i class="fas fa-hashtag mr-1"></i>Invoice #
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                            <i class="fas fa-user mr-1"></i>Client
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                            <i class="fas fa-calendar mr-1"></i>Date
-                        </th>
-                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            <i class="fas fa-info-circle mr-1"></i>Status
-                        </th>
-                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                            <i class="fas fa-dollar-sign mr-1"></i>Amount
-                        </th>
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                            <i class="fas fa-cogs mr-1"></i>Actions
-                        </th>
-                    </tr>    
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($jobcards as $jobcard)
-                        @php
-                            // Get the ACTUAL invoice for this jobcard
-                            $invoice = $jobcard->invoice;
-                            
-                            if ($invoice) {
-                                // Use the invoice amount directly
-                                $grandTotal = $invoice->amount;
-                                $itemCount = $jobcard->inventory->count();
-                            } else {
-                                                            // Fallback calculation if no invoice exists
-                            $inventoryTotal = $jobcard->inventory->sum(function($item) {
-                                $quantity = $item->pivot->quantity ?? 0;
-                                $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
-                                return $quantity * $sellingPrice;
-                            });
-                                
-                                // Calculate labour costs from jobcard enhanced data
-                                $company = \App\Models\CompanyDetail::first();
-                                $totalLabourCost = floatval($jobcard->total_labour_cost ?? 0);
-                                
-                                // If no enhanced data, fall back to old calculation
-                                if ($totalLabourCost == 0) {
-                                    $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
-                                    $totalLabourCost = $labourHours * ($company->labour_rate ?? 750);
-                                }
-                                
-                                $subtotal = $inventoryTotal + $totalLabourCost;
-                                $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
-                                $grandTotal = $subtotal + $vat;
-                                $itemCount = $jobcard->inventory->count() + ($totalLabourCost > 0 ? 1 : 0);
-                            }
-                        @endphp
-                        <tr class="hover:bg-gray-50 transition-colors cursor-pointer invoice-row" onclick="viewInvoice({{ $jobcard->id }})">
-                            <!-- Invoice Number -->
-                            <td class="px-4 py-4 whitespace-nowrap w-32">
-                                <div class="text-sm font-medium text-gray-900">{{ $jobcard->jobcard_number }}</div>
-                                <div class="text-xs text-gray-500">ID: {{ $jobcard->id }}</div>
-                            </td>
-                            
-                            <!-- Client Info -->
-                            <td class="px-4 py-4 whitespace-nowrap w-48">
-                                <div class="text-sm font-medium text-gray-900">{{ $jobcard->client->name ?? 'N/A' }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobcard->client->email ?? '' }}</div>
-                            </td>
-                            
-                            <!-- Date -->
-                            <td class="px-4 py-4 whitespace-nowrap w-28">
-                                <div class="text-sm text-gray-900">{{ $jobcard->job_date ?? $jobcard->created_at->format('Y-m-d') }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobcard->created_at->format('H:i') }}</div>
-                            </td>
-                            
-                            <!-- Status -->
-                            <td class="px-4 py-4 whitespace-nowrap w-24">
+        <div class="card-body p-0">
+            @if($jobcards->count() > 0)
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col" class="text-center" style="width: 60px;">#</th>
+                                <th scope="col"><i class="fas fa-user me-1"></i>Client</th>
+                                <th scope="col"><i class="fas fa-calendar me-1"></i>Date</th>
+                                <th scope="col"><i class="fas fa-info-circle me-1"></i>Status</th>
+                                <th scope="col" class="text-end"><i class="fas fa-dollar-sign me-1"></i>Amount</th>
+                                <th scope="col" class="text-center" style="width: 120px;"><i class="fas fa-cog"></i> Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($jobcards as $jobcard)
                                 @php
+                                    $invoice = $jobcard->invoice;
+                                    if ($invoice) {
+                                        $grandTotal = $invoice->amount;
+                                        $itemCount = $jobcard->inventory->count();
+                                    } else {
+                                        $inventoryTotal = $jobcard->inventory->sum(function($item) {
+                                            $quantity = $item->pivot->quantity ?? 0;
+                                            $sellingPrice = $item->selling_price ?? $item->sell_price ?? 0;
+                                            return $quantity * $sellingPrice;
+                                        });
+                                        $company = \App\Models\CompanyDetail::first();
+                                        $totalLabourCost = floatval($jobcard->total_labour_cost ?? 0);
+                                        if ($totalLabourCost == 0) {
+                                            $labourHours = $jobcard->employees->sum(fn($employee) => $employee->pivot->hours_worked ?? 0);
+                                            $totalLabourCost = $labourHours * ($company->labour_rate ?? 750);
+                                        }
+                                        $subtotal = $inventoryTotal + $totalLabourCost;
+                                        $vat = $subtotal * (($company->vat_percent ?? 15) / 100);
+                                        $grandTotal = $subtotal + $vat;
+                                        $itemCount = $jobcard->inventory->count() + ($totalLabourCost > 0 ? 1 : 0);
+                                    }
                                     $statusConfig = [
-                                        'pending' => ['class' => 'bg-yellow-100 text-yellow-800', 'icon' => 'fas fa-clock'],
-                                        'completed' => ['class' => 'bg-green-100 text-green-800', 'icon' => 'fas fa-check-circle'],
-                                        'paid' => ['class' => 'bg-blue-100 text-blue-800', 'icon' => 'fas fa-credit-card'],
-                                        'cancelled' => ['class' => 'bg-red-100 text-red-800', 'icon' => 'fas fa-times-circle'],
-                                        'invoiced' => ['class' => 'bg-purple-100 text-purple-800', 'icon' => 'fas fa-file-invoice'],
+                                        'pending' => ['class' => 'badge bg-warning text-dark', 'icon' => 'fas fa-clock'],
+                                        'completed' => ['class' => 'badge bg-success', 'icon' => 'fas fa-check-circle'],
+                                        'paid' => ['class' => 'badge bg-info text-dark', 'icon' => 'fas fa-credit-card'],
+                                        'cancelled' => ['class' => 'badge bg-danger', 'icon' => 'fas fa-times-circle'],
+                                        'invoiced' => ['class' => 'badge bg-primary', 'icon' => 'fas fa-file-invoice'],
                                     ];
-                                    $config = $statusConfig[$jobcard->status] ?? ['class' => 'bg-gray-100 text-gray-800', 'icon' => 'fas fa-question'];
+                                    $config = $statusConfig[$jobcard->status] ?? ['class' => 'badge bg-secondary', 'icon' => 'fas fa-question'];
                                 @endphp
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $config['class'] }}">
-                                    <i class="{{ $config['icon'] }} mr-1"></i>
-                                    {{ ucfirst($jobcard->status) }}
-                                </span>
-                            </td>
-                            
-                            <!-- Amount -->
-                            <td class="px-4 py-4 whitespace-nowrap text-right w-24">
-                                <div class="text-sm font-medium text-gray-900">R {{ number_format($grandTotal, 2) }}</div>
-                                <div class="text-xs text-gray-500">{{ $itemCount }} items</div>
-                            </td>
-                            
-                            <!-- Actions -->
-                            <td class="px-4 py-4 whitespace-nowrap text-center w-32">
-                                <div class="flex justify-center space-x-1">
-                                    <a href="{{ route('invoice.show', $jobcard->id) }}" 
-                                       class="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-all duration-300 text-xs font-semibold shadow-lg"
-                                       onclick="event.stopPropagation()" 
-                                       title="View Invoice Details">
-                                        <i class="fas fa-eye mr-1"></i>View
-                                    </a>
-                                    <button class="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition-all duration-300 text-xs font-semibold shadow-lg"
-                                            onclick="event.stopPropagation(); emailInvoice({{ $jobcard->id }})"
-                                            title="Email Invoice to Client">
-                                        <i class="fas fa-envelope mr-1"></i>Email
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
-                                <div class="flex flex-col items-center justify-center">
-                                    <i class="fas fa-file-invoice text-6xl text-gray-300 mb-4"></i>
-                                    <h3 class="text-lg font-medium text-gray-900 mb-2">No invoices found</h3>
-                                    <p class="text-gray-500 mb-4">
-                                        @if(request()->hasAny(['client', 'from', 'to', 'status']))
-                                            No invoices match your current filter criteria.
-                                        @else
-                                            You haven't created any invoices yet.
-                                        @endif
-                                    </p>
-                                    @if(request()->hasAny(['client', 'from', 'to', 'status']))
-                                        <a href="{{ route('invoice.index') }}" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                                            <i class="fas fa-times mr-2"></i>Clear Filters
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <tr class="align-middle">
+                                    <td class="text-center text-muted fw-bold">
+                                        {{ $jobcard->jobcard_number }}<br>
+                                        <span class="text-xs text-secondary">ID: {{ $jobcard->id }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold text-dark">{{ $jobcard->client->name ?? 'N/A' }}</span><br>
+                                        <span class="text-muted">{{ $jobcard->client->email ?? '' }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold text-dark">{{ $jobcard->job_date ?? $jobcard->created_at->format('Y-m-d') }}</span><br>
+                                        <span class="text-muted">{{ $jobcard->created_at->format('H:i') }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="{{ $config['class'] }}">
+                                            <i class="{{ $config['icon'] }} me-1"></i>
+                                            {{ ucfirst($jobcard->status) }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-bold text-success">R {{ number_format($grandTotal, 2) }}</span><br>
+                                        <span class="text-muted">{{ $itemCount }} items</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('invoice.show', $jobcard->id) }}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="View Invoice Details">
+                                                <i class="fas fa-eye me-1"></i>
+                                                <span class="d-none d-md-inline">View</span>
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-success" 
+                                                    onclick="event.stopPropagation(); emailInvoice({{ $jobcard->id }})"
+                                                    title="Email Invoice to Client">
+                                                <i class="fas fa-envelope me-1"></i>
+                                                <span class="d-none d-md-inline">Email</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-file-invoice fa-3x text-muted"></i>
+                    </div>
+                    <h4 class="text-muted">No Invoices Found</h4>
+                    <p class="text-muted">
+                        No invoices have been added yet.
+                    </p>
+                </div>
+            @endif
         </div>
+    </div>
         
         <!-- Pagination -->
         @if($jobcards->hasPages())

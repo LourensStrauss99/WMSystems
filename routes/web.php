@@ -19,6 +19,7 @@ use App\Http\Controllers\ProgressController;
 use App\Http\Controllers\PhoneController;
 use App\Http\Controllers\QuotesController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
 
 
 // EXISTING ROUTES CONTINUE BELOW
@@ -43,7 +44,10 @@ use App\Http\Controllers\MobileAuthController;
 use App\Http\Controllers\ClientStatementController;
 use Illuminate\Support\Facades\Log;
 
-
+// Debug route to show session contents
+Route::get('/debug-session', function() {
+    return response()->json(session()->all());
+});
 // Authentication Routes
 Auth::routes(['verify' => true]);
 
@@ -76,10 +80,11 @@ Route::get('/', function () {
 
 // [Removed logic] Settings (protected, using Volt) - central landlord version
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', 'settings/profile');
-    Livewire\Volt\Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
-    Livewire\Volt\Volt::route('settings/password', 'settings.password')->name('settings.password');
-    Livewire\Volt\Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
+    // Route::redirect('settings', 'settings/profile');
+    Route::get('/settings/profile', [SettingsController::class, 'profile'])->name('settings.profile');
+    Route::post('/settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile.update');
+    Route::get('/settings/password', [SettingsController::class, 'password'])->name('settings.password');
+    Route::post('/settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password.update');
 });
 
 // [Removed logic] Inventory - central landlord version
@@ -95,7 +100,6 @@ Route::put('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 
 Route::get('/inventory/{id}', [App\Http\Controllers\InventoryController::class, 'show'])->name('inventory.show');
 
 // [Removed logic] Inventory API endpoints for code generation and markup - central landlord version
-Route::get('/api/inventory/generate-code/{departmentPrefix}', [App\Http\Controllers\InventoryController::class, 'generateCode']);
 Route::get('/api/inventory/search-for-po', [App\Http\Controllers\InventoryController::class, 'searchForPO']);
 Route::get('/api/company/markup-percentage', [App\Http\Controllers\InventoryController::class, 'getCompanyMarkup']);
 Route::get('/api/inventory/{id}/details', [App\Http\Controllers\InventoryController::class, 'getItemDetails']);
@@ -479,7 +483,6 @@ Route::middleware(['auth'])->group(function () {
     //Route::get('/grv/{id}', [GrvController::class, 'show'])->name('grv.show');
     // Other GRV routes...
 });
-
 // Invoice reminder
 Route::post('/invoice/{invoice}/reminder', [App\Http\Controllers\InvoiceController::class, 'sendReminder'])->name('invoice.reminder');
 
@@ -497,9 +500,6 @@ Route::post('/employee/jobcards', [JobcardController::class, 'apiAssignedJobcard
 Route::get('/jobcard/{id}/view', [JobcardController::class, 'apiViewJobcard']);
 Route::put('/jobcard/{id}/update', [JobcardController::class, 'apiUpdateJobcard']);
 // Mobile jobcard index view (device-received jobcards)
-Route::get('/mobile-app/jobcard/index', function() {
-    return view('mobile app.index.mobile');
-})->name('jobcard.mobile.index');
 
 Route::middleware([\App\Http\Middleware\EmployeeAuth::class])->group(function () {
     Route::get('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'mobileIndex'])->name('mobile.jobcards.index');
@@ -507,6 +507,7 @@ Route::middleware([\App\Http\Middleware\EmployeeAuth::class])->group(function ()
     Route::get('/mobile/jobcards/{jobcard}/edit', [App\Http\Controllers\JobcardController::class, 'editMobile'])->name('mobile.jobcards.edit');
     Route::get('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'showMobile'])->name('mobile.jobcards.show');
     Route::post('/mobile/jobcards', [App\Http\Controllers\JobcardController::class, 'store'])->name('mobile-jobcard.store');
+    Route::put('/mobile/jobcards/{jobcard}', [App\Http\Controllers\JobcardController::class, 'updateMobile'])->name('mobile.jobcards.update');
 });
 
 Route::post('/mobile-jobcard-photos', [MobileJobcardPhotoController::class, 'store'])->name('mobile-jobcard-photos.store');
@@ -516,3 +517,17 @@ Route::post('/mobile-app/login', [MobileAuthController::class, 'login'])->name('
 Route::get('/mobile-app/login', fn () => view('mobile.login'))->name('mobile.login.form');
 
 Route::post('/jobcard/{jobcard}/accept-quote', [App\Http\Controllers\JobcardController::class, 'acceptQuote'])->name('jobcard.acceptQuote');
+use App\Models\Jobcard;
+Route::get('/mobile-app/jobcard/index', function() {
+    $employeeId = session('mobile_employee_id');
+    if (!$employeeId) {
+        return redirect()->route('mobile.login.form');
+    }
+    $jobcardIds = DB::table('employee_jobcard')
+        ->where('employee_id', $employeeId)
+        ->pluck('jobcard_id');
+    $jobcards = Jobcard::whereIn('id', $jobcardIds)
+        ->whereIn('status', ['assigned', 'in progress'])
+        ->paginate(10);
+    return view('mobile.jobcard-list', compact('jobcards'));
+})->name('mobile.jobcard.index');

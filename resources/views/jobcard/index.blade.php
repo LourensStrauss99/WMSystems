@@ -2,7 +2,7 @@
 
 @section('content')
 <link href="{{ asset('style.css') }}" rel="stylesheet">
-<div class="container">
+<div class="container bg-primary text-primary">
     <h2>Jobcard Search</h2>
     
     <!-- Enhanced Search Form -->

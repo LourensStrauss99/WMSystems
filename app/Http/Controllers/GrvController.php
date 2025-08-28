@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Log;
 
 class GrvController extends Controller
 {
-    // Removed: use TenantDatabaseSwitch
+    // ...existing code...
     
     public function __construct()
     {
@@ -29,7 +29,7 @@ class GrvController extends Controller
      */
     public function index()
     {
-    // Removed: $this->switchToTenantDatabase();
+    // ...existing code...
         
         $grvs = GoodsReceivedVoucher::with(['purchaseOrder.supplier', 'receivedBy'])
             ->orderBy('created_at', 'desc')
@@ -43,7 +43,7 @@ class GrvController extends Controller
      */
     public function create(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         // Add debug logging
         Log::info('GRV Create accessed', [
@@ -75,7 +75,7 @@ class GrvController extends Controller
      */
     public function store(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Store method called\n", FILE_APPEND);
         file_put_contents(storage_path('logs/debug.log'), "Request data: " . json_encode($request->all()) . "\n", FILE_APPEND);
@@ -248,7 +248,7 @@ class GrvController extends Controller
      */
     public function show($id)
     {
-    // Removed: $this->switchToTenantDatabase();
+    // ...existing code...
         
         $grv = GoodsReceivedVoucher::with([
             'purchaseOrder.supplier',
@@ -265,7 +265,7 @@ class GrvController extends Controller
      */
     public function approve($id)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         file_put_contents(storage_path('logs/debug.log'), date('Y-m-d H:i:s') . " - Approve method called for GRV ID: {$id}\n", FILE_APPEND);
         
         try {
@@ -332,7 +332,7 @@ class GrvController extends Controller
      */
     public function passQualityCheck($id)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         $grv = GoodsReceivedVoucher::findOrFail($id);
         
@@ -349,7 +349,7 @@ class GrvController extends Controller
      */
     public function failQualityCheck(Request $request, $id)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         $request->validate([
             'quality_notes' => 'required|string',
@@ -371,7 +371,7 @@ class GrvController extends Controller
      */
     public function getPurchaseOrderDetails($id)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         $po = PurchaseOrder::with(['supplier', 'items'])->findOrFail($id);
         

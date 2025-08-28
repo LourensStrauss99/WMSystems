@@ -353,15 +353,7 @@
                                 <select id="inventory_select" class="form-control">
                                     <option value="">Select Inventory Item</option>
                                     @foreach($inventory as $item)
-                                        @php $stockStatus = $item->getStockStatus(); @endphp
-                                        <option value="{{ $item->id }}" 
-                                                data-short="{{ $item->short_description }}"
-                                                data-stock="{{ $item->stock_level }}"
-                                                data-min="{{ $item->min_level }}"
-                                                data-code="{{ $item->short_code }}"
-                                                data-status="{{ $stockStatus['status'] }}">
-                                            [{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }}) {{ $stockStatus['icon'] }}
-                                        </option>
+                                        <option value="{{ $item->id }}">{{ $item->description }}</option>
                                     @endforeach
                                 </select>
                             </div>

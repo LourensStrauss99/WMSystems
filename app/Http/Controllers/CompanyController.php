@@ -9,44 +9,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use App\Models\Tenant;
+// Removed: use App\Models\Tenant;
 // Removed: use App\Traits\TenantDatabaseSwitch;
 
 class CompanyController extends Controller
 {
     // Removed: use TenantDatabaseSwitch
-    /**
-     * Switch to the correct database for the current user
-     */
-    private function switchToCorrectDatabase()
-    {
-        $user = Auth::user();
-        
-        // Check if we have tenant database info in session
-        $tenantDatabase = session('tenant_database');
-        if ($tenantDatabase) {
-            Config::set('database.connections.mysql.database', $tenantDatabase);
-            DB::reconnect('mysql');
-            return;
-        }
-
-        // Find tenant by user email
-        if ($user && $user->email) {
-            // Ensure we start on main database
-            Config::set('database.connections.mysql.database', env('DB_DATABASE'));
-            DB::reconnect('mysql');
-            
-            $tenant = Tenant::where('owner_email', $user->email)
-                          ->where('status', 'active')
-                          ->first();
-            
-            if ($tenant) {
-                Config::set('database.connections.mysql.database', $tenant->database_name);
-                DB::reconnect('mysql');
-                session(['tenant_database' => $tenant->database_name]);
-            }
-        }
-    }
+    // Removed: tenant and database switching logic
 
     /**
      * Show company details (redirects to edit form)
@@ -61,8 +30,7 @@ class CompanyController extends Controller
      */
     public function edit()
     {
-        // Switch to correct database first
-    // Removed: $this->switchToTenantDatabase();
+    // Removed: tenant and database switching
         
         // Check if user has access to company settings
         if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {
@@ -84,8 +52,7 @@ class CompanyController extends Controller
      */
     public function update(Request $request)
     {
-        // Switch to correct database first
-        $this->switchToTenantDatabase();
+    // Removed: tenant and database switching
         
         // Check permissions
         if (!Auth::user()->admin_level || Auth::user()->admin_level < 3) {

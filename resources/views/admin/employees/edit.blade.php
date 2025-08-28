@@ -93,158 +93,74 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h5 class="mb-2"><i class="fas fa-link text-primary me-2"></i>Share Mobile Login Link</h5>
-<<<<<<< HEAD
+
             <div class="input-group mb-2">
                 <input type="text" id="mobile-login-link" class="form-control" readonly value="{{ url('/mobile-app/login?email=' . urlencode($employee->email)) }}">
-                <button class="btn btn-outline-secondary" type="button" id="copy-button" onclick="copyMobileLink()">
+                <button class="btn btn-outline-secondary" type="button" id="copy-link-btn">
                     <i class="fas fa-copy me-1"></i>Copy
                 </button>
             </div>
             <div id="copy-success-message" class="alert alert-success d-none" role="alert">
                 <i class="fas fa-check-circle me-2"></i>Link copied successfully!
-=======
-            <div class="input-group">
-                <!-- Removed tenant logic from mobile login link -->
-                <button class="btn btn-outline-secondary" type="button" id="copy-link-btn">Copy</button>
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
             </div>
             <small class="text-muted">Send this link to the employee. It will pre-fill their email on the mobile login page.</small>
             <div class="text-center mt-3">
-                <!-- Removed tenant logic from QR code generation -->
+                @if(function_exists('QrCode'))
+                    <div class="mb-2">
+                        {!! QrCode::size(120)->generate(url('/mobile-app/login?email=' . urlencode($employee->email))) !!}
+                    </div>
+                @else
+                    <div class="mb-2">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={{ urlencode(url('/mobile-app/login?email=' . $employee->email)) }}" alt="QR Code" />
+                    </div>
+                @endif
                 <div class="small text-muted mt-1">Scan to open mobile login link</div>
             </div>
         </div>
     </div>
 </div>
 
+
 <script>
-<<<<<<< HEAD
-function copyMobileLink() {
-    const linkInput = document.getElementById('mobile-login-link');
-    const copyButton = document.getElementById('copy-button');
-    const successMessage = document.getElementById('copy-success-message');
-    
-    // Try modern clipboard API first
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(linkInput.value).then(function() {
-            showCopySuccess(copyButton, successMessage);
-        }).catch(function() {
-            // Fallback to older method
-            fallbackCopyTextToClipboard(linkInput.value, copyButton, successMessage);
-        });
-    } else {
-        // Fallback for older browsers or non-secure contexts
-        fallbackCopyTextToClipboard(linkInput.value, copyButton, successMessage);
-    }
-}
-
-function fallbackCopyTextToClipboard(text, button, successMessage) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    
-    // Avoid scrolling to bottom
-    textArea.style.top = "0";
-    textArea.style.left = "0";
-    textArea.style.position = "fixed";
-    
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            showCopySuccess(button, successMessage);
-        } else {
-            showCopyError(button);
-        }
-    } catch (err) {
-        showCopyError(button);
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-function showCopySuccess(button, successMessage) {
-    // Update button
-    const originalHTML = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
-    button.classList.remove('btn-outline-secondary');
-    button.classList.add('btn-success');
-    
-    // Show success message
-    successMessage.classList.remove('d-none');
-    
-    // Reset after 3 seconds
-    setTimeout(function() {
-        button.innerHTML = originalHTML;
-        button.classList.remove('btn-success');
-        button.classList.add('btn-outline-secondary');
-        successMessage.classList.add('d-none');
-    }, 3000);
-}
-
-function showCopyError(button) {
-    const originalHTML = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Failed';
-    button.classList.remove('btn-outline-secondary');
-    button.classList.add('btn-danger');
-    
-    setTimeout(function() {
-        button.innerHTML = originalHTML;
-        button.classList.remove('btn-danger');
-        button.classList.add('btn-outline-secondary');
-    }, 2000);
-}
-</script>
-
-=======
 document.addEventListener('DOMContentLoaded', function() {
     const copyBtn = document.getElementById('copy-link-btn');
     const linkInput = document.getElementById('mobile-login-link');
-    
+    const successMessage = document.getElementById('copy-success-message');
+
     if (copyBtn && linkInput) {
         copyBtn.addEventListener('click', async function() {
             try {
-                // Try modern clipboard API first
                 if (navigator.clipboard && window.isSecureContext) {
                     await navigator.clipboard.writeText(linkInput.value);
                 } else {
-                    // Fallback for older browsers or non-HTTPS
                     linkInput.select();
-                    linkInput.setSelectionRange(0, 99999); // For mobile devices
+                    linkInput.setSelectionRange(0, 99999);
                     document.execCommand('copy');
                 }
-                
-                // Show success feedback
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'Copied!';
-                copyBtn.classList.add('btn-success');
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
                 copyBtn.classList.remove('btn-outline-secondary');
-                
-                // Reset after 1.5 seconds
+                copyBtn.classList.add('btn-success');
+                successMessage.classList.remove('d-none');
                 setTimeout(() => {
-                    copyBtn.textContent = originalText;
+                    copyBtn.innerHTML = originalText;
                     copyBtn.classList.remove('btn-success');
                     copyBtn.classList.add('btn-outline-secondary');
-                }, 1500);
-                
+                    successMessage.classList.add('d-none');
+                }, 2000);
             } catch (err) {
-                console.error('Failed to copy text: ', err);
-                // Show error feedback
-                copyBtn.textContent = 'Error!';
-                copyBtn.classList.add('btn-danger');
+                copyBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Failed';
                 copyBtn.classList.remove('btn-outline-secondary');
-                
+                copyBtn.classList.add('btn-danger');
                 setTimeout(() => {
-                    copyBtn.textContent = 'Copy';
+                    copyBtn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy';
                     copyBtn.classList.remove('btn-danger');
                     copyBtn.classList.add('btn-outline-secondary');
-                }, 1500);
+                }, 2000);
             }
         });
     }
 });
 </script>
->>>>>>> bf4f09e2d0fd51ad4360c6e9912471a0fe5dc319
+
 @endsection

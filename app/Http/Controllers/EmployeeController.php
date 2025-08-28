@@ -22,7 +22,7 @@ class EmployeeController extends Controller
 
     public function store(Request $request)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -50,7 +50,7 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $employee = \App\Models\Employee::findOrFail($id);
         return view('admin.employees.edit', compact('employee'));
@@ -58,7 +58,7 @@ class EmployeeController extends Controller
     
     public function update(Request $request, $id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $employee = \App\Models\Employee::findOrFail($id);
 
@@ -73,7 +73,7 @@ class EmployeeController extends Controller
 
     public function toggleStatus($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $employee = \App\Models\Employee::findOrFail($id);
         $employee->is_active = !$employee->is_active;
@@ -86,7 +86,7 @@ class EmployeeController extends Controller
 
     public function destroy($id)
     {
-        $this->switchToTenantDatabase();
+    // Removed: $this->switchToTenantDatabase();
         
         $employee = \App\Models\Employee::findOrFail($id);
         $employee->delete();

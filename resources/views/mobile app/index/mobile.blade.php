@@ -27,37 +27,6 @@
     </div>
 </div>
 @endsection
-@php
-    $jobcards = \App\Models\Jobcard::whereHas('employees', function($query) {
-        $query->where('employee_jobcard.employee_id', Auth::id());
-    })->get();
-@endphp
-
-<div class="container py-4">
-    <h4 class="mb-4 fw-bold text-primary"><i class="fas fa-clipboard-list me-2"></i>Jobcard Index</h4>
-    <div class="row g-3">
-        @forelse($jobcards as $jobcard)
-            <div class="col-12">
-                <div class="card shadow-sm border-0 mb-2">
-                    <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between py-3 px-3">
-                        <div>
-                            <h5 class="fw-bold mb-1"><i class="fas fa-clipboard me-2 text-primary"></i>Jobcard #{{ $jobcard->jobcard_number }}</h5>
-                            <div class="small text-muted">Client: {{ $jobcard->client->name ?? 'N/A' }}</div>
-                            <div class="small text-muted">Status: <span class="badge bg-{{ $jobcard->status == 'assigned' ? 'warning text-dark' : 'success' }}">{{ ucfirst($jobcard->status) }}</span></div>
-                        </div>
-                        <div class="mt-3 mt-md-0 d-flex gap-2">
-                            <a href="{{ route('mobile.jobcard.edit', $jobcard->id) }}" class="btn btn-primary btn-sm"><i class="fas fa-edit me-1"></i>Edit</a>
-                            @if($jobcard->status === 'completed')
-                                <button class="btn btn-warning btn-sm" onclick="removeFromMobile({{ $jobcard->id }})"><i class="fas fa-eye-slash me-1"></i>Remove</button>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @empty
-            <div class="col-12 text-muted text-center">No jobcards assigned</div>
-        @endforelse
-    </div>
     <div class="text-center mt-4">
         <button class="btn btn-success" onclick="refreshJobcards()"><i class="fas fa-sync-alt me-1"></i>Refresh</button>
     </div>

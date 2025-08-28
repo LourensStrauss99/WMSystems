@@ -17,22 +17,19 @@ use Illuminate\Support\Facades\DB;
 
 class MasterSettingsController extends Controller
 {
-    // Debug route removed: tenant logic
+    // Tenant logic removed
 
     public function index()
     {
-        // Removed tenant database switching logic
-        $users = User::orderBy('created_at', 'desc')->get();
-        $employees = Employee::orderBy('created_at', 'desc')->get();
-        $purchaseOrders = class_exists('App\Models\PurchaseOrder') ? PurchaseOrder::orderBy('created_at', 'desc')->get() : collect();
-        $suppliers = class_exists('App\Models\Supplier') ? Supplier::orderBy('created_at', 'desc')->get() : collect();
+    $users = User::orderBy('created_at', 'desc')->get();
+    $employees = Employee::orderBy('created_at', 'desc')->get();
+    $purchaseOrders = class_exists('App\Models\PurchaseOrder') ? PurchaseOrder::orderBy('created_at', 'desc')->get() : collect();
+    $suppliers = class_exists('App\Models\Supplier') ? Supplier::orderBy('created_at', 'desc')->get() : collect();
     return view('master-settings', compact('users', 'employees', 'purchaseOrders', 'suppliers'));
     }
 
     public function store(Request $request)
     {
-
-        // You can branch logic based on account_type if needed
         if ($request->account_type === 'employee') {
             // Validate and create employee
             $validated = $request->validate([
@@ -48,7 +45,9 @@ class MasterSettingsController extends Controller
             $validated['password'] = Hash::make($validated['password']);
             $validated['created_by'] = Auth::id();
             Employee::create($validated);
-
+            return redirect()->route('master.settings')->with('success', 'Employee created successfully!');
+        }
+        if ($request->account_type === 'user') {
             // Validate and create user
             $userValidated = $request->validate([
                 'name' => 'required|string|max:255',
@@ -64,8 +63,6 @@ class MasterSettingsController extends Controller
             $userValidated['password'] = Hash::make($userValidated['password']);
             $userValidated['is_active'] = true;
             User::create($userValidated);
-
-            // Removed tenant route logic
             return redirect()->route('master.settings')->with('success', 'User created successfully!');
         }
     }
@@ -73,12 +70,10 @@ class MasterSettingsController extends Controller
     public function updateUser(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        // Check permissions
-        // Basic permission check: only allow admins (admin_level >= 1) to manage users
+        // Permission checks remain, tenant logic removed
         if (!Auth::user() || Auth::user()->admin_level < 1) {
             abort(403, 'Access denied. User management privileges required.');
         }
-        // Only allow users with admin_level >= 5 to edit superuser accounts
         if ($user->is_superuser && (!Auth::user() || Auth::user()->admin_level < 5)) {
             abort(403, 'Only superusers can edit superuser accounts.');
         }
@@ -104,11 +99,10 @@ class MasterSettingsController extends Controller
     public function toggleUserStatus($id)
     {
         $user = User::findOrFail($id);
-        // Basic permission check: only allow admins (admin_level >= 1) to manage users
+        // Permission checks remain, tenant logic removed
         if (!Auth::user() || Auth::user()->admin_level < 1) {
             abort(403, 'Access denied.');
         }
-        // Prevent deactivating superusers unless current user is admin_level >= 5
         if ($user->is_superuser && (!Auth::user() || Auth::user()->admin_level < 5)) {
             return back()->withErrors(['error' => 'Cannot deactivate superuser accounts.']);
         }

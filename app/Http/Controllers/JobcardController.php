@@ -17,6 +17,64 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
+    // Mobile jobcard update
+    public function updateMobile(Request $request, $jobcard)
+    {
+        $jobcard = Jobcard::findOrFail($jobcard);
+        // Basic validation (customize as needed)
+        $validated = $request->validate([
+            'jobcard_number' => 'required',
+            'job_date' => 'required|date',
+            // Add other fields as needed
+        ]);
+
+        try {
+            $jobcard->update($validated);
+            return redirect()->route('mobile.jobcards.edit', $jobcard->id)
+                ->with('success', 'Jobcard updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('mobile.jobcards.edit', $jobcard->id)
+                ->with('error', 'Error saving jobcard: ' . $e->getMessage());
+        }
+    }
+    // Mobile jobcard list
+    public function mobileIndex(Request $request)
+    {
+        $employeeId = session('mobile_employee_id');
+        $jobcardIds = DB::table('employee_jobcard')
+            ->where('employee_id', $employeeId)
+            ->pluck('jobcard_id');
+        $jobcards = Jobcard::whereIn('id', $jobcardIds)
+            ->whereIn('status', ['assigned', 'in progress'])
+            ->paginate(10);
+        return view('mobile.jobcard-list', compact('jobcards'));
+    }
+
+    // Mobile jobcard view
+    public function showMobile($jobcard)
+    {
+        $jobcard = Jobcard::findOrFail($jobcard);
+        return view('mobile.jobcard-view', compact('jobcard'));
+    }
+
+    // Mobile jobcard edit
+    public function editMobile($jobcard)
+    {
+    $jobcard = Jobcard::findOrFail($jobcard);
+    $employees = Employee::all();
+    $inventory = Inventory::all();
+    $assignedInventory = $jobcard->inventory ? $jobcard->inventory->toArray() : [];
+    return view('mobile.jobcard-edit', compact('jobcard', 'employees', 'inventory', 'assignedInventory'));
+    }
+
+    // Mobile jobcard create
+    public function createMobile()
+    {
+        $clients = Client::all();
+        $employees = Employee::all();
+        $inventory = Inventory::all();
+        return view('mobile.jobcard-create', compact('clients', 'employees', 'inventory'));
+    }
     public function index(Request $request)
     {
         $query = Jobcard::with('client');

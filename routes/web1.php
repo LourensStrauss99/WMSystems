@@ -240,8 +240,8 @@ Route::middleware(['auth', 'landlord'])->prefix('landlord')->name('landlord.')->
 // Settings (protected, using Volt) - central landlord version
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
-    Livewire\Volt\Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
-    Livewire\Volt\Volt::route('settings/password', 'settings.password')->name('settings.password');
+    // Livewire\Volt\Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
+    // Livewire\Volt\Volt::route('settings/password', 'settings.password')->name('settings.password');
     Livewire\Volt\Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 

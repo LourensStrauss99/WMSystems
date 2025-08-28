@@ -47,7 +47,7 @@ class ProgressController extends Controller
     }
     public function updateProgress(Request $request, $id)
     {
-        $this->switchToTenantDatabase();
+    // ...existing code...
         
         Log::info('updateProgress called', $request->all());
         $jobcard = Jobcard::with(['employees', 'inventory'])->findOrFail($id);

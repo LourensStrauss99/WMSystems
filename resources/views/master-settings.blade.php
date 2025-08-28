@@ -278,10 +278,9 @@
         </div>
 
         {{-- Name Fields --}}
-        <div class="col-md-4">
-            <label class="form-label">First Name *</label>
-            <input type="text" name="name" id="name" class="form-control" required>
-            <div class="invalid-feedback">First name is required.</div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Department *</label>
+                        </div>
         </div>
         <div class="col-md-4" id="surname_field" style="display: none;">
             <label class="form-label">Surname *</label>
@@ -336,7 +335,6 @@
 
         <div class="col-md-3">
             <label class="form-label">Department</label>
-            <input type="text" name="department" id="department" class="form-control">
         </div>
         <div class="col-md-3">
             <label class="form-label">Position</label>
@@ -410,16 +408,9 @@
             <div class="card-body">
                 <form action="{{ route('inventory.store') }}" method="POST" id="inventory_form">
                     @csrf
-                    
                     {{-- Hidden tracking fields --}}
                     <input type="hidden" id="is_replenishment" name="is_replenishment" value="0">
                     <input type="hidden" id="original_item_id" name="original_item_id" value="">
-                    <input type="hidden" id="nett_price" name="nett_price">
-                    <input type="hidden" id="sell_price" name="sell_price">
-                    <input type="hidden" id="quantity" name="quantity">
-                    <input type="hidden" id="min_quantity" name="min_quantity">
-                    <input type="hidden" id="stock_added" name="stock_added">
-                    <input type="hidden" id="last_stock_update" name="last_stock_update">
 
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -483,56 +474,57 @@
                     {{-- Form Fields --}}
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Item Name *</label>
-                            <input type="text" id="item_name" name="name" class="form-control" required>
+                            <label class="form-label fw-bold">Description *</label>
+                            <input type="text" id="description" name="description" class="form-control" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Department *</label>
+                            <select id="department" name="department" class="form-select" required onchange="generateShortCode()">
+                                <option value="">Select Department</option>
+                                @foreach(App\Models\Inventory::getDepartmentOptions() as $prefix => $dept)
+                                    <option value="{{ $prefix }}">{{ $dept }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label fw-bold">Short Code *</label>
-                            <input type="text" id="short_code" name="short_code" class="form-control" required>
+                            <input type="text" id="short_code" name="short_code" class="form-control" readonly required>
                         </div>
-                        
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Vendor</label>
                             <input type="text" id="vendor" name="vendor" class="form-control">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">Supplier</label>
-                            <input type="text" id="supplier" name="supplier" class="form-control">
+                            <label class="form-label fw-bold">Purchase Date</label>
+                            <input type="date" id="purchase_date" name="purchase_date" class="form-control">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold">Purchase Date</label>
-                            <input type="date" id="purchase_date" name="purchase_date" class
+                            <label class="form-label fw-bold">Quantity *</label>
+                            <input type="number" id="quantity" name="quantity" class="form-control" min="0" step="1" required>
                         </div>
-                        
-                        <div class="col-md-3">
-                            <label id="stock_label" class="form-label fw-bold">Stock Level *</label>
-                            <input type="number" id="stock_level" name="stock_level" class="form-control" min="0" step="0.01" required>
-                            <small id="stock_help" class="text-muted">Enter the quantity you're adding to inventory</small>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Min Quantity *</label>
+                            <input type="number" id="min_quantity" name="min_quantity" class="form-control" min="0" step="1" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Minimum Level</label>
-                            <input type="number" id="min_level" name="min_level" class="form-control" min="0" step="0.01">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Buying Price</label>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Buying Price *</label>
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
-                                <input type="number" id="buying_price" name="buying_price" class="form-control" min="0" step="0.01">
+                                <input type="number" id="buying_price" name="buying_price" class="form-control" min="0" step="0.01" required>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Selling Price</label>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Selling Price *</label>
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
                                 <input type="number" id="selling_price" name="selling_price" class="form-control" min="0" step="0.01">
                             </div>
+                            <small class="text-muted">Auto-calculated from buying price and markup, but you can override.</small>
                         </div>
-                        
                         <div class="col-md-12">
                             <label class="form-label fw-bold">Stock Update Reason</label>
-                            <input type="text" id="stock_update_reason" name="stock_update_reason" class="form-control" value="Initial stock entry">
+                            <input type="text" id="stock_update_reason" name="stock_update_reason" class="form-control" value="Initial stock entry" readonly>
                         </div>
-                        
                         <div class="col-12 text-end">
                             <button type="submit" id="submit_btn" class="btn btn-primary btn-lg">
                                 <i class="fas fa-plus me-2"></i>Add Inventory Item
@@ -573,11 +565,37 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Elements
-    const accountType = document.getElementById('account_type');
-    const surnameField = document.getElementById('surname_field');
-    const surnameInput = document.getElementById('surname');
+function generateShortCode() {
+    const dept = document.getElementById('department').value;
+    const shortCodeField = document.getElementById('short_code');
+    if (!dept) {
+        shortCodeField.value = '';
+        shortCodeField.placeholder = 'Select department';
+        return;
+    }
+    shortCodeField.value = '';
+    shortCodeField.placeholder = 'Generating...';
+    fetch(`/api/inventory/generate-code/${dept}`)
+        .then(response => response.json())
+        .then(data => {
+            shortCodeField.value = data.code;
+            shortCodeField.placeholder = '';
+        })
+        .catch(() => {
+            shortCodeField.value = '';
+            shortCodeField.placeholder = 'Error generating code';
+        });
+}
+
+document.getElementById('buying_price').addEventListener('input', function() {
+    fetch('/api/company/markup-percentage')
+        .then(response => response.json())
+        .then(data => {
+            const markup = data.markup_percentage || 25;
+            const buying = parseFloat(document.getElementById('buying_price').value) || 0;
+            const selling = buying * (1 + markup / 100);
+            document.getElementById('selling_price').value = selling.toFixed(2);
+    });
     const userIdField = document.getElementById('user_id_field');
     const userIdInput = document.getElementById('user_id');
     const employeeIdField = document.getElementById('employee_id_field');
