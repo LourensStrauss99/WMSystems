@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+// ...existing code...
+
 use App\Models\Jobcard;
 use App\Models\Employee;
 use App\Models\Inventory;
@@ -17,6 +19,23 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class JobcardController extends Controller
 {
+    /**
+     * Accept a quote and convert to jobcard
+     */
+    public function acceptQuote(Request $request, $jobcard)
+    {
+        $jobcard = Jobcard::findOrFail($jobcard);
+        $request->validate([
+            'accepted_signature' => 'required|string|max:255',
+        ]);
+        $jobcard->quote_accepted_at = now();
+        $jobcard->accepted_signature = $request->input('accepted_signature');
+    $jobcard->accepted_by = Auth::id();
+        $jobcard->is_quote = false;
+        $jobcard->save();
+        return redirect()->route('jobcard.show', $jobcard->id)
+            ->with('success', 'Quote accepted and converted to jobcard.');
+    }
     // Mobile jobcard update
     public function updateMobile(Request $request, $jobcard)
     {
@@ -30,7 +49,11 @@ class JobcardController extends Controller
 
         try {
             $jobcard->update($validated);
-            return redirect()->route('mobile.jobcards.edit', $jobcard->id)
+            if ($jobcard->status === 'completed') {
+                return redirect()->route('mobile.jobcards.index')
+                    ->with('success', 'Jobcard marked as completed and removed from your list.');
+            }
+            return redirect()->route('mobile.jobcards.index')
                 ->with('success', 'Jobcard updated successfully.');
         } catch (\Exception $e) {
             return redirect()->route('mobile.jobcards.edit', $jobcard->id)
@@ -288,7 +311,7 @@ class JobcardController extends Controller
             }
         });
 
-        return redirect()->route('jobcard.index')->with('success', 'Jobcard created successfully!');
+    return redirect()->route('mobile.jobcards.index')->with('success', 'Jobcard created successfully!');
     }
 
     public function edit(Jobcard $jobcard)

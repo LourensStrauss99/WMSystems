@@ -238,7 +238,7 @@
             <select id="inventory_select" class="form-control inventory-select">
                 <option value="">Select Inventory Item</option>
                 @foreach($inventory as $item)
-                    <option value="{{ $item->id }}">[{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }})</option>
+                    <option value="{{ $item->id }}">[{{ $item->short_code }}] {{ $item->name }} - {{ $item->description }} (Stock: {{ $item->stock_level }})</option>
                 @endforeach
             </select>
             <input type="number" id="inventory_quantity" class="form-control inventory-qty" min="1" max="100" value="1" placeholder="Qty">
@@ -248,7 +248,7 @@
             @foreach($assignedInventory as $item)
                 <div class="inventory-list-item" data-id="{{ $item['id'] }}" style="background:#f3f4f6; border-radius:10px; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; padding:0.5rem 0.8rem;">
                     <span style="display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;">
-                        <span>{{ $item['name'] ?? $item['description'] ?? 'No description' }}</span>
+                        <span>{{ $item['name'] ?? ($item['description'] ?? 'No name') }} <span style="color:#64748b; font-size:0.95em;">{{ $item['description'] ?? '' }}</span></span>
                         <span>Qty: {{ $item['quantity'] }}</span>
                     </span>
                     <input type="hidden" name="inventory_items[]" value="{{ $item['id'] }}">

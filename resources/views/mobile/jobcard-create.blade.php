@@ -118,7 +118,7 @@
             <select id="inventory_select" class="form-control inventory-select" style="width: 100%;">
                 <option value="">Select Inventory Item</option>
                 @foreach($inventory as $item)
-                    <option value="{{ $item->id }}">[{{ $item->short_code }}] {{ $item->name }} (Stock: {{ $item->stock_level }})</option>
+                    <option value="{{ $item->id }}">[{{ $item->short_code }}] {{ $item->name }} - {{ $item->description }} (Stock: {{ $item->stock_level }})</option>
                 @endforeach
             </select>
             <input type="number" id="inventory_quantity" class="form-control inventory-qty" min="1" max="100" value="1" placeholder="Qty">
@@ -127,6 +127,27 @@
         <div class="inventory-list" id="inventory_list">
             <div class="text-muted">No inventory items added yet</div>
         </div>
+        <script>
+        // Patch renderInventory function to show description
+        let inventoryItems = [];
+        function renderInventory() {
+            const list = document.getElementById('inventory_list');
+            list.innerHTML = '';
+            if (inventoryItems.length === 0) {
+                list.innerHTML = '<div class="text-muted">No inventory items added yet</div>';
+                return;
+            }
+            inventoryItems.forEach((item, i) => {
+                list.innerHTML += `<div class='inventory-list-item'>
+                    <span style='display:flex; flex-direction:column; align-items:flex-start; gap:0.1rem; font-size:1rem; color:#111; font-weight:400;'>
+                        <span>${item.name} <span style='color:#64748b; font-size:0.95em;'>${item.description || ''}</span></span>
+                        <span>Qty: ${item.quantity}</span>
+                    </span>
+                    <button type='button' class='inventory-remove-btn' onclick='removeInventory(${i})' style='background:#e5e7eb; color:#dc2626; border-radius:50%; width:28px; height:28px; font-size:1.1em; display:flex; align-items:center; justify-content:center; margin-left:0.5rem;'>&times;</button>
+                </div>`;
+            });
+        }
+        </script>
     </div>
     <!-- Work Progress Card -->
     <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.2rem 1rem 1rem 1rem; margin-bottom: 1.2rem;">
