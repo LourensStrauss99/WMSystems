@@ -3,7 +3,7 @@
 @extends('layouts.mobile')
 
 @section('content')
-<form method="POST" action="{{ route('mobile-jobcard.store') }}" enctype="multipart/form-data" style="max-width: 600px; margin: 0 auto;">
+<form method="POST" action="{{ route('mobile-jobcard.store') }}" enctype="multipart/form-data" style="max-width: 600px; margin: 0 auto;" id="jobcardCreateForm" onsubmit="return validateJobcardForm();">
     @csrf
     <!-- Job Info Card -->
     <div style="background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 1.2rem 1rem 1rem 1rem; margin-bottom: 1.2rem;">
@@ -15,11 +15,13 @@
         <div style="display: flex; gap: 0.7rem; margin-bottom: 0.7rem;">
             <div style="flex:1;">
                 <label style="font-weight: 500; color: #64748b;">Date</label>
-                <input type="date" name="job_date" class="form-control" value="{{ old('job_date', date('Y-m-d')) }}" style="width: 100%;">
+                <input type="date" name="job_date" class="form-control" value="{{ old('job_date', date('Y-m-d')) }}" style="width: 100%;" id="job_date">
+                <div class="invalid-feedback" id="job_date_error" style="color:red;display:none;"></div>
             </div>
             <div style="flex:1;">
                 <label style="font-weight: 500; color: #64748b;">Category</label>
-                <select name="category" class="form-control" onchange="generateJobcardNumber()" style="width: 100%;">
+                <select name="category" class="form-control" onchange="generateJobcardNumber()" style="width: 100%;" id="category">
+                <div class="invalid-feedback" id="category_error" style="color:red;display:none;"></div>
                     <option value="">Select Category</option>
                     <option value="General Maintenance" {{ old('category') == 'General Maintenance' ? 'selected' : '' }}>General Maintenance</option>
                     <option value="Emergency Repair" {{ old('category') == 'Emergency Repair' ? 'selected' : '' }}>Emergency Repair</option>
@@ -33,11 +35,13 @@
         </div>
         <div style="margin-bottom: 0.7rem;">
             <label style="font-weight: 500; color: #64748b;">Work Request</label>
-            <input type="text" name="work_request" class="form-control" value="{{ old('work_request') }}" style="width: 100%;">
+            <input type="text" name="work_request" class="form-control" value="{{ old('work_request') }}" style="width: 100%;" id="work_request">
+            <div class="invalid-feedback" id="work_request_error" style="color:red;display:none;"></div>
         </div>
         <div style="margin-bottom: 0.7rem;">
             <label style="font-weight: 500; color: #64748b;">Special Instructions</label>
-            <input type="text" name="special_request" class="form-control" value="{{ old('special_request') }}" style="width: 100%;">
+            <input type="text" name="special_request" class="form-control" value="{{ old('special_request') }}" style="width: 100%;" id="special_request">
+            <div class="invalid-feedback" id="special_request_error" style="color:red;display:none;"></div>
         </div>
     </div>
     <!-- Client Details Card -->
@@ -48,6 +52,7 @@
         <div style="margin-bottom: 0.7rem;">
             <label style="font-weight: 500; color: #64748b;">Client</label>
             <select id="client_select" name="client_id" class="form-control" onchange="toggleTempClientFields(this)" style="width: 100%;">
+            <div class="invalid-feedback" id="client_id_error" style="color:red;display:none;"></div>
                 <option value="">Select Client</option>
                 @foreach($clients as $client)
                     <option value="{{ $client->id }}">{{ $client->name }}</option>
@@ -56,11 +61,16 @@
             </select>
         </div>
         <div id="temp_client_fields" style="display:none; margin-top:0.5rem;">
-            <input type="text" name="temp_client_name" class="form-control" placeholder="First Name" value="{{ old('temp_client_name') }}" style="margin-bottom: 0.5rem;">
-            <input type="text" name="temp_client_surname" class="form-control" placeholder="Surname" value="{{ old('temp_client_surname') }}" style="margin-bottom: 0.5rem;">
-            <input type="text" name="temp_client_telephone" class="form-control" placeholder="Telephone" value="{{ old('temp_client_telephone') }}" style="margin-bottom: 0.5rem;">
-            <input type="text" name="temp_client_address" class="form-control" placeholder="Address" value="{{ old('temp_client_address') }}" style="margin-bottom: 0.5rem;">
-            <input type="email" name="temp_client_email" class="form-control" placeholder="Email" value="{{ old('temp_client_email') }}">
+            <input type="text" name="temp_client_name" class="form-control" placeholder="First Name" value="{{ old('temp_client_name') }}" style="margin-bottom: 0.5rem;" id="temp_client_name">
+            <div class="invalid-feedback" id="temp_client_name_error" style="color:red;display:none;"></div>
+            <input type="text" name="temp_client_surname" class="form-control" placeholder="Surname" value="{{ old('temp_client_surname') }}" style="margin-bottom: 0.5rem;" id="temp_client_surname">
+            <div class="invalid-feedback" id="temp_client_surname_error" style="color:red;display:none;"></div>
+            <input type="text" name="temp_client_telephone" class="form-control" placeholder="Telephone" value="{{ old('temp_client_telephone') }}" style="margin-bottom: 0.5rem;" id="temp_client_telephone">
+            <div class="invalid-feedback" id="temp_client_telephone_error" style="color:red;display:none;"></div>
+            <input type="text" name="temp_client_address" class="form-control" placeholder="Address" value="{{ old('temp_client_address') }}" style="margin-bottom: 0.5rem;" id="temp_client_address">
+            <div class="invalid-feedback" id="temp_client_address_error" style="color:red;display:none;"></div>
+            <input type="email" name="temp_client_email" class="form-control" placeholder="Email" value="{{ old('temp_client_email') }}" id="temp_client_email">
+            <div class="invalid-feedback" id="temp_client_email_error" style="color:red;display:none;"></div>
         </div>
     </div>
     <!-- Assigned Employees Card -->
@@ -177,10 +187,60 @@
         </select>
     </div>
     
-    <button type="submit" onclick="return validateForm()" style="width: 100%; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 0.9rem 0; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;">Create Jobcard</button>
+    <button type="submit" style="width: 100%; background: #059669; color: #fff; border: none; border-radius: 6px; padding: 0.9rem 0; font-size: 1.1rem; font-weight: 700; margin-bottom: 1.5rem;">Create Jobcard</button>
 </form>
 
 <script>
+function showError(id, message) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = message;
+        el.style.display = 'block';
+    }
+}
+function hideError(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = '';
+        el.style.display = 'none';
+    }
+}
+function validateEmail(email) {
+    return /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/.test(email);
+}
+function validateTelephone(tel) {
+    return /^\+?[0-9\-\s]{7,15}$/.test(tel);
+}
+function validateJobcardForm() {
+    let valid = true;
+    // Job Info
+    const jobDate = document.getElementById('job_date').value;
+    if (!jobDate) { showError('job_date_error', 'Date is required.'); valid = false; } else { hideError('job_date_error'); }
+    const category = document.getElementById('category').value;
+    if (!category) { showError('category_error', 'Category is required.'); valid = false; } else { hideError('category_error'); }
+    const workRequest = document.getElementById('work_request').value;
+    if (!workRequest) { showError('work_request_error', 'Work request is required.'); valid = false; } else { hideError('work_request_error'); }
+    const specialRequest = document.getElementById('special_request').value;
+    if (!specialRequest) { showError('special_request_error', 'Special instructions are required.'); valid = false; } else { hideError('special_request_error'); }
+    // Client
+    const clientId = document.getElementById('client_select').value;
+    if (!clientId) { showError('client_id_error', 'Client is required.'); valid = false; } else { hideError('client_id_error'); }
+    if (clientId === 'temp') {
+        const tempName = document.getElementById('temp_client_name').value;
+        if (!tempName) { showError('temp_client_name_error', 'First name is required.'); valid = false; } else { hideError('temp_client_name_error'); }
+        const tempSurname = document.getElementById('temp_client_surname').value;
+        if (!tempSurname) { showError('temp_client_surname_error', 'Surname is required.'); valid = false; } else { hideError('temp_client_surname_error'); }
+        const tempTel = document.getElementById('temp_client_telephone').value;
+        if (!tempTel) { showError('temp_client_telephone_error', 'Telephone is required.'); valid = false; }
+        else if (!validateTelephone(tempTel)) { showError('temp_client_telephone_error', 'Invalid telephone number.'); valid = false; } else { hideError('temp_client_telephone_error'); }
+        const tempAddress = document.getElementById('temp_client_address').value;
+        if (!tempAddress) { showError('temp_client_address_error', 'Address is required.'); valid = false; } else { hideError('temp_client_address_error'); }
+        const tempEmail = document.getElementById('temp_client_email').value;
+        if (!tempEmail) { showError('temp_client_email_error', 'Email is required.'); valid = false; }
+        else if (!validateEmail(tempEmail)) { showError('temp_client_email_error', 'Invalid email address.'); valid = false; } else { hideError('temp_client_email_error'); }
+    }
+    return valid;
+}
 function generateJobcardNumber() {
     const categorySelect = document.querySelector('select[name="category"]');
     const category = categorySelect.value;

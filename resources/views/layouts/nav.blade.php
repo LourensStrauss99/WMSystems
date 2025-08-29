@@ -12,8 +12,8 @@
         <a href="/invoice" class="sidebar-tab {{ request()->is('invoice*') ? 'active' : '' }}">Invoices</a>
         <a href="/inventory" class="sidebar-tab {{ request()->is('inventory*') ? 'active' : '' }}">Inventory</a>
         <a href="/settings" class="sidebar-tab {{ request()->is('settings*') ? 'active' : '' }}">Settings</a>
-        <a href="/mobile/jobcards" class="sidebar-tab">Mobile</a>
-        
+        <a href="/mobile/jobcards" class="sidebar-tab {{ request()->is('mobile/jobcards*') ? 'active' : '' }}">Mobile</a>
+
         {{-- Approvals link, visible only to users with approval permissions --}}
         @if(auth()->check() && method_exists(auth()->user(), 'canApprove') && auth()->user()->canApprove())
             <a href="{{ route('approvals.index') }}" class="sidebar-tab">

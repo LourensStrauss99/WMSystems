@@ -461,7 +461,10 @@ class JobcardController extends Controller
 
     public function submitForInvoice(Jobcard $jobcard)
     {
-        // Example: mark as invoiced and create invoice
+        // Prevent submitting quote for invoice unless accepted
+        if (str_starts_with($jobcard->jobcard_number, 'qt') && !$jobcard->quote_accepted_at) {
+            return redirect()->back()->with('error', 'Quote must be accepted before submitting for invoice.');
+        }
         $jobcard->status = 'invoiced';
         $jobcard->save();
 
