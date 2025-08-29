@@ -49,21 +49,20 @@ use Illuminate\Support\Facades\Route;
                             <button type="submit" class="btn btn-primary">
                                 {{ __('Login') }}
                             </button>
-
+                        </div>
+                        <div class="mt-3 text-center">
                             @if (Route::has('password.request'))
                                 <a class="btn btn-link" href="{{ route('password.request') }}">
                                     {{ __('Forgot Your Password?') }}
                                 </a>
                             @endif
                         </div>
+                        </div>
                     </form>
                 </div>
                 <div class="card-footer text-center py-3">
                     <div class="small">
-                        @if (isset($superuserExists) && !$superuserExists)
-                            <a href="{{ route('register') }}">Need an account? Sign up!</a>
-                        @endif
-                        <!-- Reference: tenant registration link removed: route not defined -->
+                        <a href="{{ route('register') }}">Not registered yet? Register new user</a>
                     </div>
                 </div>
             </div>

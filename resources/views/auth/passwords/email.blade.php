@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.auth')
 
 @section('content')
 <div class="container">
@@ -40,6 +40,9 @@
                         </div>
                     </form>
                 </div>
+            </div>
+            <div class="text-center mt-3">
+                <a href="{{ route('login') }}" class="btn btn-secondary">Back to Login</a>
             </div>
         </div>
     </div>
